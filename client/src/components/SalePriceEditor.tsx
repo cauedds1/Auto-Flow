@@ -53,6 +53,7 @@ export function SalePriceEditor({ vehicleId, currentPrice }: SalePriceEditorProp
       });
 
       await queryClient.invalidateQueries({ queryKey: [`/api/vehicles/${vehicleId}`] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/vehicles"] });
       setIsEditing(false);
     } catch (error) {
       console.error("Erro ao salvar preço:", error);
