@@ -89,7 +89,7 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
       formData.append("model", data.model);
       formData.append("year", String(data.year));
       formData.append("color", data.color);
-      formData.append("plate", data.plate);
+      formData.append("plate", data.plate.toUpperCase());
       formData.append("status", data.status);
       
       if (data.kmOdometer != null) {

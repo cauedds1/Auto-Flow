@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { NotificationCenter } from "@/components/NotificationCenter";
 import Dashboard from "@/pages/Dashboard";
 import VehicleDetails from "@/pages/VehicleDetails";
 import Vehicles from "@/pages/Vehicles";
@@ -45,12 +46,15 @@ export default function App() {
             <div className="flex flex-1 flex-col">
               <header className="flex h-14 items-center justify-between border-b border-border px-4">
                 <SidebarTrigger data-testid="button-sidebar-toggle" />
-                <img 
-                  src="/logo.png" 
-                  alt="Capoeiras Automóveis" 
-                  className="h-8 w-auto object-contain"
-                  style={{ mixBlendMode: 'screen' }}
-                />
+                <div className="flex items-center gap-3">
+                  <NotificationCenter />
+                  <img 
+                    src="/logo.png" 
+                    alt="Capoeiras Automóveis" 
+                    className="h-8 w-auto object-contain"
+                    style={{ mixBlendMode: 'screen' }}
+                  />
+                </div>
               </header>
               <main className="flex-1 overflow-auto">
                 <Router />

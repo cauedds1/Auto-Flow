@@ -5,7 +5,6 @@ import { FinancialSummary } from "@/components/FinancialSummary";
 import { RecentActivity } from "@/components/RecentActivity";
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { AddVehicleDialog } from "@/components/AddVehicleDialog";
-import { PendingTasksNotification } from "@/components/PendingTasksNotification";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Dashboard() {
@@ -15,7 +14,6 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-full flex-col p-8">
-      <PendingTasksNotification />
       
       <div className="mb-8 flex items-start justify-between">
         <div>
