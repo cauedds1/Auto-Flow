@@ -36,10 +36,18 @@ function MetricCard({ title, value, icon, onClick, clickable = false }: MetricCa
   );
 }
 
+interface MetricsData {
+  totalVehicles: number;
+  readyForSale: number;
+  inProcess: number;
+  avgTime: string;
+  avgCost: string;
+}
+
 export function DashboardMetrics() {
   const [isCostBreakdownOpen, setIsCostBreakdownOpen] = useState(false);
 
-  const { data: metrics, isLoading } = useQuery({
+  const { data: metrics, isLoading } = useQuery<MetricsData>({
     queryKey: ["/api/metrics"],
   });
 
@@ -67,9 +75,9 @@ export function DashboardMetrics() {
           icon={<svg className="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
         />
         <MetricCard
-          title="Tempo Médio no Pipeline"
-          value={metrics?.avgTime || "0 dias"}
-          icon={<svg className="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+          title="Em Processo"
+          value={metrics?.inProcess || 0}
+          icon={<svg className="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>}
         />
         <MetricCard
           title="Custo Médio"

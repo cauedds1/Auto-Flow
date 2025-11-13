@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 import { TrendingUp, Clock, DollarSign, Package } from "lucide-react";
 import { subMonths, startOfMonth } from "date-fns";
+import { checklistItems, getChecklistStats, normalizeChecklistData } from "@shared/checklistUtils";
 
 const COLORS = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
 
@@ -18,6 +19,10 @@ export default function Reports() {
 
   const { data: allCosts = [], isLoading: isLoadingCosts } = useQuery<any[]>({
     queryKey: ["/api/costs/all"],
+  });
+
+  const { data: observations = [] } = useQuery<any[]>({
+    queryKey: ["/api/store-observations"],
   });
 
   const getFilteredData = () => {
@@ -88,7 +93,7 @@ export default function Reports() {
 
   const getAvgTimePerStageData = () => {
     const stageTime = new Map<string, { total: number; count: number }>();
-    const statuses = ["Entrada", "Em Reparos", "Aguardando Peças", "Em Higienização", "Em Documentação", "Pronto para Venda"];
+    const statuses = ["Entrada", "Em Reparos", "Em Higienização", "Pronto para Venda"];
 
     filteredVehicles.forEach((v) => {
       const status = v.status || v.location || "Entrada";
@@ -338,6 +343,107 @@ export default function Reports() {
               </p>
             )}
           </Card>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card className="p-6">
+              <h3 className="mb-6 text-lg font-semibold flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                Status do Checklist dos Veículos
+              </h3>
+              <div className="space-y-4">
+                {(() => {
+                  const totalExpectedItems = Object.values(checklistItems).reduce((sum, items) => sum + items.length, 0);
+                  let totalItemsAcrossVehicles = 0;
+                  let completedItemsAcrossVehicles = 0;
+                  
+                  filteredVehicles.forEach((v) => {
+                    const normalized = normalizeChecklistData(v.checklist || {});
+                    const stats = getChecklistStats(normalized);
+                    
+                    totalItemsAcrossVehicles += totalExpectedItems;
+                    completedItemsAcrossVehicles += stats.completed;
+                  });
+
+                  const completionRate = totalItemsAcrossVehicles > 0 
+                    ? Math.round((completedItemsAcrossVehicles / totalItemsAcrossVehicles) * 100) 
+                    : 0;
+
+                  return (
+                    <>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">Taxa de Conclusão Geral</span>
+                        <span className="text-2xl font-bold text-primary">{completionRate}%</span>
+                      </div>
+                      <div className="h-3 bg-muted rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-primary transition-all duration-500" 
+                          style={{ width: `${completionRate}%` }}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 pt-4">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Total de Itens</p>
+                          <p className="text-xl font-semibold">{totalItemsAcrossVehicles}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Concluídos</p>
+                          <p className="text-xl font-semibold text-green-600">{completedItemsAcrossVehicles}</p>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </Card>
+
+            <Card className="p-6">
+              <h3 className="mb-6 text-lg font-semibold flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Observações Gerais da Loja
+              </h3>
+              <div className="space-y-4">
+                {observations.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-muted-foreground">Nenhuma observação registrada</p>
+                  </div>
+                ) : (
+                  <>
+                    {(() => {
+                      const pendingObs = observations.filter((o: any) => o.status === "Pendente").length;
+                      const resolvedObs = observations.filter((o: any) => o.status === "Resolvido").length;
+                      const totalObs = observations.length;
+
+                      return (
+                        <>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="text-center p-4 bg-yellow-500/10 rounded-lg">
+                              <p className="text-2xl font-bold text-yellow-600">{pendingObs}</p>
+                              <p className="text-xs text-muted-foreground mt-1">Pendentes</p>
+                            </div>
+                            <div className="text-center p-4 bg-green-500/10 rounded-lg">
+                              <p className="text-2xl font-bold text-green-600">{resolvedObs}</p>
+                              <p className="text-xs text-muted-foreground mt-1">Resolvidas</p>
+                            </div>
+                          </div>
+                          <div className="pt-4">
+                            <p className="text-sm text-muted-foreground">Total de Observações</p>
+                            <p className="text-3xl font-bold">{totalObs}</p>
+                          </div>
+                          {pendingObs > 0 && (
+                            <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                              <p className="text-sm font-medium text-yellow-700">
+                                ⚠️ Há {pendingObs} {pendingObs === 1 ? 'observação pendente' : 'observações pendentes'} que {pendingObs === 1 ? 'precisa' : 'precisam'} de atenção
+                              </p>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </>
+                )}
+              </div>
+            </Card>
+          </div>
         </div>
       )}
     </div>

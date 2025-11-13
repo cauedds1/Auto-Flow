@@ -20,7 +20,7 @@ export const checklistCategories = {
 } as const;
 
 export const checklistItems = {
-  pneus: ["Tração", "Calibragem"],
+  pneus: ["Pneus Dianteiros", "Pneus Traseiros"],
   interior: ["Limpeza", "Estado dos bancos", "Tapetes", "Porta-objetos"],
   somEletrica: ["Funcionamento do som", "Vidros elétricos", "Ar-condicionado", "Travas elétricas"],
   lataria: ["Arranhões", "Amassados", "Pintura desbotada"],

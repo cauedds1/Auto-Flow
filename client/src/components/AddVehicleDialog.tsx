@@ -38,7 +38,7 @@ const vehicleFormSchema = z.object({
   year: z.coerce.number().min(1900, "Ano inválido"),
   color: z.string().min(1, "Cor é obrigatória"),
   plate: z.string().min(7, "Placa inválida"),
-  location: z.string().min(1, "Localização é obrigatória"),
+  status: z.string().min(1, "Status é obrigatório"),
   kmOdometer: z.preprocess((val) => {
     if (val === "" || val === null || val === undefined) return null;
     const num = Number(val);
@@ -67,7 +67,7 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
       year: new Date().getFullYear(),
       color: "",
       plate: "",
-      location: "Entrada",
+      status: "Entrada",
       kmOdometer: null,
       fuelType: null,
     },
@@ -90,7 +90,7 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
       formData.append("year", String(data.year));
       formData.append("color", data.color);
       formData.append("plate", data.plate);
-      formData.append("location", data.location);
+      formData.append("status", data.status);
       
       if (data.kmOdometer != null) {
         formData.append("kmOdometer", String(data.kmOdometer));
@@ -242,21 +242,20 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
 
               <FormField
                 control={form.control}
-                name="location"
+                name="status"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Localização Inicial</FormLabel>
+                    <FormLabel>Status Inicial</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger data-testid="select-location">
-                          <SelectValue placeholder="Selecione a localização" />
+                        <SelectTrigger data-testid="select-status">
+                          <SelectValue placeholder="Selecione o status" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="Entrada">Entrada</SelectItem>
-                        <SelectItem value="Higienização/Funilaria">Higienização/Funilaria</SelectItem>
-                        <SelectItem value="Mecânica">Mecânica</SelectItem>
-                        <SelectItem value="Documentação">Documentação</SelectItem>
+                        <SelectItem value="Em Reparos">Em Reparos</SelectItem>
+                        <SelectItem value="Em Higienização">Em Higienização</SelectItem>
                         <SelectItem value="Pronto para Venda">Pronto para Venda</SelectItem>
                       </SelectContent>
                     </Select>
@@ -274,7 +273,11 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
                     <FormControl>
                       <Input
                         placeholder="Ex: 45000"
-                        {...field}
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
                         data-testid="input-km"
                       />
                     </FormControl>
@@ -289,7 +292,7 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Combustível</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value ?? undefined}>
                       <FormControl>
                         <SelectTrigger data-testid="select-fuel">
                           <SelectValue placeholder="Selecione" />

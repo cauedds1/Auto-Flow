@@ -44,7 +44,7 @@ export function FinancialSummary() {
   };
 
   return (
-    <div className="grid gap-4 md:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-2">
       <Card>
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
@@ -68,7 +68,7 @@ export function FinancialSummary() {
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Custos Totais
+              Investimento Total
             </CardTitle>
             <PiggyBank className="h-4 w-4 text-red-500" />
           </div>
@@ -78,26 +78,7 @@ export function FinancialSummary() {
             {formatCurrency(totalCosts)}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            {readyForSale.length} {readyForSale.length === 1 ? 'veículo pronto' : 'veículos prontos'}
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Margem Esperada
-            </CardTitle>
-            <TrendingUp className={`h-4 w-4 ${expectedMargin >= 0 ? 'text-green-500' : 'text-red-500'}`} />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">
-            {formatCurrency(expectedMargin)}
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            {marginPercentage}% de margem
+            Custos de {readyForSale.length} {readyForSale.length === 1 ? 'veículo' : 'veículos'}
           </p>
         </CardContent>
       </Card>

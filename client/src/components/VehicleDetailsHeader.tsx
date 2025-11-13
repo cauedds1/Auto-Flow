@@ -36,9 +36,7 @@ export function VehicleDetailsHeader({
   const statusColors: Record<string, string> = {
     "Entrada": "bg-blue-600",
     "Em Reparos": "bg-amber-600",
-    "Aguardando Peças": "bg-orange-600",
     "Em Higienização": "bg-cyan-600",
-    "Em Documentação": "bg-purple-600",
     "Pronto para Venda": "bg-green-600",
     "Vendido": "bg-gray-600",
     "Arquivado": "bg-slate-600",

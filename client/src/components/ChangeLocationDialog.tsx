@@ -69,9 +69,7 @@ export function ChangeLocationDialog({
   const statusOptions = [
     "Entrada",
     "Em Reparos",
-    "Aguardando Peças",
     "Em Higienização",
-    "Em Documentação",
     "Pronto para Venda",
     "Vendido",
     "Arquivado",

@@ -449,9 +449,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       const avgTime = times.length > 0 ? Math.round(times.reduce((a, b) => a + b, 0) / times.length) : 0;
 
+      const inProcess = vehicles.filter(v => 
+        v.status !== "Pronto para Venda" && 
+        v.status !== "Vendido" && 
+        v.status !== "Arquivado" &&
+        v.status !== "Entrada"
+      ).length;
+
       res.json({
         totalVehicles,
         readyForSale,
+        inProcess,
         avgTime: `${avgTime} dias`,
         avgCost: avgCostCurrentMonth >= 1000 
           ? `R$ ${(avgCostCurrentMonth / 1000).toFixed(1)}K`
@@ -479,37 +487,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         apiKey: process.env.OPENAI_API_KEY,
       });
 
-      const features = vehicle.features?.join(", ") || "Informações não disponíveis";
-      const notes = vehicle.notes || "Nenhuma observação adicional";
+      const features = vehicle.features?.join(", ") || "";
+      const notes = vehicle.notes || "";
+      
+      // Pegar custos do veículo para contextualizar o valor
+      const costs = await storage.getVehicleCosts(vehicle.id);
+      const totalCosts = costs.reduce((sum, cost) => sum + cost.value, 0);
+      const hasPriceSet = vehicle.salePrice && vehicle.salePrice > 0;
 
-      const prompt = `Você é um redator de publicidade especialista em vendas de carros para a loja 'Capoeiras Automóveis'. Crie um texto de anúncio curto, persuasivo e otimizado para redes sociais (Instagram/Facebook) para o seguinte veículo. Use emojis apropriados para chamar a atenção e termine com um chamado para ação, incluindo o nome da loja.
+      const prompt = `Você é um redator de publicidade EXPERT em vendas de carros para a "Capoeiras Automóveis", uma concessionária confiável e estabelecida. 
 
-**Dados do Veículo:**
-- Marca: ${vehicle.brand}
-- Modelo: ${vehicle.model}
-- Ano: ${vehicle.year}
-- Cor: ${vehicle.color}
-- Combustível: ${vehicle.fuelType || "Não informado"}
-- Quilometragem: ${vehicle.kmOdometer ? vehicle.kmOdometer + " km" : "Não informada"}
-- Opcionais Principais: ${features}
-- Observações: ${notes}
+Crie um anúncio ÚNICO, PERSUASIVO e IRRESISTÍVEL para redes sociais (Instagram/Facebook) para este veículo ESPECÍFICO:
 
-Gere apenas o texto do anúncio.`;
+🚗 **${vehicle.brand} ${vehicle.model} ${vehicle.year}**
+📍 Cor: ${vehicle.color}
+${vehicle.fuelType ? `⛽ ${vehicle.fuelType}` : ''}
+${vehicle.kmOdometer ? `📊 ${vehicle.kmOdometer.toLocaleString('pt-BR')} km rodados` : '📊 Baixa quilometragem'}
+${features ? `✨ Opcionais: ${features}` : ''}
+${notes ? `📝 Detalhes: ${notes}` : ''}
+
+INSTRUÇÕES ESSENCIAIS:
+1. Crie um texto EXCLUSIVO baseado nas características ESPECÍFICAS deste ${vehicle.brand} ${vehicle.model}
+2. Destaque os DIFERENCIAIS ÚNICOS deste veículo em particular
+3. Use uma abordagem EMOCIONAL e PERSUASIVA que conecte com o cliente
+4. Inclua 3-4 emojis relevantes para chamar atenção visual
+5. Crie um senso de URGÊNCIA e OPORTUNIDADE ÚNICA
+6. Termine com um CTA (chamada para ação) forte e direto
+7. Mencione "Capoeiras Automóveis" como a loja de confiança
+8. NÃO use frases genéricas - seja ESPECÍFICO sobre ESTE carro
+9. Máximo de 150 palavras, linguagem natural brasileira
+10. ${hasPriceSet ? `Enfatize o excelente custo-benefício` : 'Destaque que o preço é sob consulta para negociação personalizada'}
+
+Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+        model: "gpt-4",
         messages: [
           {
             role: "system",
-            content: "Você é um especialista em copywriting automotivo para redes sociais.",
+            content: "Você é um copywriter especialista em vendas automotivas com 15 anos de experiência. Você cria anúncios únicos e persuasivos que convertem visualizações em vendas reais. Cada anúncio seu é diferente e personalizado para o veículo específico.",
           },
           {
             role: "user",
             content: prompt,
           },
         ],
-        temperature: 0.8,
-        max_tokens: 500,
+        temperature: 0.9,
+        max_tokens: 600,
       });
 
       const adText = completion.choices[0]?.message?.content || "";
