@@ -3,15 +3,19 @@ import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
-import { TrendingUp, Clock, DollarSign, Package } from "lucide-react";
+import { TrendingUp, Clock, DollarSign, Package, CheckCircle2, AlertCircle } from "lucide-react";
 import { subMonths, startOfMonth } from "date-fns";
-import { checklistItems, getChecklistStats, normalizeChecklistData } from "@shared/checklistUtils";
+import { checklistItems, getChecklistStats, normalizeChecklistData, hasChecklistStarted } from "@shared/checklistUtils";
 
 const COLORS = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
 
 export default function Reports() {
   const [dateFilter, setDateFilter] = useState<string>("last-3-months");
+  const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
+  const [checklistDialogType, setChecklistDialogType] = useState<"completed" | "missing">("missing");
 
   const { data: vehicles = [], isLoading: isLoadingVehicles } = useQuery<any[]>({
     queryKey: ["/api/vehicles"],
@@ -352,19 +356,32 @@ export default function Reports() {
               </h3>
               <div className="space-y-4">
                 {(() => {
-                  let totalItemsAcrossVehicles = 0;
-                  let completedItemsAcrossVehicles = 0;
+                  // Classificar veículos por status de checklist
+                  const vehiclesWithoutChecklist: any[] = [];
+                  const vehiclesWithCompleteChecklist: any[] = [];
+                  const vehiclesWithIncompleteChecklist: any[] = [];
                   
                   filteredVehicles.forEach((v) => {
-                    const normalized = normalizeChecklistData(v.checklist || {});
-                    const stats = getChecklistStats(normalized, v.checklist);
-                    
-                    totalItemsAcrossVehicles += stats.totalItems;
-                    completedItemsAcrossVehicles += stats.checkedItems;
+                    if (!hasChecklistStarted(v.checklist)) {
+                      vehiclesWithoutChecklist.push(v);
+                    } else {
+                      const normalized = normalizeChecklistData(v.checklist);
+                      const stats = getChecklistStats(normalized, v.checklist);
+                      
+                      if (stats.totalItems > 0 && stats.checkedItems === stats.totalItems) {
+                        vehiclesWithCompleteChecklist.push(v);
+                      } else {
+                        vehiclesWithIncompleteChecklist.push(v);
+                      }
+                    }
                   });
 
-                  const completionRate = totalItemsAcrossVehicles > 0 
-                    ? Math.round((completedItemsAcrossVehicles / totalItemsAcrossVehicles) * 100) 
+                  const totalVehicles = filteredVehicles.length;
+                  const completedVehicles = vehiclesWithCompleteChecklist.length;
+                  const missingVehicles = vehiclesWithoutChecklist.length + vehiclesWithIncompleteChecklist.length;
+                  
+                  const completionRate = totalVehicles > 0 
+                    ? Math.round((completedVehicles / totalVehicles) * 100) 
                     : 0;
 
                   return (
@@ -379,16 +396,106 @@ export default function Reports() {
                           style={{ width: `${completionRate}%` }}
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-4 pt-4">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Total de Itens</p>
-                          <p className="text-xl font-semibold">{totalItemsAcrossVehicles}</p>
+                      <div className="grid grid-cols-3 gap-3 pt-4">
+                        <div className="text-center p-3 bg-muted/50 rounded-lg">
+                          <p className="text-xs text-muted-foreground mb-1">Total de Carros</p>
+                          <p className="text-2xl font-bold">{totalVehicles}</p>
                         </div>
-                        <div>
+                        <Button
+                          variant="outline"
+                          className="h-auto p-3 flex flex-col items-center gap-1 bg-green-500/10 hover:bg-green-500/20 border-green-600/20"
+                          onClick={() => {
+                            setChecklistDialogType("completed");
+                            setChecklistDialogOpen(true);
+                          }}
+                        >
                           <p className="text-xs text-muted-foreground">Concluídos</p>
-                          <p className="text-xl font-semibold text-green-600">{completedItemsAcrossVehicles}</p>
-                        </div>
+                          <p className="text-2xl font-bold text-green-600">{completedVehicles}</p>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="h-auto p-3 flex flex-col items-center gap-1 bg-red-500/10 hover:bg-red-500/20 border-red-600/20"
+                          onClick={() => {
+                            setChecklistDialogType("missing");
+                            setChecklistDialogOpen(true);
+                          }}
+                        >
+                          <p className="text-xs text-muted-foreground">Faltando</p>
+                          <p className="text-2xl font-bold text-red-600">{missingVehicles}</p>
+                        </Button>
                       </div>
+
+                      {/* Dialog para mostrar lista de veículos */}
+                      <Dialog open={checklistDialogOpen} onOpenChange={setChecklistDialogOpen}>
+                        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2">
+                              {checklistDialogType === "completed" ? (
+                                <>
+                                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                  Carros com Checklist Concluído ({completedVehicles})
+                                </>
+                              ) : (
+                                <>
+                                  <AlertCircle className="h-5 w-5 text-red-600" />
+                                  Carros com Checklist Faltando ({missingVehicles})
+                                </>
+                              )}
+                            </DialogTitle>
+                          </DialogHeader>
+                          <div className="mt-4">
+                            {checklistDialogType === "completed" ? (
+                              vehiclesWithCompleteChecklist.length > 0 ? (
+                                <div className="space-y-2">
+                                  {vehiclesWithCompleteChecklist.map((v) => (
+                                    <div key={v.id} className="p-3 border rounded-lg hover:bg-muted/50 flex items-center justify-between">
+                                      <div>
+                                        <p className="font-medium">{v.brand} {v.model}</p>
+                                        <p className="text-sm text-muted-foreground">{v.plate} • {v.status}</p>
+                                      </div>
+                                      <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-center text-muted-foreground py-8">Nenhum carro com checklist concluído</p>
+                              )
+                            ) : (
+                              (vehiclesWithoutChecklist.length + vehiclesWithIncompleteChecklist.length) > 0 ? (
+                                <div className="space-y-2">
+                                  {vehiclesWithoutChecklist.map((v) => (
+                                    <div key={v.id} className="p-3 border border-red-600/20 rounded-lg hover:bg-muted/50 flex items-center justify-between">
+                                      <div>
+                                        <p className="font-medium">{v.brand} {v.model}</p>
+                                        <p className="text-sm text-muted-foreground">{v.plate} • {v.status}</p>
+                                        <p className="text-xs text-red-600 mt-1">Sem checklist iniciado</p>
+                                      </div>
+                                      <AlertCircle className="h-5 w-5 text-red-600" />
+                                    </div>
+                                  ))}
+                                  {vehiclesWithIncompleteChecklist.map((v) => {
+                                    const normalized = normalizeChecklistData(v.checklist);
+                                    const stats = getChecklistStats(normalized, v.checklist);
+                                    const pending = stats.totalItems - stats.checkedItems;
+                                    return (
+                                      <div key={v.id} className="p-3 border border-yellow-600/20 rounded-lg hover:bg-muted/50 flex items-center justify-between">
+                                        <div>
+                                          <p className="font-medium">{v.brand} {v.model}</p>
+                                          <p className="text-sm text-muted-foreground">{v.plate} • {v.status}</p>
+                                          <p className="text-xs text-yellow-600 mt-1">{pending} {pending === 1 ? 'item pendente' : 'itens pendentes'}</p>
+                                        </div>
+                                        <AlertCircle className="h-5 w-5 text-yellow-600" />
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <p className="text-center text-muted-foreground py-8">Todos os carros têm checklist concluído</p>
+                              )
+                            )}
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                     </>
                   );
                 })()}
