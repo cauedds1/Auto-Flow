@@ -1,0 +1,54 @@
+*Project Update: Implementing the OpenAI API in "AutoFlow"*
+
+*1. Goal:*
+Integrate the OpenAI API into the "AutoFlow" application's backend. This will power the "Gerador de Anúncios" feature. The implementation must be secure, robust, and efficient.
+
+*2. Secure Key Management:*
+*   The OpenAI API Key *must not* be hardcoded in the source code.
+*   Use Replit's built-in "Secrets" (Environment Variables) feature. You must instruct the user to create a new secret named OPENAI_API_KEY and paste their secret key (starting with sk-...) there.
+*   The backend code must read this key from the environment variables using process.env.OPENAI_API_KEY.
+
+*3. Backend Implementation:*
+
+*   *Create a New API Endpoint:*
+    *   In the Express.js backend, create a new POST endpoint, for example: /api/vehicles/:id/generate-ad.
+    *   This endpoint will be responsible for handling the ad generation request for a specific vehicle.
+
+*   *Endpoint Logic:*
+    1.  The endpoint receives a vehicle ID from the URL (:id).
+    2.  It must first fetch the vehicle's data from the database (make, model, year, color, and a list of its features/optionals).
+    3.  *Install the OpenAI Client Library:* The backend needs the official OpenAI library. The command npm install openai should be used.
+    4.  *Instantiate the Client:* Initialize the OpenAI client using the API key from the Secrets:
+        javascript
+        import OpenAI from 'openai';
+
+        const openai = new OpenAI({
+          apiKey: process.env.OPENAI_API_KEY,
+        });
+        
+    5.  *Construct the Prompt:* Create a detailed and well-structured prompt to send to the OpenAI API. This prompt should be in Brazilian Portuguese and instruct the AI to act as a professional copywriter for a car dealership.
+        *   *Example Prompt to send to OpenAI:*
+            
+            "Você é um redator de publicidade especialista em vendas de carros para a loja 'Capoeiras Automóveis'. Crie um texto de anúncio curto, persuasivo e otimizado para redes sociais (Instagram/Facebook) para o seguinte veículo. Use emojis apropriados para chamar a atenção e termine com um chamado para ação, incluindo o nome da loja.
+
+            **Dados do Veículo:**
+            - Marca: [Marca do Veículo]
+            - Modelo: [Modelo do Veículo]
+            - Ano: [Ano do Veículo]
+            - Cor: [Cor do Veículo]
+            - Opcionais Principais: [Lista de Opcionais]
+            - Observações: [Qualquer nota relevante, como 'único dono' ou 'baixo km']
+
+            Gere apenas o texto do anúncio."
+            
+    6.  *Make the API Call:* Use the openai.chat.completions.create method to send the request to a powerful and cost-effective model like gpt-3.5-turbo or gpt-4o.
+    7.  *Return the Response:* Extract the generated text from the OpenAI API's response and send it back to the frontend as a JSON object (e.g., { adText: "O texto gerado aqui..." }).
+    8.  *Error Handling:* Implement proper error handling. If the API call fails or the vehicle is not found, return an appropriate error status and message.
+
+*4. Frontend Implementation:*
+
+*   On the "Anúncio" tab within the "Detalhes do Veículo" page, the "Gerar Texto para Anúncio" button should now trigger a fetch request to the new backend endpoint (/api/vehicles/:id/generate-ad).
+*   While waiting for the response, the UI should display a loading indicator (e.g., a spinner or a "Gerando..." message) to provide feedback to the user.
+*   When the backend responds with the generated text, display it clearly in a text area, ready for the user to copy.
+*   If an error occurs, display a user-friendly error message.
+*

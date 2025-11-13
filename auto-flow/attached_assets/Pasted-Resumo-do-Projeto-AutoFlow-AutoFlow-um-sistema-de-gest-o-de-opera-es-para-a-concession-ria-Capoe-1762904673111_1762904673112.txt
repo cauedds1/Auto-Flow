@@ -1,0 +1,57 @@
+Resumo do Projeto AutoFlow
+AutoFlow é um sistema de gestão de operações para a concessionária "Capoeiras Automóveis", desenvolvido em Brazilian Portuguese (pt-BR).
+
+Arquitetura Técnica
+Frontend:
+
+React + TypeScript
+Tailwind CSS para estilização
+Componentes UI do Radix UI/shadcn
+React Query para gerenciamento de estado
+Wouter para roteamento
+Backend:
+
+Node.js + Express + TypeScript
+PostgreSQL com Prisma ORM
+Socket.IO para atualizações em tempo real
+RESTful API
+Design:
+
+Paleta de cores: preto e vermelho
+Interface moderna, limpa e intuitiva
+Inspiração em Material Design + Linear/Notion
+Funcionalidades Principais
+1. Dashboard Kanban (/)
+Board visual com colunas representando status dos veículos
+Cards de veículos com foto, informações básicas, localização e tempo no status
+Drag & drop para mover veículos entre status
+Filtros por localização
+Métricas gerais (total de veículos, prontos para venda, tempo médio)
+Botão para adicionar novos veículos
+2. Detalhes do Veículo (/veiculo/:id)
+Sistema de abas com:
+
+Visão Geral: Dados principais do veículo
+Histórico: Timeline de mudanças de status
+Custos: Registro de despesas + custo total de preparação
+Anotações Rápidas: Notas operacionais
+Anúncio: Gerador automático de texto para anúncios (nova feature) - cria textos persuasivos para redes sociais usando dados do veículo
+Mídia: Galeria de fotos
+Documentos: Gestão de arquivos
+Checklist: Controle de qualidade
+3. Componentes Principais
+KanbanBoard: Board principal com colunas de status
+VehicleCard: Card visual com foto, dados e indicadores
+VehicleDetailsHeader: Cabeçalho da página de detalhes
+DashboardMetrics: Métricas do dashboard
+AddVehicleDialog: Modal para adicionar veículos
+AdGenerator: Gerador de anúncios com IA
+Status Atual
+O projeto está configurado e rodando, mas há um erro no Dashboard relacionado a mockVehicles não estar definido. O sistema está buscando dados da API (/api/vehicles e /api/metrics) que retornam vazios, sugerindo que o banco de dados precisa ser populado com dados iniciais.
+
+Características UX
+Interface fluida com animações suaves
+Organização visual clara
+Máxima eficiência (menos cliques possível)
+Sistema de permissões por role (DONO, EQUIPE)
+Atualizações em tempo real via WebSocket
