@@ -54,3 +54,5 @@ temp/
 
 # Uploads
 uploads/
+
+.git.backup.*
