@@ -136,12 +136,6 @@ export default function VehicleDetails() {
     // Atualizar estado local e ref imediatamente
     setChecklist(newChecklist);
     lastServerChecklistRef.current = JSON.stringify(newChecklist);
-    
-    // Atualização otimista do cache
-    queryClient.setQueryData([`/api/vehicles/${vehicleId}`], (old: any) => {
-      if (!old) return old;
-      return { ...old, checklist: newChecklist };
-    });
 
     try {
       const response = await fetch(`/api/vehicles/${vehicleId}`, {
@@ -151,17 +145,10 @@ export default function VehicleDetails() {
       });
 
       if (!response.ok) throw new Error("Erro ao salvar checklist");
-
-      // Invalidar apenas a lista (não o detalhe)
-      await queryClient.invalidateQueries({ queryKey: ["/api/vehicles"] });
     } catch (error) {
       // Reverter em caso de erro
       setChecklist(previousChecklist);
       lastServerChecklistRef.current = JSON.stringify(previousChecklist);
-      queryClient.setQueryData([`/api/vehicles/${vehicleId}`], (old: any) => {
-        if (!old) return old;
-        return { ...old, checklist: previousChecklist };
-      });
       toast({
         title: "Erro ao atualizar checklist",
         description: "Ocorreu um erro. Tente novamente.",
@@ -205,12 +192,6 @@ export default function VehicleDetails() {
     // Atualizar estado local e ref imediatamente
     setChecklist(newChecklist);
     lastServerChecklistRef.current = JSON.stringify(newChecklist);
-    
-    // Atualização otimista do cache
-    queryClient.setQueryData([`/api/vehicles/${vehicleId}`], (old: any) => {
-      if (!old) return old;
-      return { ...old, checklist: newChecklist };
-    });
 
     try {
       const response = await fetch(`/api/vehicles/${vehicleId}`, {
@@ -225,17 +206,10 @@ export default function VehicleDetails() {
         title: "Categoria marcada!",
         description: "Todos os itens foram marcados com sucesso.",
       });
-
-      // Invalidar apenas a lista
-      await queryClient.invalidateQueries({ queryKey: ["/api/vehicles"] });
     } catch (error) {
       // Reverter em caso de erro
       setChecklist(previousChecklist);
       lastServerChecklistRef.current = JSON.stringify(previousChecklist);
-      queryClient.setQueryData([`/api/vehicles/${vehicleId}`], (old: any) => {
-        if (!old) return old;
-        return { ...old, checklist: previousChecklist };
-      });
       toast({
         title: "Erro ao marcar itens",
         description: "Ocorreu um erro. Tente novamente.",
