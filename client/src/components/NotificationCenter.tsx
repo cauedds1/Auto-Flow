@@ -29,15 +29,15 @@ export function NotificationCenter() {
 
   vehicles.forEach((vehicle: any) => {
     // Verificar se o veículo tem checklist iniciado usando a nova lógica de presence
-    if (!hasChecklistStarted(vehicle.checklist)) {
+    if (!hasChecklistStarted(vehicle.checklist, vehicle.vehicleType || "Carro")) {
       vehiclesWithoutChecklist.push({
         name: `${vehicle.brand} ${vehicle.model}`,
         plate: vehicle.plate,
       });
     } else {
       // Se tem checklist iniciado, verificar itens pendentes
-      const normalized = normalizeChecklistData(vehicle.checklist);
-      const stats = getChecklistStats(normalized, vehicle.checklist);
+      const normalized = normalizeChecklistData(vehicle.checklist, vehicle.vehicleType || "Carro");
+      const stats = getChecklistStats(normalized, vehicle.checklist, vehicle.vehicleType || "Carro");
       const pending = stats.totalItems - stats.checkedItems;
 
       if (pending > 0) {

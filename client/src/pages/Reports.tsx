@@ -362,11 +362,11 @@ export default function Reports() {
                   const vehiclesWithIncompleteChecklist: any[] = [];
                   
                   filteredVehicles.forEach((v) => {
-                    if (!hasChecklistStarted(v.checklist)) {
+                    if (!hasChecklistStarted(v.checklist, v.vehicleType || "Carro")) {
                       vehiclesWithoutChecklist.push(v);
                     } else {
-                      const normalized = normalizeChecklistData(v.checklist);
-                      const stats = getChecklistStats(normalized, v.checklist);
+                      const normalized = normalizeChecklistData(v.checklist, v.vehicleType || "Carro");
+                      const stats = getChecklistStats(normalized, v.checklist, v.vehicleType || "Carro");
                       
                       if (stats.totalItems > 0 && stats.checkedItems === stats.totalItems) {
                         vehiclesWithCompleteChecklist.push(v);
@@ -474,8 +474,8 @@ export default function Reports() {
                                     </div>
                                   ))}
                                   {vehiclesWithIncompleteChecklist.map((v) => {
-                                    const normalized = normalizeChecklistData(v.checklist);
-                                    const stats = getChecklistStats(normalized, v.checklist);
+                                    const normalized = normalizeChecklistData(v.checklist, v.vehicleType || "Carro");
+                                    const stats = getChecklistStats(normalized, v.checklist, v.vehicleType || "Carro");
                                     const pending = stats.totalItems - stats.checkedItems;
                                     return (
                                       <div key={v.id} className="p-3 border border-yellow-600/20 rounded-lg hover:bg-muted/50 flex items-center justify-between">

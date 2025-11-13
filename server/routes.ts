@@ -47,6 +47,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             year: vehicle.year,
             color: vehicle.color,
             plate: vehicle.plate,
+            vehicleType: vehicle.vehicleType || "Carro",
             location: vehicle.status, // deprecated - returns status for compatibility
             status: vehicle.status,
             physicalLocation: vehicle.physicalLocation,
@@ -95,6 +96,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         year: parseInt(req.body.year),
         color: req.body.color,
         plate: req.body.plate,
+        vehicleType: req.body.vehicleType || "Carro",
         status: req.body.status || "Entrada",
         physicalLocation: req.body.physicalLocation || null,
         physicalLocationDetail: req.body.physicalLocationDetail || null,

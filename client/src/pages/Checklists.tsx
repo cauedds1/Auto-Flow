@@ -13,11 +13,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { ChecklistItemStatus } from "@/components/ChecklistItemStatus";
 import { 
-  checklistItems,
-  checklistCategories,
   getChecklistStats,
   getChecklistItemStatus,
-  normalizeChecklistData
+  normalizeChecklistData,
+  getChecklistCategories,
+  getChecklistItems,
+  type VehicleType
 } from "@shared/checklistUtils";
 
 export default function Checklists() {
@@ -37,14 +38,17 @@ export default function Checklists() {
       : activeVehicles.filter(v => v.id === selectedVehicle);
 
   const getVehicleChecklistStats = (vehicle: any) => {
-    const normalizedChecklist = normalizeChecklistData(vehicle.checklist);
-    return getChecklistStats(normalizedChecklist, vehicle.checklist);
+    const vehicleType = (vehicle.vehicleType || "Carro") as VehicleType;
+    const normalizedChecklist = normalizeChecklistData(vehicle.checklist, vehicleType);
+    return getChecklistStats(normalizedChecklist, vehicle.checklist, vehicleType);
   };
 
-  const getCategoryStatus = (vehicle: any, category: keyof typeof checklistItems) => {
-    const normalizedChecklist = normalizeChecklistData(vehicle.checklist);
-    const categoryItems = checklistItems[category];
-    const completed = (normalizedChecklist[category] || []).length;
+  const getCategoryStatus = (vehicle: any, category: string) => {
+    const vehicleType = (vehicle.vehicleType || "Carro") as VehicleType;
+    const normalizedChecklist = normalizeChecklistData(vehicle.checklist, vehicleType);
+    const items = getChecklistItems(vehicleType);
+    const categoryItems = items[category as keyof typeof items];
+    const completed = (normalizedChecklist[category as keyof typeof normalizedChecklist] || []).length;
     return {
       completed,
       total: categoryItems.length,
@@ -123,49 +127,55 @@ export default function Checklists() {
               </CardHeader>
               <CardContent>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                  {(Object.keys(checklistItems) as Array<keyof typeof checklistItems>).map((category) => {
-                    const status = getCategoryStatus(vehicle, category);
-                    const items = checklistItems[category];
+                  {(() => {
+                    const vehicleType = (vehicle.vehicleType || "Carro") as VehicleType;
+                    const categories = getChecklistCategories(vehicleType);
+                    const items = getChecklistItems(vehicleType);
+                    
+                    return (Object.keys(categories) as Array<keyof typeof categories>).map((category) => {
+                      const status = getCategoryStatus(vehicle, category);
+                      const categoryItems = items[category];
 
-                    return (
-                      <div key={category} className="space-y-2">
-                        <div className="flex items-center justify-between mb-3">
-                          <h3 className="text-sm font-semibold flex items-center gap-2">
-                            <CheckSquare className="h-4 w-4 text-primary" />
-                            {checklistCategories[category]}
-                          </h3>
-                          <span className="text-xs text-muted-foreground">
-                            {status.completed}/{status.total}
-                          </span>
+                      return (
+                        <div key={category} className="space-y-2">
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-sm font-semibold flex items-center gap-2">
+                              <CheckSquare className="h-4 w-4 text-primary" />
+                              {categories[category]}
+                            </h3>
+                            <span className="text-xs text-muted-foreground">
+                              {status.completed}/{status.total}
+                            </span>
+                          </div>
+                          <div className="space-y-1">
+                            {categoryItems.map((itemName: string, idx: number) => {
+                              const normalizedChecklist = normalizeChecklistData(vehicle.checklist, vehicleType);
+                              const itemStatus = getChecklistItemStatus(category as keyof typeof normalizedChecklist, itemName, normalizedChecklist);
+                              return (
+                                <div
+                                  key={idx}
+                                  className={`flex items-center gap-2 text-xs p-1.5 rounded ${
+                                    itemStatus !== "pending"
+                                      ? "text-foreground"
+                                      : "text-muted-foreground"
+                                  }`}
+                                >
+                                  <ChecklistItemStatus status={itemStatus} size={14} className="flex-shrink-0" />
+                                  <span className="truncate">{itemName}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-primary transition-all"
+                              style={{ width: `${status.percentage}%` }}
+                            />
+                          </div>
                         </div>
-                        <div className="space-y-1">
-                          {items.map((itemName, idx) => {
-                            const normalizedChecklist = normalizeChecklistData(vehicle.checklist);
-                            const itemStatus = getChecklistItemStatus(category, itemName, normalizedChecklist);
-                            return (
-                              <div
-                                key={idx}
-                                className={`flex items-center gap-2 text-xs p-1.5 rounded ${
-                                  itemStatus !== "pending"
-                                    ? "text-foreground"
-                                    : "text-muted-foreground"
-                                }`}
-                              >
-                                <ChecklistItemStatus status={itemStatus} size={14} className="flex-shrink-0" />
-                                <span className="truncate">{itemName}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-primary transition-all"
-                            style={{ width: `${status.percentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    });
+                  })()}
                 </div>
               </CardContent>
             </Card>

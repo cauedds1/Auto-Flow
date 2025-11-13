@@ -11,7 +11,10 @@ export type ChecklistData = {
   documentacao: ChecklistItem[];
 };
 
-export const checklistCategories = {
+export type VehicleType = "Carro" | "Moto";
+
+// Categorias para CARROS
+export const checklistCategoriesCarro = {
   pneus: "PNEUS",
   interior: "INTERIOR / BANCOS",
   somEletrica: "SOM / ELÉTRICA",
@@ -19,7 +22,7 @@ export const checklistCategories = {
   documentacao: "DOCUMENTAÇÃO"
 } as const;
 
-export const checklistItems = {
+export const checklistItemsCarro = {
   pneus: ["Pneus Dianteiros", "Pneus Traseiros"],
   interior: ["Limpeza", "Estado dos bancos", "Tapetes", "Porta-objetos"],
   somEletrica: ["Funcionamento do som", "Vidros elétricos", "Ar-condicionado", "Travas elétricas"],
@@ -27,7 +30,38 @@ export const checklistItems = {
   documentacao: ["Documento do veículo", "IPVA", "Licenciamento"]
 } as const;
 
-export function normalizeChecklistData(rawChecklist: any): ChecklistData {
+// Categorias para MOTOS
+export const checklistCategoriesMoto = {
+  pneus: "PNEUS",
+  interior: "BANCO / ESTOFAMENTO",
+  somEletrica: "SISTEMA ELÉTRICO",
+  lataria: "CARENAGENS / PINTURA",
+  documentacao: "DOCUMENTAÇÃO"
+} as const;
+
+export const checklistItemsMoto = {
+  pneus: ["Pneu Dianteiro", "Pneu Traseiro", "Calibragem"],
+  interior: ["Limpeza", "Estado do banco", "Apoio para passageiro"],
+  somEletrica: ["Faróis", "Lanterna", "Setas", "Bateria", "Painel"],
+  lataria: ["Carenagens", "Tanque", "Arranhões", "Amassados", "Pintura"],
+  documentacao: ["Documento do veículo", "IPVA", "Licenciamento"]
+} as const;
+
+// Função helper para obter categorias baseado no tipo
+export function getChecklistCategories(vehicleType: VehicleType = "Carro") {
+  return vehicleType === "Moto" ? checklistCategoriesMoto : checklistCategoriesCarro;
+}
+
+// Função helper para obter itens baseado no tipo
+export function getChecklistItems(vehicleType: VehicleType = "Carro") {
+  return vehicleType === "Moto" ? checklistItemsMoto : checklistItemsCarro;
+}
+
+// Mantém para compatibilidade (usa padrão de carro)
+export const checklistCategories = checklistCategoriesCarro;
+export const checklistItems = checklistItemsCarro;
+
+export function normalizeChecklistData(rawChecklist: any, vehicleType: VehicleType = "Carro"): ChecklistData {
   const normalized: ChecklistData = {
     pneus: [],
     interior: [],
@@ -38,7 +72,9 @@ export function normalizeChecklistData(rawChecklist: any): ChecklistData {
 
   if (!rawChecklist) return normalized;
 
-  for (const category of Object.keys(checklistCategories) as Array<keyof typeof checklistCategories>) {
+  const categories = getChecklistCategories(vehicleType);
+
+  for (const category of Object.keys(categories) as Array<keyof typeof categories>) {
     const categoryData = rawChecklist[category];
     
     // Só processar se a categoria foi definida no raw data (não undefined/null)
@@ -70,18 +106,19 @@ export function normalizeChecklistData(rawChecklist: any): ChecklistData {
 }
 
 // Helper para verificar se uma categoria foi explicitamente definida no raw data
-export function getCategoryPresence(rawChecklist: any): Record<keyof ChecklistData, boolean> {
+export function getCategoryPresence(rawChecklist: any, vehicleType: VehicleType = "Carro"): Record<keyof ChecklistData, boolean> {
   const presence: Record<string, boolean> = {};
+  const categories = getChecklistCategories(vehicleType);
   
   // Se não é um objeto válido, todas as categorias são false
   if (!rawChecklist || typeof rawChecklist !== 'object' || Array.isArray(rawChecklist)) {
-    for (const category of Object.keys(checklistCategories)) {
+    for (const category of Object.keys(categories)) {
       presence[category] = false;
     }
     return presence as Record<keyof ChecklistData, boolean>;
   }
 
-  for (const category of Object.keys(checklistCategories)) {
+  for (const category of Object.keys(categories)) {
     presence[category] = rawChecklist.hasOwnProperty(category) && 
                          rawChecklist[category] !== undefined && 
                          rawChecklist[category] !== null;
@@ -103,20 +140,24 @@ export function getChecklistItemStatus(
   return 'checked';
 }
 
-export function getChecklistStats(checklist: ChecklistData, rawChecklist: any) {
+export function getChecklistStats(checklist: ChecklistData, rawChecklist: any, vehicleType: VehicleType = "Carro") {
   let totalItems = 0;
   let checkedItems = 0;
   let attentionItems = 0;
   let pendingItems = 0;
 
   // Obter quais categorias foram explicitamente definidas no raw data
-  const categoryPresence = getCategoryPresence(rawChecklist);
+  const categoryPresence = getCategoryPresence(rawChecklist, vehicleType);
+  
+  // Usar os itens corretos baseado no tipo de veículo
+  const items = getChecklistItems(vehicleType);
+  const categories = getChecklistCategories(vehicleType);
 
   // Contar itens de categorias que foram iniciadas (mesmo que vazias)
-  for (const category of Object.keys(checklistCategories) as Array<keyof ChecklistData>) {
+  for (const category of Object.keys(categories) as Array<keyof ChecklistData>) {
     // Só contar se a categoria foi definida no raw data
     if (categoryPresence[category]) {
-      const expectedItems = checklistItems[category] || [];
+      const expectedItems = items[category] || [];
       totalItems += expectedItems.length;
 
       for (const itemName of expectedItems) {
@@ -138,11 +179,11 @@ export function getChecklistStats(checklist: ChecklistData, rawChecklist: any) {
 }
 
 // Helper para verificar se um veículo tem checklist iniciado
-export function hasChecklistStarted(rawChecklist: any): boolean {
+export function hasChecklistStarted(rawChecklist: any, vehicleType: VehicleType = "Carro"): boolean {
   if (!rawChecklist || typeof rawChecklist !== 'object' || Array.isArray(rawChecklist)) {
     return false;
   }
   
-  const presence = getCategoryPresence(rawChecklist);
+  const presence = getCategoryPresence(rawChecklist, vehicleType);
   return Object.values(presence).some(v => v === true);
 }

@@ -22,6 +22,8 @@ export type VehicleChecklist = z.infer<typeof vehicleChecklistSchema>;
 // Enums
 export const userRoleEnum = pgEnum("user_role", ["DONO", "EQUIPE"]);
 
+export const vehicleTypeEnum = pgEnum("vehicle_type", ["Carro", "Moto"]);
+
 export const vehicleStatusEnum = pgEnum("vehicle_status", [
   "Entrada",
   "Em Reparos",
@@ -67,6 +69,7 @@ export const vehicles = pgTable("vehicles", {
   year: integer("year").notNull(),
   color: text("color").notNull(),
   plate: text("plate").notNull().unique(),
+  vehicleType: vehicleTypeEnum("vehicle_type").notNull().default("Carro"),
   location: text("location"), // deprecated - kept for migration only
   status: vehicleStatusEnum("status").notNull().default("Entrada"),
   physicalLocation: text("physical_location"),

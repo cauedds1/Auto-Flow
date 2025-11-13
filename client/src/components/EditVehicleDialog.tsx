@@ -38,6 +38,7 @@ const vehicleFormSchema = z.object({
   year: z.coerce.number().min(1900),
   color: z.string().min(1, "Cor é obrigatória"),
   plate: z.string().min(7, "Placa inválida"),
+  vehicleType: z.enum(["Carro", "Moto"]),
   location: z.string().min(1, "Localização é obrigatória"),
   kmOdometer: z.preprocess((val) => {
     if (val === "" || val === null || val === undefined) return null;
@@ -57,6 +58,7 @@ interface EditVehicleDialogProps {
     year: number;
     color: string;
     plate: string;
+    vehicleType?: "Carro" | "Moto";
     location: string;
     kmOdometer?: number | null;
     fuelType?: string | null;
@@ -82,6 +84,7 @@ export function EditVehicleDialog({ vehicleId, vehicle, open, onOpenChange }: Ed
       year: vehicle.year,
       color: vehicle.color,
       plate: vehicle.plate,
+      vehicleType: vehicle.vehicleType || "Carro",
       location: vehicle.location,
       kmOdometer: vehicle.kmOdometer || null,
       fuelType: vehicle.fuelType || null,
@@ -95,6 +98,7 @@ export function EditVehicleDialog({ vehicleId, vehicle, open, onOpenChange }: Ed
       year: vehicle.year,
       color: vehicle.color,
       plate: vehicle.plate,
+      vehicleType: vehicle.vehicleType || "Carro",
       location: vehicle.location,
       kmOdometer: vehicle.kmOdometer || null,
       fuelType: vehicle.fuelType || null,
@@ -283,6 +287,28 @@ export function EditVehicleDialog({ vehicleId, vehicle, open, onOpenChange }: Ed
                     <FormControl>
                       <Input placeholder="ABC-1234" {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="vehicleType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o tipo" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Carro">🚗 Carro</SelectItem>
+                        <SelectItem value="Moto">🏍️ Moto</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}

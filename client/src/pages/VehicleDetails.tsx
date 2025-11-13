@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Save, Upload, Trash2, FileText, CheckSquare, MessageSquare } from "lucide-react";
-import { type ChecklistData, type ChecklistItem, checklistItems, checklistCategories, getChecklistItemStatus } from "@shared/checklistUtils";
+import { type ChecklistData, type ChecklistItem, getChecklistItemStatus, getChecklistCategories, getChecklistItems, type VehicleType } from "@shared/checklistUtils";
 
 export default function VehicleDetails() {
   const params = useParams();
@@ -671,46 +671,52 @@ export default function VehicleDetails() {
 
           <TabsContent value="checklist">
             <div className="grid gap-6 md:grid-cols-2">
-              {(Object.keys(checklistCategories) as Array<keyof typeof checklistCategories>).map((category) => (
-                <Card key={category} className="p-6">
-                  <div className="flex items-center mb-4">
-                    <CheckSquare className="h-5 w-5 text-primary mr-2" />
-                    <h3 className="text-lg font-semibold text-card-foreground">
-                      {checklistCategories[category]}
-                    </h3>
-                  </div>
-                  <div className="space-y-2">
-                    {checklistItems[category].map((itemName) => {
-                      const status = getChecklistItemStatus(category, itemName, checklist);
-                      const categoryItems = checklist[category] || [];
-                      const existingItem = categoryItems.find(ci => ci.item === itemName);
-                      const isChecked = !!existingItem;
+              {(() => {
+                const vehicleType = (vehicle?.vehicleType || "Carro") as VehicleType;
+                const categories = getChecklistCategories(vehicleType);
+                const items = getChecklistItems(vehicleType);
+                
+                return (Object.keys(categories) as Array<keyof typeof categories>).map((category) => (
+                  <Card key={category} className="p-6">
+                    <div className="flex items-center mb-4">
+                      <CheckSquare className="h-5 w-5 text-primary mr-2" />
+                      <h3 className="text-lg font-semibold text-card-foreground">
+                        {categories[category]}
+                      </h3>
+                    </div>
+                    <div className="space-y-2">
+                      {items[category].map((itemName) => {
+                        const status = getChecklistItemStatus(category, itemName, checklist);
+                        const categoryItems = checklist[category] || [];
+                        const existingItem = categoryItems.find(ci => ci.item === itemName);
+                        const isChecked = !!existingItem;
 
-                      return (
-                        <div key={itemName} className="flex items-center gap-2 p-2 hover:bg-accent rounded group">
-                          <ChecklistItemStatus status={status} size={16} />
-                          <label className="flex items-center space-x-3 flex-1 cursor-pointer">
-                            <Checkbox
-                              checked={isChecked}
-                              onCheckedChange={() => toggleChecklistItem(category, itemName)}
-                            />
-                            <span className="text-sm flex-1">{itemName}</span>
-                          </label>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100"
-                            onClick={() => openObservationDialog(category, itemName)}
-                            title="Adicionar observação"
-                          >
-                            <MessageSquare className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </Card>
-              ))}
+                        return (
+                          <div key={itemName} className="flex items-center gap-2 p-2 hover:bg-accent rounded group">
+                            <ChecklistItemStatus status={status} size={16} />
+                            <label className="flex items-center space-x-3 flex-1 cursor-pointer">
+                              <Checkbox
+                                checked={isChecked}
+                                onCheckedChange={() => toggleChecklistItem(category, itemName)}
+                              />
+                              <span className="text-sm flex-1">{itemName}</span>
+                            </label>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100"
+                              onClick={() => openObservationDialog(category, itemName)}
+                              title="Adicionar observação"
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </Card>
+                ));
+              })()}
             </div>
           </TabsContent>
         </Tabs>

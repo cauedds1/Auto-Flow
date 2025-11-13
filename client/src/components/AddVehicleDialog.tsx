@@ -38,6 +38,7 @@ const vehicleFormSchema = z.object({
   year: z.coerce.number().min(1900, "Ano inválido"),
   color: z.string().min(1, "Cor é obrigatória"),
   plate: z.string().min(7, "Placa inválida"),
+  vehicleType: z.enum(["Carro", "Moto"]),
   status: z.string().min(1, "Status é obrigatório"),
   kmOdometer: z.preprocess((val) => {
     if (val === "" || val === null || val === undefined) return null;
@@ -67,6 +68,7 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
       year: new Date().getFullYear(),
       color: "",
       plate: "",
+      vehicleType: "Carro",
       status: "Entrada",
       kmOdometer: null,
       fuelType: null,
@@ -81,6 +83,7 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
       formData.append("year", String(data.year));
       formData.append("color", data.color);
       formData.append("plate", data.plate.toUpperCase());
+      formData.append("vehicleType", data.vehicleType);
       formData.append("status", data.status);
       
       if (data.kmOdometer != null) {
@@ -226,6 +229,28 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
                         data-testid="input-plate"
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="vehicleType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-vehicle-type">
+                          <SelectValue placeholder="Selecione o tipo" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Carro">🚗 Carro</SelectItem>
+                        <SelectItem value="Moto">🏍️ Moto</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
