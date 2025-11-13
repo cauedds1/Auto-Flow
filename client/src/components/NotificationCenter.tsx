@@ -26,23 +26,36 @@ export function NotificationCenter() {
   const totalExpectedItems = Object.values(checklistItems).reduce((sum, items) => sum + items.length, 0);
   let checklistPending = 0;
   let vehiclesWithPendingChecklist: Array<{ name: string; pending: number }> = [];
+  let vehiclesWithoutChecklist: Array<{ name: string; plate: string }> = [];
 
   vehicles.forEach((vehicle: any) => {
-    const normalized = normalizeChecklistData(vehicle.checklist || {});
-    const stats = getChecklistStats(normalized);
-    const pending = totalExpectedItems - stats.checkedItems;
-
-    if (pending > 0) {
-      checklistPending += pending;
-      vehiclesWithPendingChecklist.push({
+    // Verificar se o veículo não tem checklist
+    if (!vehicle.checklist || Object.keys(vehicle.checklist).length === 0) {
+      vehiclesWithoutChecklist.push({
         name: `${vehicle.brand} ${vehicle.model}`,
-        pending,
+        plate: vehicle.plate,
       });
+    } else {
+      // Se tem checklist, verificar itens pendentes
+      const normalized = normalizeChecklistData(vehicle.checklist);
+      const stats = getChecklistStats(normalized);
+      const pending = totalExpectedItems - stats.checkedItems;
+
+      if (pending > 0) {
+        checklistPending += pending;
+        vehiclesWithPendingChecklist.push({
+          name: `${vehicle.brand} ${vehicle.model}`,
+          pending,
+        });
+      }
     }
   });
 
   const pendingObservations = observations.filter((obs: any) => obs.status === "Pendente");
-  const totalNotifications = (checklistPending > 0 ? 1 : 0) + (pendingObservations.length > 0 ? 1 : 0);
+  const totalNotifications = 
+    (checklistPending > 0 ? 1 : 0) + 
+    (vehiclesWithoutChecklist.length > 0 ? 1 : 0) + 
+    (pendingObservations.length > 0 ? 1 : 0);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -76,52 +89,93 @@ export function NotificationCenter() {
 
         <ScrollArea className="h-[400px]">
           <div className="p-4 space-y-4">
-            {checklistPending > 0 ? (
-              <div className="space-y-3">
+            {vehiclesWithoutChecklist.length > 0 && (
+              <>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-red-500/10">
+                      <AlertCircle className="h-4 w-4 text-red-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-sm">Checklist Faltando</h4>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {vehiclesWithoutChecklist.length} {vehiclesWithoutChecklist.length === 1 ? 'veículo sem checklist' : 'veículos sem checklist'}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="text-red-600 border-red-600">
+                      {vehiclesWithoutChecklist.length}
+                    </Badge>
+                  </div>
+                  
+                  <div className="pl-11 space-y-2">
+                    {vehiclesWithoutChecklist.slice(0, 5).map((v, idx) => (
+                      <div key={idx} className="text-xs text-muted-foreground">
+                        <span>• {v.name} ({v.plate})</span>
+                      </div>
+                    ))}
+                    {vehiclesWithoutChecklist.length > 5 && (
+                      <p className="text-xs text-muted-foreground italic">
+                        + {vehiclesWithoutChecklist.length - 5} veículos...
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <Separator />
+              </>
+            )}
+
+            {checklistPending > 0 && (
+              <>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-500/10">
+                      <ClipboardList className="h-4 w-4 text-yellow-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-sm">Checklist Incompleto</h4>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {checklistPending} {checklistPending === 1 ? 'item pendente' : 'itens pendentes'} em {vehiclesWithPendingChecklist.length} {vehiclesWithPendingChecklist.length === 1 ? 'veículo' : 'veículos'}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+                      {checklistPending}
+                    </Badge>
+                  </div>
+                  
+                  <div className="pl-11 space-y-2">
+                    {vehiclesWithPendingChecklist.slice(0, 5).map((v, idx) => (
+                      <div key={idx} className="text-xs text-muted-foreground flex justify-between items-center">
+                        <span>• {v.name}</span>
+                        <span className="font-medium">{v.pending} pendentes</span>
+                      </div>
+                    ))}
+                    {vehiclesWithPendingChecklist.length > 5 && (
+                      <p className="text-xs text-muted-foreground italic">
+                        + {vehiclesWithPendingChecklist.length - 5} veículos...
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <Separator />
+              </>
+            )}
+
+            {vehiclesWithoutChecklist.length === 0 && checklistPending === 0 && (
+              <>
                 <div className="flex items-start gap-3">
-                  <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-500/10">
-                    <ClipboardList className="h-4 w-4 text-yellow-600" />
+                  <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-green-500/10">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
                   </div>
                   <div className="flex-1">
                     <h4 className="font-medium text-sm">Checklist de Veículos</h4>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {checklistPending} {checklistPending === 1 ? 'item pendente' : 'itens pendentes'} em {vehiclesWithPendingChecklist.length} {vehiclesWithPendingChecklist.length === 1 ? 'veículo' : 'veículos'}
+                      Todos os checklists estão completos
                     </p>
                   </div>
-                  <Badge variant="outline" className="text-yellow-600 border-yellow-600">
-                    {checklistPending}
-                  </Badge>
                 </div>
-                
-                <div className="pl-11 space-y-2">
-                  {vehiclesWithPendingChecklist.slice(0, 5).map((v, idx) => (
-                    <div key={idx} className="text-xs text-muted-foreground flex justify-between items-center">
-                      <span>• {v.name}</span>
-                      <span className="font-medium">{v.pending} pendentes</span>
-                    </div>
-                  ))}
-                  {vehiclesWithPendingChecklist.length > 5 && (
-                    <p className="text-xs text-muted-foreground italic">
-                      + {vehiclesWithPendingChecklist.length - 5} veículos...
-                    </p>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-green-500/10">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-medium text-sm">Checklist de Veículos</h4>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Todos os checklists estão completos
-                  </p>
-                </div>
-              </div>
+                <Separator />
+              </>
             )}
-
-            <Separator />
 
             {pendingObservations.length > 0 ? (
               <div className="space-y-3">
