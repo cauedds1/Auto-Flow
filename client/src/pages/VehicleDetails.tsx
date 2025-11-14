@@ -464,7 +464,7 @@ export default function VehicleDetails() {
                     ...history.map((h: any) => ({
                       id: `history-${h.id}`,
                       type: 'location',
-                      date: new Date(h.createdAt),
+                      date: new Date(h.movedAt),
                       description: (() => {
                         let desc = '';
                         if (h.fromStatus && h.toStatus && h.fromStatus !== h.toStatus) {
@@ -568,7 +568,7 @@ export default function VehicleDetails() {
                 return {
                   id: h.id,
                   status: statusText,
-                  date: new Date(h.createdAt).toLocaleString('pt-BR'),
+                  date: new Date(h.movedAt).toLocaleString('pt-BR'),
                   user: h.userId,
                   notes: h.notes,
                   toStatus: h.toStatus,
