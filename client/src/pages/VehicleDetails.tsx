@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VehicleDetailsHeader } from "@/components/VehicleDetailsHeader";
@@ -25,6 +25,7 @@ import { type ChecklistData, type ChecklistItem, getChecklistItemStatus, getChec
 export default function VehicleDetails() {
   const params = useParams();
   const vehicleId = params.id || "";
+  const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("visao-geral");
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isChangeLocationOpen, setIsChangeLocationOpen] = useState(false);

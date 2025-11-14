@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import {
   Dialog,
   DialogContent,
@@ -10,6 +11,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Form,
   FormControl,
@@ -31,6 +43,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Upload, Trash2, Star } from "lucide-react";
 import { ImageUpload } from "./ImageUpload";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSettings } from "@/hooks/use-settings";
 
 const vehicleFormSchema = z.object({
   brand: z.string().min(1, "Marca é obrigatória"),
@@ -71,6 +84,8 @@ interface EditVehicleDialogProps {
 export function EditVehicleDialog({ vehicleId, vehicle, open, onOpenChange }: EditVehicleDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
+  const { settings } = useSettings();
   const [activeTab, setActiveTab] = useState("info");
   const [newImages, setNewImages] = useState<File[]>([]);
   const [existingImages, setExistingImages] = useState<Array<{ id: string; imageUrl: string; order: number }>>(vehicle.images || []);
@@ -126,6 +141,31 @@ export function EditVehicleDialog({ vehicleId, vehicle, open, onOpenChange }: Ed
       toast({
         title: "Erro ao remover imagem",
         description: "Não foi possível remover a imagem.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      const response = await fetch(`/api/vehicles/${vehicleId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Erro ao excluir veículo");
+
+      toast({
+        title: "Veículo excluído!",
+        description: "O veículo foi removido com sucesso.",
+      });
+
+      await queryClient.invalidateQueries({ queryKey: ["/api/vehicles"] });
+      onOpenChange(false);
+      setLocation("/veiculos");
+    } catch (error) {
+      toast({
+        title: "Erro ao excluir veículo",
+        description: "Ocorreu um erro. Tente novamente.",
         variant: "destructive",
       });
     }
@@ -386,17 +426,63 @@ export function EditVehicleDialog({ vehicleId, vehicle, open, onOpenChange }: Ed
               />
                 </div>
 
-                <div className="flex justify-end gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => onOpenChange(false)}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button type="submit">
-                    Salvar Alterações
-                  </Button>
+                <div className="flex justify-between gap-3 pt-4 border-t mt-6">
+                  <div>
+                    {settings.deleteConfirmation ? (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Excluir Veículo
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Excluir veículo?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Tem certeza que deseja excluir este veículo permanentemente? 
+                              Todos os dados relacionados (fotos, histórico, custos) serão removidos e não poderão ser recuperados.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={handleDelete}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Confirmar Exclusão
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                        onClick={handleDelete}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Excluir Veículo
+                      </Button>
+                    )}
+                  </div>
+                  <div className="flex gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => onOpenChange(false)}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button type="submit">
+                      Salvar Alterações
+                    </Button>
+                  </div>
                 </div>
               </form>
             </Form>
@@ -442,7 +528,6 @@ export function EditVehicleDialog({ vehicleId, vehicle, open, onOpenChange }: Ed
               <ImageUpload
                 onImagesChange={setNewImages}
                 maxImages={8}
-                existingCount={existingImages.length}
               />
               {newImages.length > 0 && (
                 <div className="mt-3 grid grid-cols-3 gap-3">

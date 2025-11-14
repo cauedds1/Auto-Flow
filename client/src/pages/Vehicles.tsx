@@ -34,8 +34,22 @@ const STATUS_ORDER = {
   "Arquivado": 8,
 };
 
+const LOCATION_PRIORITY = {
+  "Pronto para venda": 1,
+  "Loja": 2,
+  "Na Casa": 2,
+  "Loja Principal": 2,
+  "Outra Loja": 3,
+  "Filial": 3,
+  "Oficina": 4,
+  "Oficina Mecânica": 4,
+  "Funilaria": 5,
+  "Outros": 6,
+  "": 999,
+};
+
 const SORT_OPTIONS = [
-  { value: "status", label: "Ordenar por Status" },
+  { value: "location", label: "Ordenar por Localização" },
   { value: "brand", label: "Ordenar por Marca" },
   { value: "year", label: "Ordenar por Ano (Mais Novo)" },
   { value: "year-old", label: "Ordenar por Ano (Mais Antigo)" },
@@ -44,7 +58,7 @@ const SORT_OPTIONS = [
 export default function Vehicles() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("status");
+  const [sortBy, setSortBy] = useState("location");
 
   const { data: vehicles = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/vehicles"],
@@ -72,10 +86,20 @@ export default function Vehicles() {
       return matchesSearch && matchesStatus;
     })
     .sort((a: any, b: any) => {
-      if (sortBy === "status") {
-        const orderA = STATUS_ORDER[a.status as keyof typeof STATUS_ORDER] || 999;
-        const orderB = STATUS_ORDER[b.status as keyof typeof STATUS_ORDER] || 999;
-        return orderA - orderB;
+      if (sortBy === "location") {
+        const locationA = a.physicalLocation || "";
+        const locationB = b.physicalLocation || "";
+        
+        const priorityA = LOCATION_PRIORITY[locationA as keyof typeof LOCATION_PRIORITY] ?? 999;
+        const priorityB = LOCATION_PRIORITY[locationB as keyof typeof LOCATION_PRIORITY] ?? 999;
+        
+        if (priorityA !== priorityB) {
+          return priorityA - priorityB;
+        }
+        
+        const statusOrderA = STATUS_ORDER[a.status as keyof typeof STATUS_ORDER] || 999;
+        const statusOrderB = STATUS_ORDER[b.status as keyof typeof STATUS_ORDER] || 999;
+        return statusOrderA - statusOrderB;
       } else if (sortBy === "brand") {
         return `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`);
       } else if (sortBy === "year") {

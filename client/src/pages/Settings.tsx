@@ -5,8 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Bell, Moon, Zap, Database, FileText, Download } from "lucide-react";
+import { useSettings } from "@/hooks/use-settings";
 
 export default function Settings() {
+  const { settings, updateSetting } = useSettings();
+
   return (
     <div className="flex h-full flex-col p-8">
       <div className="mb-8">
@@ -84,7 +87,10 @@ export default function Settings() {
                   Mostrar notificação ao abrir o sistema
                 </p>
               </div>
-              <Switch defaultChecked />
+              <Switch
+                checked={settings.taskAlerts}
+                onCheckedChange={(checked) => updateSetting('taskAlerts', checked)}
+              />
             </div>
             <Separator />
             <div className="flex items-center justify-between">
@@ -94,7 +100,10 @@ export default function Settings() {
                   Alertar sobre veículos no mesmo status por mais de 7 dias
                 </p>
               </div>
-              <Switch defaultChecked />
+              <Switch
+                checked={settings.stuckVehicleAlerts}
+                onCheckedChange={(checked) => updateSetting('stuckVehicleAlerts', checked)}
+              />
             </div>
             <Separator />
             <div className="flex items-center justify-between">
@@ -104,7 +113,10 @@ export default function Settings() {
                   Notificar quando um veículo estiver pronto
                 </p>
               </div>
-              <Switch defaultChecked />
+              <Switch
+                checked={settings.readyForSaleAlerts}
+                onCheckedChange={(checked) => updateSetting('readyForSaleAlerts', checked)}
+              />
             </div>
           </CardContent>
         </Card>
@@ -130,17 +142,23 @@ export default function Settings() {
                   </p>
                 </div>
               </div>
-              <Switch />
+              <Switch
+                checked={settings.darkMode}
+                onCheckedChange={(checked) => updateSetting('darkMode', checked)}
+              />
             </div>
             <Separator />
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <p className="font-medium">Confirmação de Exclusão</p>
                 <p className="text-sm text-muted-foreground">
-                  Pedir confirmação antes de excluir itens
+                  Pedir confirmação antes de excluir veículos
                 </p>
               </div>
-              <Switch defaultChecked />
+              <Switch
+                checked={settings.deleteConfirmation}
+                onCheckedChange={(checked) => updateSetting('deleteConfirmation', checked)}
+              />
             </div>
             <Separator />
             <div className="flex items-center justify-between">
@@ -150,7 +168,10 @@ export default function Settings() {
                   Atualizar dados automaticamente a cada 30 segundos
                 </p>
               </div>
-              <Switch defaultChecked />
+              <Switch
+                checked={settings.autoUpdate}
+                onCheckedChange={(checked) => updateSetting('autoUpdate', checked)}
+              />
             </div>
           </CardContent>
         </Card>
