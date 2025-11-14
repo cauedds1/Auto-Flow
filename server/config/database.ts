@@ -19,7 +19,6 @@ export function getDatabaseUrl(): string {
   const env = isDev ? 'DESENVOLVIMENTO' : 'PRODUÇÃO';
   
   console.log(`[Database] ✓ Conectando ao banco de dados de ${env}`);
-  console.log(`[Database] ℹ  Connection string presente: ${databaseUrl.substring(0, 20)}...`);
 
   return databaseUrl;
 }
