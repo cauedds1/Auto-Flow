@@ -39,6 +39,7 @@ export function AddCostDialog({ vehicleId, trigger }: AddCostDialogProps) {
     description: "",
     value: "",
     date: new Date().toISOString().split("T")[0],
+    paymentMethod: "Cartão Loja",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -71,6 +72,7 @@ export function AddCostDialog({ vehicleId, trigger }: AddCostDialogProps) {
           description: formData.description,
           value: valueInCents,
           date: dateObj.toISOString(),
+          paymentMethod: formData.paymentMethod,
         }),
       });
 
@@ -92,6 +94,7 @@ export function AddCostDialog({ vehicleId, trigger }: AddCostDialogProps) {
         description: "",
         value: "",
         date: new Date().toISOString().split("T")[0],
+        paymentMethod: "Cartão Loja",
       });
 
       setOpen(false);
@@ -201,6 +204,25 @@ export function AddCostDialog({ vehicleId, trigger }: AddCostDialogProps) {
                 required
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="paymentMethod">Pago como</Label>
+            <Select
+              value={formData.paymentMethod}
+              onValueChange={(value) => setFormData({ ...formData, paymentMethod: value })}
+            >
+              <SelectTrigger id="paymentMethod">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Cartão Loja">Cartão Loja</SelectItem>
+                <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                <SelectItem value="PIX">PIX</SelectItem>
+                <SelectItem value="Outra Pessoa">Outra Pessoa</SelectItem>
+                <SelectItem value="Dinheiro Próprio">Dinheiro Próprio</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex justify-end gap-3 pt-4">

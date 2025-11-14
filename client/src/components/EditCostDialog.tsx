@@ -26,6 +26,7 @@ interface Cost {
   description: string;
   value: number;
   date: string;
+  paymentMethod?: string;
 }
 
 interface EditCostDialogProps {
@@ -51,6 +52,7 @@ export function EditCostDialog({
     description: "",
     value: "",
     date: "",
+    paymentMethod: "Cartão Loja",
   });
 
   useEffect(() => {
@@ -67,6 +69,7 @@ export function EditCostDialog({
         description: cost.description,
         value: cost.value.toFixed(2),
         date: cost.date,
+        paymentMethod: cost.paymentMethod || "Cartão Loja",
       });
     }
   }, [cost]);
@@ -103,6 +106,7 @@ export function EditCostDialog({
           description: formData.description,
           value: valueInCents,
           date: dateObj.toISOString(),
+          paymentMethod: formData.paymentMethod,
         }),
       });
 
@@ -217,6 +221,25 @@ export function EditCostDialog({
                 required
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="paymentMethod">Pago como</Label>
+            <Select
+              value={formData.paymentMethod}
+              onValueChange={(value) => setFormData({ ...formData, paymentMethod: value })}
+            >
+              <SelectTrigger id="paymentMethod">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Cartão Loja">Cartão Loja</SelectItem>
+                <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                <SelectItem value="PIX">PIX</SelectItem>
+                <SelectItem value="Outra Pessoa">Outra Pessoa</SelectItem>
+                <SelectItem value="Dinheiro Próprio">Dinheiro Próprio</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex justify-end gap-3 pt-4">

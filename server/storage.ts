@@ -11,12 +11,15 @@ import {
   type InsertVehicleCost,
   type StoreObservation,
   type InsertStoreObservation,
+  type CompanySettings,
+  type InsertCompanySettings,
   users,
   vehicles,
   vehicleImages,
   vehicleHistory,
   vehicleCosts,
   storeObservations,
+  companySettings,
 } from "@shared/schema";
 import { normalizeChecklistData } from "@shared/checklistUtils";
 import { db } from "./db";
@@ -236,6 +239,36 @@ export class DatabaseStorage implements IStorage {
   async deleteStoreObservation(id: string): Promise<boolean> {
     const result = await db.delete(storeObservations).where(eq(storeObservations.id, id)).returning();
     return result.length > 0;
+  }
+
+  // Company Settings
+  async getCompanySettings(): Promise<CompanySettings | undefined> {
+    const result = await db.select().from(companySettings).limit(1);
+    return result[0];
+  }
+
+  async createOrUpdateCompanySettings(settings: Partial<InsertCompanySettings>): Promise<CompanySettings> {
+    const existing = await this.getCompanySettings();
+    
+    if (existing) {
+      // Apenas atualizar os campos que foram enviados para evitar race conditions
+      const updates: any = { updatedAt: new Date() };
+      
+      if (settings.companyName !== undefined) updates.companyName = settings.companyName;
+      if (settings.phone !== undefined) updates.phone = settings.phone;
+      if (settings.email !== undefined) updates.email = settings.email;
+      if (settings.address !== undefined) updates.address = settings.address;
+      if (settings.cnpj !== undefined) updates.cnpj = settings.cnpj;
+      
+      const result = await db.update(companySettings)
+        .set(updates)
+        .where(eq(companySettings.id, existing.id))
+        .returning();
+      return result[0];
+    } else {
+      const result = await db.insert(companySettings).values({ ...settings, updatedAt: new Date() }).returning();
+      return result[0];
+    }
   }
 }
 

@@ -162,6 +162,7 @@ export const vehicleCosts = pgTable("vehicle_costs", {
   description: text("description").notNull(),
   value: integer("value").notNull(), // stored in cents
   date: timestamp("date").notNull(),
+  paymentMethod: text("payment_method").notNull().default("Cartão Loja"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -192,3 +193,24 @@ export const insertStoreObservationSchema = createInsertSchema(storeObservations
 
 export type InsertStoreObservation = z.infer<typeof insertStoreObservationSchema>;
 export type StoreObservation = typeof storeObservations.$inferSelect;
+
+// Company settings table
+export const companySettings = pgTable("company_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyName: text("company_name"),
+  phone: text("phone"),
+  email: text("email"),
+  address: text("address"),
+  cnpj: text("cnpj"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertCompanySettingsSchema = createInsertSchema(companySettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCompanySettings = z.infer<typeof insertCompanySettingsSchema>;
+export type CompanySettings = typeof companySettings.$inferSelect;

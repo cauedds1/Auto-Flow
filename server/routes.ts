@@ -295,6 +295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         description: req.body.description,
         value: Math.round(req.body.value * 100),
         date: new Date(req.body.date),
+        paymentMethod: req.body.paymentMethod || "Cartão Loja",
       });
 
       const cost = await storage.addVehicleCost(costData);
@@ -320,6 +321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.body.description !== undefined) updates.description = req.body.description;
       if (req.body.value !== undefined) updates.value = req.body.value;
       if (req.body.date !== undefined) updates.date = new Date(req.body.date);
+      if (req.body.paymentMethod !== undefined) updates.paymentMethod = req.body.paymentMethod;
 
       const cost = await storage.updateVehicleCost(req.params.costId, updates);
 
@@ -574,7 +576,22 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
   app.get("/api/store-observations", async (req, res) => {
     try {
       const observations = await storage.getAllStoreObservations();
-      res.json(observations);
+      
+      // Calcular dias pendentes para cada observação
+      const observationsWithDays = observations.map((obs: any) => {
+        if (obs.status === "Pendente") {
+          const createdDate = new Date(obs.createdAt);
+          const now = new Date();
+          // Não usar Math.abs - se data futura, considerar 0 dias
+          const diffTime = now.getTime() - createdDate.getTime();
+          const daysOpen = diffTime > 0 ? Math.floor(diffTime / (1000 * 60 * 60 * 24)) : 0;
+          
+          return { ...obs, daysOpen };
+        }
+        return { ...obs, daysOpen: 0 };
+      });
+      
+      res.json(observationsWithDays);
     } catch (error) {
       console.error("Erro ao buscar observações da loja:", error);
       res.status(500).json({ error: "Erro ao buscar observações da loja" });
@@ -649,6 +666,30 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
     } catch (error) {
       console.error("Erro ao deletar observação:", error);
       res.status(500).json({ error: "Erro ao deletar observação" });
+    }
+  });
+
+  // Company Settings endpoints
+  
+  // GET /api/company-settings - Buscar configurações da empresa
+  app.get("/api/company-settings", async (req, res) => {
+    try {
+      const settings = await storage.getCompanySettings();
+      res.json(settings || {});
+    } catch (error) {
+      console.error("Erro ao buscar configurações:", error);
+      res.status(500).json({ error: "Erro ao buscar configurações" });
+    }
+  });
+
+  // PATCH /api/company-settings - Atualizar configurações da empresa
+  app.patch("/api/company-settings", async (req, res) => {
+    try {
+      const updatedSettings = await storage.createOrUpdateCompanySettings(req.body);
+      res.json(updatedSettings);
+    } catch (error) {
+      console.error("Erro ao atualizar configurações:", error);
+      res.status(500).json({ error: "Erro ao atualizar configurações" });
     }
   });
 

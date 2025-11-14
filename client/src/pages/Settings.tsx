@@ -1,3 +1,5 @@
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -6,9 +8,66 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Bell, Moon, Zap, Database, FileText, Download } from "lucide-react";
 import { useSettings } from "@/hooks/use-settings";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Settings() {
   const { settings, updateSetting } = useSettings();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  const [companyInfo, setCompanyInfo] = useState({
+    companyName: "",
+    phone: "",
+    email: "",
+    address: "",
+    cnpj: "",
+  });
+
+  const { data: companySettings } = useQuery<any>({
+    queryKey: ["/api/company-settings"],
+  });
+
+  useEffect(() => {
+    if (companySettings) {
+      setCompanyInfo({
+        companyName: companySettings.companyName || "",
+        phone: companySettings.phone || "",
+        email: companySettings.email || "",
+        address: companySettings.address || "",
+        cnpj: companySettings.cnpj || "",
+      });
+    }
+  }, [companySettings]);
+
+  const saveCompanyMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await fetch("/api/company-settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Erro ao salvar configurações");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/company-settings"] });
+      toast({
+        title: "Configurações salvas!",
+        description: "As informações da empresa foram atualizadas com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro ao salvar",
+        description: "Ocorreu um erro ao salvar as configurações.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSaveCompany = () => {
+    saveCompanyMutation.mutate(companyInfo);
+  };
 
   return (
     <div className="flex h-full flex-col p-8">
@@ -32,7 +91,8 @@ export default function Settings() {
               <Label htmlFor="company-name">Nome da Empresa</Label>
               <Input
                 id="company-name"
-                defaultValue="Capoeiras Automóveis"
+                value={companyInfo.companyName}
+                onChange={(e) => setCompanyInfo({ ...companyInfo, companyName: e.target.value })}
                 placeholder="Nome da empresa"
               />
             </div>
@@ -40,6 +100,8 @@ export default function Settings() {
               <Label htmlFor="company-phone">Telefone</Label>
               <Input
                 id="company-phone"
+                value={companyInfo.phone}
+                onChange={(e) => setCompanyInfo({ ...companyInfo, phone: e.target.value })}
                 placeholder="(00) 0000-0000"
               />
             </div>
@@ -48,6 +110,8 @@ export default function Settings() {
               <Input
                 id="company-email"
                 type="email"
+                value={companyInfo.email}
+                onChange={(e) => setCompanyInfo({ ...companyInfo, email: e.target.value })}
                 placeholder="contato@empresa.com"
               />
             </div>
@@ -55,6 +119,8 @@ export default function Settings() {
               <Label htmlFor="company-address">Endereço</Label>
               <Input
                 id="company-address"
+                value={companyInfo.address}
+                onChange={(e) => setCompanyInfo({ ...companyInfo, address: e.target.value })}
                 placeholder="Rua, número, bairro, cidade"
               />
             </div>
@@ -62,10 +128,14 @@ export default function Settings() {
               <Label htmlFor="company-cnpj">CNPJ</Label>
               <Input
                 id="company-cnpj"
+                value={companyInfo.cnpj}
+                onChange={(e) => setCompanyInfo({ ...companyInfo, cnpj: e.target.value })}
                 placeholder="00.000.000/0000-00"
               />
             </div>
-            <Button>Salvar Alterações</Button>
+            <Button onClick={handleSaveCompany} disabled={saveCompanyMutation.isPending}>
+              {saveCompanyMutation.isPending ? "Salvando..." : "Salvar Alterações"}
+            </Button>
           </CardContent>
         </Card>
 
