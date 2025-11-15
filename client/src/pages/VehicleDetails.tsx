@@ -27,7 +27,16 @@ export default function VehicleDetails() {
   const params = useParams();
   const vehicleId = params.id || "";
   const [, setLocation] = useLocation();
-  const [activeTab, setActiveTab] = useState("visao-geral");
+  
+  // Ler parâmetro ?tab= da URL para abrir aba específica
+  const getInitialTab = () => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const tabParam = searchParams.get('tab');
+    const validTabs = ['visao-geral', 'historico', 'custos', 'anotacoes', 'anuncio', 'midia', 'documentos', 'checklist'];
+    return validTabs.includes(tabParam || '') ? (tabParam || "visao-geral") : "visao-geral";
+  };
+  
+  const [activeTab, setActiveTab] = useState(getInitialTab);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isChangeLocationOpen, setIsChangeLocationOpen] = useState(false);
   const [selectedCost, setSelectedCost] = useState<any>(null);

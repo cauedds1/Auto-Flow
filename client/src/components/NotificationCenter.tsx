@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Bell, AlertCircle, CheckCircle2, Package, ClipboardList } from "lucide-react";
+import { Bell, AlertCircle, CheckCircle2, Package, ClipboardList, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { checklistItems, getChecklistStats, normalizeChecklistData, hasChecklistStarted } from "@shared/checklistUtils";
 import { useSettings } from "@/hooks/use-settings";
+import { Link } from "wouter";
 
 export function NotificationCenter() {
   const [open, setOpen] = useState(false);
@@ -25,9 +26,31 @@ export function NotificationCenter() {
     queryKey: ["/api/store-observations"],
   });
 
+  // Helper para calcular dias desde última atualização
+  const getDaysSince = (dateStr: string): number => {
+    if (!dateStr) return 0;
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
   let checklistPending = 0;
-  let vehiclesWithPendingChecklist: Array<{ name: string; pending: number }> = [];
-  let vehiclesWithoutChecklist: Array<{ name: string; plate: string }> = [];
+  let vehiclesWithPendingChecklist: Array<{ 
+    id: number; 
+    name: string; 
+    pending: number; 
+    daysPending: number;
+    isUrgent: boolean;
+  }> = [];
+  let vehiclesWithoutChecklist: Array<{ 
+    id: number; 
+    name: string; 
+    plate: string;
+    daysSince: number;
+    isUrgent: boolean;
+  }> = [];
 
   vehicles.forEach((vehicle: any) => {
     // Só notificar checklist para veículos "Pronto para Venda"
@@ -35,11 +58,17 @@ export function NotificationCenter() {
       return;
     }
 
+    // Calcular dias desde que ficou "Pronto para Venda"
+    const daysSince = vehicle.updatedAt ? getDaysSince(vehicle.updatedAt) : 0;
+
     // Verificar se o veículo tem checklist iniciado usando a nova lógica de presence
     if (!hasChecklistStarted(vehicle.checklist, vehicle.vehicleType || "Carro")) {
       vehiclesWithoutChecklist.push({
+        id: vehicle.id,
         name: `${vehicle.brand} ${vehicle.model}`,
         plate: vehicle.plate,
+        daysSince,
+        isUrgent: daysSince > 7, // Urgente se faz mais de 7 dias
       });
     } else {
       // Se tem checklist iniciado, verificar itens pendentes
@@ -50,14 +79,29 @@ export function NotificationCenter() {
       if (pending > 0) {
         checklistPending += pending;
         vehiclesWithPendingChecklist.push({
+          id: vehicle.id,
           name: `${vehicle.brand} ${vehicle.model}`,
           pending,
+          daysPending: daysSince,
+          isUrgent: daysSince > 7, // Urgente se pendente há mais de 7 dias
         });
       }
     }
   });
 
-  const pendingObservations = observations.filter((obs: any) => obs.status === "Pendente");
+  // Processar observações com dias pendentes
+  const pendingObservationsWithDays = observations
+    .filter((obs: any) => obs.status === "Pendente")
+    .map((obs: any) => {
+      const daysPending = obs.createdAt ? getDaysSince(obs.createdAt) : 0;
+      return {
+        ...obs,
+        daysPending,
+        isUrgent: daysPending > 7,
+      };
+    });
+  
+  const pendingObservations = pendingObservationsWithDays;
   
   // Aplicar filtros baseado nas configurações
   const showChecklistAlerts = settings.readyForSaleAlerts;
@@ -128,9 +172,28 @@ export function NotificationCenter() {
                   
                   <div className="pl-11 space-y-2">
                     {vehiclesWithoutChecklist.slice(0, 5).map((v, idx) => (
-                      <div key={idx} className="text-xs text-muted-foreground">
-                        <span>• {v.name} ({v.plate})</span>
-                      </div>
+                      <Link 
+                        key={idx} 
+                        href={`/veiculos/${v.id}?tab=checklist`}
+                        onClick={() => setOpen(false)}
+                        className="flex items-center justify-between gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors p-1.5 -ml-1.5 rounded hover:bg-accent group"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span>•</span>
+                          <span>{v.name} ({v.plate})</span>
+                        </span>
+                        {v.isUrgent && (
+                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                            <Clock className="h-2.5 w-2.5 mr-1" />
+                            {v.daysSince}d
+                          </Badge>
+                        )}
+                        {!v.isUrgent && v.daysSince > 3 && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-orange-600 border-orange-600">
+                            {v.daysSince}d
+                          </Badge>
+                        )}
+                      </Link>
                     ))}
                     {vehiclesWithoutChecklist.length > 5 && (
                       <p className="text-xs text-muted-foreground italic">
@@ -163,10 +226,31 @@ export function NotificationCenter() {
                   
                   <div className="pl-11 space-y-2">
                     {vehiclesWithPendingChecklist.slice(0, 5).map((v, idx) => (
-                      <div key={idx} className="text-xs text-muted-foreground flex justify-between items-center">
-                        <span>• {v.name}</span>
-                        <span className="font-medium">{v.pending} pendentes</span>
-                      </div>
+                      <Link 
+                        key={idx}
+                        href={`/veiculos/${v.id}?tab=checklist`}
+                        onClick={() => setOpen(false)}
+                        className="flex justify-between items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors p-1.5 -ml-1.5 rounded hover:bg-accent group"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span>•</span>
+                          <span>{v.name}</span>
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{v.pending} pendentes</span>
+                          {v.isUrgent && (
+                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                              <Clock className="h-2.5 w-2.5 mr-1" />
+                              {v.daysPending}d
+                            </Badge>
+                          )}
+                          {!v.isUrgent && v.daysPending > 3 && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-orange-600 border-orange-600">
+                              {v.daysPending}d
+                            </Badge>
+                          )}
+                        </div>
+                      </Link>
                     ))}
                     {vehiclesWithPendingChecklist.length > 5 && (
                       <p className="text-xs text-muted-foreground italic">
@@ -215,11 +299,28 @@ export function NotificationCenter() {
                 
                 <div className="pl-11 space-y-2">
                   {pendingObservations.slice(0, 3).map((obs: any) => (
-                    <div key={obs.id} className="text-xs">
-                      <p className="text-muted-foreground line-clamp-2">
-                        • {obs.title}
-                      </p>
-                    </div>
+                    <Link
+                      key={obs.id}
+                      href="/anotacoes"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center justify-between gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors p-1.5 -ml-1.5 rounded hover:bg-accent group"
+                    >
+                      <span className="flex items-center gap-2 flex-1 min-w-0">
+                        <span>•</span>
+                        <span className="line-clamp-2 flex-1">{obs.title}</span>
+                      </span>
+                      {obs.isUrgent && (
+                        <Badge variant="destructive" className="text-[10px] px-1.5 py-0 flex-shrink-0">
+                          <Clock className="h-2.5 w-2.5 mr-1" />
+                          {obs.daysPending}d
+                        </Badge>
+                      )}
+                      {!obs.isUrgent && obs.daysPending > 3 && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-orange-600 border-orange-600 flex-shrink-0">
+                          {obs.daysPending}d
+                        </Badge>
+                      )}
+                    </Link>
                   ))}
                   {pendingObservations.length > 3 && (
                     <p className="text-xs text-muted-foreground italic">
