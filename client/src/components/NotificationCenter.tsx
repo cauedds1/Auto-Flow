@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Bell, AlertCircle, CheckCircle2, Package, ClipboardList, Clock } from "lucide-react";
+import { Bell, AlertCircle, CheckCircle2, Package, ClipboardList, Clock, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -36,6 +36,22 @@ export function NotificationCenter() {
     return diffDays;
   };
 
+  // Helper para contar observações no checklist
+  const countChecklistObservations = (checklist: any): number => {
+    if (!checklist) return 0;
+    let count = 0;
+    Object.values(checklist).forEach((category: any) => {
+      if (Array.isArray(category)) {
+        category.forEach((item: any) => {
+          if (typeof item === 'object' && item.observation && item.observation.trim() !== '') {
+            count++;
+          }
+        });
+      }
+    });
+    return count;
+  };
+
   let checklistPending = 0;
   let vehiclesWithPendingChecklist: Array<{ 
     id: number; 
@@ -48,6 +64,13 @@ export function NotificationCenter() {
     id: number; 
     name: string; 
     plate: string;
+    daysSince: number;
+    isUrgent: boolean;
+  }> = [];
+  let vehiclesWithChecklistObservations: Array<{
+    id: number;
+    name: string;
+    observations: number;
     daysSince: number;
     isUrgent: boolean;
   }> = [];
@@ -86,6 +109,18 @@ export function NotificationCenter() {
           isUrgent: daysSince > 7, // Urgente se pendente há mais de 7 dias
         });
       }
+      
+      // Verificar se tem observações no checklist (problemas reportados)
+      const observationsCount = countChecklistObservations(vehicle.checklist);
+      if (observationsCount > 0) {
+        vehiclesWithChecklistObservations.push({
+          id: vehicle.id,
+          name: `${vehicle.brand} ${vehicle.model}`,
+          observations: observationsCount,
+          daysSince,
+          isUrgent: daysSince > 7,
+        });
+      }
     }
   });
 
@@ -109,18 +144,21 @@ export function NotificationCenter() {
   
   // Total de problemas reais (independente de estarem habilitados)
   const actualChecklistIssues = vehiclesWithoutChecklist.length + vehiclesWithPendingChecklist.length;
+  const actualChecklistObservations = vehiclesWithChecklistObservations.length;
   const actualObservationIssues = pendingObservations.length;
   
   // Problemas exibidos (filtrados pelas configurações)
   const totalVehiclesWithChecklistIssues = showChecklistAlerts ? actualChecklistIssues : 0;
+  const totalChecklistObservations = showChecklistAlerts ? actualChecklistObservations : 0;
   const displayedObservations = showTaskAlerts ? actualObservationIssues : 0;
   
-  const totalNotifications = totalVehiclesWithChecklistIssues + displayedObservations;
+  const totalNotifications = totalVehiclesWithChecklistIssues + totalChecklistObservations + displayedObservations;
 
   // Contar tarefas urgentes (>7 dias)
   const urgentCount = 
     vehiclesWithoutChecklist.filter(v => v.isUrgent).length +
     vehiclesWithPendingChecklist.filter(v => v.isUrgent).length +
+    vehiclesWithChecklistObservations.filter(v => v.isUrgent).length +
     pendingObservations.filter(obs => obs.isUrgent).length;
 
   return (
@@ -131,7 +169,7 @@ export function NotificationCenter() {
           size="icon" 
           className="relative h-9 w-9 hover:bg-transparent"
         >
-          <Bell className={`h-5 w-5 text-white ${urgentCount > 0 ? 'animate-pulse-urgent' : ''}`} />
+          <Bell className={`h-5 w-5 text-white ${urgentCount > 0 ? 'animate-shake-bell' : ''}`} />
           {totalNotifications > 0 && (
             <Badge 
               variant="destructive" 
@@ -271,7 +309,65 @@ export function NotificationCenter() {
               </>
             )}
 
-            {showChecklistAlerts && vehiclesWithoutChecklist.length === 0 && checklistPending === 0 && (
+            {showChecklistAlerts && vehiclesWithChecklistObservations.length > 0 && (
+              <>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10">
+                      <MessageSquare className="h-4 w-4 text-amber-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-sm">Problemas Reportados</h4>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {vehiclesWithChecklistObservations.reduce((acc, v) => acc + v.observations, 0)} observações em {vehiclesWithChecklistObservations.length} {vehiclesWithChecklistObservations.length === 1 ? 'veículo' : 'veículos'}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="text-amber-600 border-amber-600">
+                      {vehiclesWithChecklistObservations.reduce((acc, v) => acc + v.observations, 0)}
+                    </Badge>
+                  </div>
+                  
+                  <div className="pl-11 space-y-2">
+                    {vehiclesWithChecklistObservations.slice(0, 5).map((v, idx) => (
+                      <Link 
+                        key={idx}
+                        href={`/veiculo/${v.id}?tab=checklist`}
+                        onClick={() => setOpen(false)}
+                        className={`flex justify-between items-center gap-2 text-xs hover:text-foreground transition-colors p-2 -ml-1.5 rounded hover:bg-accent group ${v.isUrgent ? 'bg-pulse-urgent border-l-2 border-red-600 text-red-700 font-medium' : 'text-muted-foreground'}`}
+                      >
+                        <span className="flex items-center gap-2">
+                          {v.isUrgent && <AlertCircle className="h-3.5 w-3.5 text-red-600 animate-pulse-urgent flex-shrink-0" />}
+                          <span>•</span>
+                          <span>{v.name}</span>
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{v.observations} {v.observations === 1 ? 'problema' : 'problemas'}</span>
+                          {v.isUrgent && (
+                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0 animate-pulse-urgent">
+                              <Clock className="h-2.5 w-2.5 mr-1" />
+                              {v.daysSince}d
+                            </Badge>
+                          )}
+                          {!v.isUrgent && v.daysSince > 3 && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-orange-600 border-orange-600">
+                              {v.daysSince}d
+                            </Badge>
+                          )}
+                        </div>
+                      </Link>
+                    ))}
+                    {vehiclesWithChecklistObservations.length > 5 && (
+                      <p className="text-xs text-muted-foreground italic">
+                        + {vehiclesWithChecklistObservations.length - 5} veículos...
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <Separator />
+              </>
+            )}
+
+            {showChecklistAlerts && vehiclesWithoutChecklist.length === 0 && checklistPending === 0 && vehiclesWithChecklistObservations.length === 0 && (
               <>
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-green-500/10">

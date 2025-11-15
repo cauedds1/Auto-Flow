@@ -179,6 +179,9 @@ export default function VehicleDetails() {
       });
 
       if (!response.ok) throw new Error("Erro ao salvar checklist");
+      
+      // Invalidar queries para atualizar notificações
+      queryClient.invalidateQueries({ queryKey: ["/api/vehicles"] });
     } catch (error) {
       // Reverter em caso de erro
       setChecklist(previousChecklist);
@@ -235,6 +238,9 @@ export default function VehicleDetails() {
       });
 
       if (!response.ok) throw new Error("Erro ao salvar checklist");
+      
+      // Invalidar queries para atualizar notificações
+      queryClient.invalidateQueries({ queryKey: ["/api/vehicles"] });
 
       toast({
         title: "Categoria marcada!",

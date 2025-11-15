@@ -547,33 +547,50 @@
 }
 
 
-/* Animação pulsante para alertas urgentes */
+
+/* Animação pulsante AGRESSIVA para alertas urgentes */
 @keyframes pulse-urgent {
   0%, 100% {
     opacity: 1;
     transform: scale(1);
   }
   50% {
-    opacity: 0.8;
-    transform: scale(1.05);
+    opacity: 0.6;
+    transform: scale(1.15);
   }
 }
 
 .animate-pulse-urgent {
-  animation: pulse-urgent 2s ease-in-out infinite;
+  animation: pulse-urgent 1s ease-in-out infinite;
 }
 
-/* Background pulsante vermelho para notificações urgentes */
+/* Background pulsante vermelho INTENSO para notificações urgentes */
 @keyframes bg-pulse-urgent {
   0%, 100% {
-    background-color: rgba(239, 68, 68, 0.1);
+    background-color: rgba(239, 68, 68, 0.15);
   }
   50% {
-    background-color: rgba(239, 68, 68, 0.2);
+    background-color: rgba(239, 68, 68, 0.35);
   }
 }
 
 .bg-pulse-urgent {
-  animation: bg-pulse-urgent 2s ease-in-out infinite;
+  animation: bg-pulse-urgent 1s ease-in-out infinite;
 }
 
+/* Animação de shake para o sino */
+@keyframes shake-bell {
+  0%, 100% { 
+    transform: rotate(0deg); 
+  }
+  10%, 30%, 50%, 70%, 90% { 
+    transform: rotate(-10deg); 
+  }
+  20%, 40%, 60%, 80% { 
+    transform: rotate(10deg); 
+  }
+}
+
+.animate-shake-bell {
+  animation: shake-bell 0.8s ease-in-out infinite;
+}
