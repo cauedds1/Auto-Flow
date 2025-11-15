@@ -316,7 +316,7 @@ export function NotificationCenter() {
                       <span className="flex items-center gap-2 flex-1 min-w-0">
                         {obs.isUrgent && <AlertCircle className="h-3.5 w-3.5 text-red-600 animate-pulse-urgent flex-shrink-0" />}
                         <span>•</span>
-                        <span className="line-clamp-2 flex-1">{obs.title}</span>
+                        <span className="line-clamp-2 flex-1">{obs.description}</span>
                       </span>
                       {obs.isUrgent && (
                         <Badge variant="destructive" className="text-[10px] px-1.5 py-0 flex-shrink-0 animate-pulse-urgent">
