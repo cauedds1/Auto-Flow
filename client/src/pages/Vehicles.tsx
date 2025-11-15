@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -70,12 +70,25 @@ const PRIORITY_STATUS_OPTIONS = [
 export default function Vehicles() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("location");
-  const [priorityStatus, setPriorityStatus] = useState("Pronto para Venda");
+  const [sortBy, setSortBy] = useState(() => {
+    return localStorage.getItem("vehicles-sort-by") || "location";
+  });
+  const [priorityStatus, setPriorityStatus] = useState(() => {
+    return localStorage.getItem("vehicles-priority-status") || "Pronto para Venda";
+  });
 
   const { data: vehicles = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/vehicles"],
   });
+
+  // Salvar preferências de ordenação no localStorage
+  useEffect(() => {
+    localStorage.setItem("vehicles-sort-by", sortBy);
+  }, [sortBy]);
+
+  useEffect(() => {
+    localStorage.setItem("vehicles-priority-status", priorityStatus);
+  }, [priorityStatus]);
 
   const filteredVehicles = vehicles
     .filter((vehicle: any) => {
