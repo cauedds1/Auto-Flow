@@ -63,18 +63,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const vehicles = await storage.getAllVehicles();
       
+      // Otimização: buscar TODO o histórico de uma vez ao invés de N queries
+      const allHistory = await storage.getAllVehicleHistory();
+      
+      // Criar um mapa de histórico por veículo
+      const historyByVehicle = new Map<string, any[]>();
+      allHistory.forEach(h => {
+        if (!historyByVehicle.has(h.vehicleId)) {
+          historyByVehicle.set(h.vehicleId, []);
+        }
+        historyByVehicle.get(h.vehicleId)!.push(h);
+      });
+      
       const vehiclesWithImages = await Promise.all(
         vehicles.map(async (vehicle) => {
           const images = await storage.getVehicleImages(vehicle.id);
           const now = new Date();
-          const timeDiff = now.getTime() - vehicle.locationChangedAt.getTime();
+          
+          // Buscar do histórico a data em que o veículo mudou para o status atual
+          const history = historyByVehicle.get(vehicle.id) || [];
+          const currentStatusEntry = history.find(h => h.toStatus === vehicle.status);
+          
+          // Se encontrou no histórico, usa essa data. Senão, usa locationChangedAt como fallback
+          const statusChangedAt = currentStatusEntry 
+            ? (currentStatusEntry.movedAt || currentStatusEntry.createdAt)
+            : vehicle.locationChangedAt;
+          
+          const timeDiff = now.getTime() - statusChangedAt.getTime();
           const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
           
           // Para veículos "Pronto para Venda", buscar a data do histórico quando ficou nesse status
           let readyForSaleAt: Date | null = null;
           if (vehicle.status === "Pronto para Venda") {
-            const history = await storage.getVehicleHistory(vehicle.id);
-            // Encontrar a última entrada onde toStatus é "Pronto para Venda"
             const readyEntry = history.find(h => h.toStatus === "Pronto para Venda");
             if (readyEntry) {
               readyForSaleAt = readyEntry.movedAt || readyEntry.createdAt;

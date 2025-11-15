@@ -44,6 +44,7 @@ export interface IStorage {
   updateVehicleImage(id: string, updates: Partial<InsertVehicleImage>): Promise<VehicleImage | null>;
   deleteVehicleImage(id: string): Promise<boolean>;
   
+  getAllVehicleHistory(): Promise<VehicleHistory[]>;
   getVehicleHistory(vehicleId: string): Promise<VehicleHistory[]>;
   addVehicleHistory(history: InsertVehicleHistory): Promise<VehicleHistory>;
   
@@ -154,6 +155,11 @@ export class DatabaseStorage implements IStorage {
   async deleteVehicleImage(id: string): Promise<boolean> {
     const result = await db.delete(vehicleImages).where(eq(vehicleImages.id, id)).returning();
     return result.length > 0;
+  }
+
+  async getAllVehicleHistory(): Promise<VehicleHistory[]> {
+    return await db.select().from(vehicleHistory)
+      .orderBy(desc(vehicleHistory.createdAt));
   }
 
   async getVehicleHistory(vehicleId: string): Promise<VehicleHistory[]> {
