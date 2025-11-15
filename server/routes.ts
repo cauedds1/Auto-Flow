@@ -248,6 +248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.body.toPhysicalLocation !== undefined) updates.toPhysicalLocation = req.body.toPhysicalLocation;
       if (req.body.toPhysicalLocationDetail !== undefined) updates.toPhysicalLocationDetail = req.body.toPhysicalLocationDetail;
       if (req.body.notes !== undefined) updates.notes = req.body.notes;
+      if (req.body.movedAt !== undefined) updates.movedAt = new Date(req.body.movedAt);
 
       const updatedHistory = await storage.updateVehicleHistory(req.params.historyId, req.params.vehicleId, updates);
       
@@ -296,6 +297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         value: Math.round(req.body.value * 100),
         date: new Date(req.body.date),
         paymentMethod: req.body.paymentMethod || "Cartão Loja",
+        paidBy: req.body.paidBy || null,
       });
 
       const cost = await storage.addVehicleCost(costData);
@@ -322,6 +324,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.body.value !== undefined) updates.value = req.body.value;
       if (req.body.date !== undefined) updates.date = new Date(req.body.date);
       if (req.body.paymentMethod !== undefined) updates.paymentMethod = req.body.paymentMethod;
+      if (req.body.paidBy !== undefined) updates.paidBy = req.body.paidBy;
 
       const cost = await storage.updateVehicleCost(req.params.costId, updates);
 

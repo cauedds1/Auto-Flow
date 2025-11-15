@@ -30,6 +30,7 @@ interface EditHistoryDialogProps {
     toPhysicalLocation?: string | null;
     toPhysicalLocationDetail?: string | null;
     notes?: string | null;
+    movedAt: string;
   };
   trigger?: React.ReactNode;
 }
@@ -49,6 +50,7 @@ export function EditHistoryDialog({
     toPhysicalLocation: historyEntry.toPhysicalLocation || "__none__",
     toPhysicalLocationDetail: historyEntry.toPhysicalLocationDetail || "",
     notes: historyEntry.notes || "",
+    movedAt: historyEntry.movedAt.split("T")[0],
   });
 
   useEffect(() => {
@@ -58,6 +60,7 @@ export function EditHistoryDialog({
         toPhysicalLocation: historyEntry.toPhysicalLocation || "__none__",
         toPhysicalLocationDetail: historyEntry.toPhysicalLocationDetail || "",
         notes: historyEntry.notes || "",
+        movedAt: historyEntry.movedAt.split("T")[0],
       });
     }
   }, [open, historyEntry]);
@@ -85,9 +88,12 @@ export function EditHistoryDialog({
     setIsSubmitting(true);
 
     try {
+      const dateObj = new Date(formData.movedAt + 'T12:00:00');
+      
       const payload: any = {
         toStatus: formData.toStatus,
         notes: formData.notes.trim() || null,
+        movedAt: dateObj.toISOString(),
       };
 
       if (formData.toPhysicalLocation && formData.toPhysicalLocation !== "__none__") {
@@ -207,6 +213,17 @@ export function EditHistoryDialog({
               />
             </div>
           )}
+
+          <div className="space-y-2">
+            <Label htmlFor="movedAt">Data da Movimentação</Label>
+            <Input
+              id="movedAt"
+              type="date"
+              value={formData.movedAt}
+              onChange={(e) => setFormData({ ...formData, movedAt: e.target.value })}
+              required
+            />
+          </div>
 
           <div className="space-y-2">
             <Label htmlFor="notes">Observações</Label>

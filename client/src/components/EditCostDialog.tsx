@@ -27,6 +27,7 @@ interface Cost {
   value: number;
   date: string;
   paymentMethod?: string;
+  paidBy?: string | null;
 }
 
 interface EditCostDialogProps {
@@ -53,6 +54,7 @@ export function EditCostDialog({
     value: "",
     date: "",
     paymentMethod: "Cartão Loja",
+    paidBy: "",
   });
 
   useEffect(() => {
@@ -70,6 +72,7 @@ export function EditCostDialog({
         value: cost.value.toFixed(2),
         date: cost.date,
         paymentMethod: cost.paymentMethod || "Cartão Loja",
+        paidBy: cost.paidBy || "",
       });
     }
   }, [cost]);
@@ -95,6 +98,16 @@ export function EditCostDialog({
         return;
       }
 
+      if (formData.paymentMethod === "Outra Pessoa" && !formData.paidBy.trim()) {
+        toast({
+          title: "Informação incompleta",
+          description: "Por favor, especifique quem pagou.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       const valueInCents = Math.round(parseFloat(formData.value) * 100);
       const dateObj = new Date(formData.date + 'T12:00:00');
 
@@ -107,6 +120,7 @@ export function EditCostDialog({
           value: valueInCents,
           date: dateObj.toISOString(),
           paymentMethod: formData.paymentMethod,
+          paidBy: formData.paymentMethod === "Outra Pessoa" ? formData.paidBy : null,
         }),
       });
 
@@ -227,7 +241,7 @@ export function EditCostDialog({
             <Label htmlFor="paymentMethod">Pago como</Label>
             <Select
               value={formData.paymentMethod}
-              onValueChange={(value) => setFormData({ ...formData, paymentMethod: value })}
+              onValueChange={(value) => setFormData({ ...formData, paymentMethod: value, paidBy: "" })}
             >
               <SelectTrigger id="paymentMethod">
                 <SelectValue />
@@ -237,10 +251,22 @@ export function EditCostDialog({
                 <SelectItem value="Dinheiro">Dinheiro</SelectItem>
                 <SelectItem value="PIX">PIX</SelectItem>
                 <SelectItem value="Outra Pessoa">Outra Pessoa</SelectItem>
-                <SelectItem value="Dinheiro Próprio">Dinheiro Próprio</SelectItem>
               </SelectContent>
             </Select>
           </div>
+
+          {formData.paymentMethod === "Outra Pessoa" && (
+            <div className="space-y-2">
+              <Label htmlFor="paidBy">Quem pagou?</Label>
+              <Input
+                id="paidBy"
+                placeholder="Ex: João Silva"
+                value={formData.paidBy}
+                onChange={(e) => setFormData({ ...formData, paidBy: e.target.value })}
+                required
+              />
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-4">
             <Button

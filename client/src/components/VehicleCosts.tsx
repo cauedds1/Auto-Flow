@@ -16,6 +16,8 @@ interface Cost {
   description: string;
   value: number;
   date: string;
+  paymentMethod?: string;
+  paidBy?: string | null;
 }
 
 interface VehicleCostsProps {
@@ -58,6 +60,7 @@ export function VehicleCosts({ costs, addCostTrigger, onEditCost }: VehicleCosts
               <TableHead>Categoria</TableHead>
               <TableHead>Descrição</TableHead>
               <TableHead>Data</TableHead>
+              <TableHead>Pagamento</TableHead>
               <TableHead className="text-right">Valor</TableHead>
               {onEditCost && <TableHead className="w-[80px]">Ações</TableHead>}
             </TableRow>
@@ -72,6 +75,11 @@ export function VehicleCosts({ costs, addCostTrigger, onEditCost }: VehicleCosts
                 </TableCell>
                 <TableCell>{cost.description}</TableCell>
                 <TableCell className="text-muted-foreground">{cost.date}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {cost.paymentMethod === "Outra Pessoa" && cost.paidBy 
+                    ? `${cost.paymentMethod} (${cost.paidBy})`
+                    : cost.paymentMethod || "Cartão Loja"}
+                </TableCell>
                 <TableCell className="text-right font-semibold tabular-nums">
                   {formatCurrency(cost.value)}
                 </TableCell>

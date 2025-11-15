@@ -40,6 +40,7 @@ export function AddCostDialog({ vehicleId, trigger }: AddCostDialogProps) {
     value: "",
     date: new Date().toISOString().split("T")[0],
     paymentMethod: "Cartão Loja",
+    paidBy: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -64,6 +65,16 @@ export function AddCostDialog({ vehicleId, trigger }: AddCostDialogProps) {
         return;
       }
 
+      if (formData.paymentMethod === "Outra Pessoa" && !formData.paidBy.trim()) {
+        toast({
+          title: "Informação incompleta",
+          description: "Por favor, especifique quem pagou.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       const response = await fetch(`/api/vehicles/${vehicleId}/costs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -73,6 +84,7 @@ export function AddCostDialog({ vehicleId, trigger }: AddCostDialogProps) {
           value: valueInCents,
           date: dateObj.toISOString(),
           paymentMethod: formData.paymentMethod,
+          paidBy: formData.paymentMethod === "Outra Pessoa" ? formData.paidBy : null,
         }),
       });
 
@@ -95,6 +107,7 @@ export function AddCostDialog({ vehicleId, trigger }: AddCostDialogProps) {
         value: "",
         date: new Date().toISOString().split("T")[0],
         paymentMethod: "Cartão Loja",
+        paidBy: "",
       });
 
       setOpen(false);
@@ -210,7 +223,7 @@ export function AddCostDialog({ vehicleId, trigger }: AddCostDialogProps) {
             <Label htmlFor="paymentMethod">Pago como</Label>
             <Select
               value={formData.paymentMethod}
-              onValueChange={(value) => setFormData({ ...formData, paymentMethod: value })}
+              onValueChange={(value) => setFormData({ ...formData, paymentMethod: value, paidBy: "" })}
             >
               <SelectTrigger id="paymentMethod">
                 <SelectValue />
@@ -220,10 +233,22 @@ export function AddCostDialog({ vehicleId, trigger }: AddCostDialogProps) {
                 <SelectItem value="Dinheiro">Dinheiro</SelectItem>
                 <SelectItem value="PIX">PIX</SelectItem>
                 <SelectItem value="Outra Pessoa">Outra Pessoa</SelectItem>
-                <SelectItem value="Dinheiro Próprio">Dinheiro Próprio</SelectItem>
               </SelectContent>
             </Select>
           </div>
+
+          {formData.paymentMethod === "Outra Pessoa" && (
+            <div className="space-y-2">
+              <Label htmlFor="paidBy">Quem pagou?</Label>
+              <Input
+                id="paidBy"
+                placeholder="Ex: João Silva"
+                value={formData.paidBy}
+                onChange={(e) => setFormData({ ...formData, paidBy: e.target.value })}
+                required
+              />
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-4">
             <Button

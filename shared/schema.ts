@@ -163,6 +163,7 @@ export const vehicleCosts = pgTable("vehicle_costs", {
   value: integer("value").notNull(), // stored in cents
   date: timestamp("date").notNull(),
   paymentMethod: text("payment_method").notNull().default("Cartão Loja"),
+  paidBy: text("paid_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

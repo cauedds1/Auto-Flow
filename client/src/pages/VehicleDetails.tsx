@@ -586,7 +586,9 @@ export default function VehicleDetails() {
                 category: c.category,
                 description: c.description,
                 value: c.value / 100,
-                date: new Date(c.date).toLocaleDateString('pt-BR')
+                date: new Date(c.date).toLocaleDateString('pt-BR'),
+                paymentMethod: c.paymentMethod,
+                paidBy: c.paidBy
               }))}
               addCostTrigger={<AddCostDialog vehicleId={vehicleId} />}
               onEditCost={(cost) => {
@@ -597,7 +599,9 @@ export default function VehicleDetails() {
                     category: rawCost.category,
                     description: rawCost.description,
                     value: rawCost.value / 100,
-                    date: new Date(rawCost.date).toISOString().split('T')[0]
+                    date: new Date(rawCost.date).toISOString().split('T')[0],
+                    paymentMethod: rawCost.paymentMethod,
+                    paidBy: rawCost.paidBy
                   });
                 }
               }}
