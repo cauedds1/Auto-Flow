@@ -6,10 +6,40 @@ import multer from "multer";
 import { z } from "zod";
 import { insertVehicleSchema, insertVehicleCostSchema, insertStoreObservationSchema } from "@shared/schema";
 import OpenAI from "openai";
+import path from "path";
+import fs from "fs/promises";
+import { existsSync } from "fs";
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
+});
+
+const documentUpload = multer({
+  storage: multer.diskStorage({
+    destination: async (req, file, cb) => {
+      const vehicleId = req.params.id;
+      const uploadDir = path.join(process.cwd(), "uploads", "vehicles", vehicleId);
+      
+      if (!existsSync(uploadDir)) {
+        await fs.mkdir(uploadDir, { recursive: true });
+      }
+      
+      cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === "application/pdf") {
+      cb(null, true);
+    } else {
+      cb(new Error("Apenas arquivos PDF são permitidos"));
+    }
+  }
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -693,6 +723,113 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
     } catch (error) {
       console.error("Erro ao atualizar configurações:", error);
       res.status(500).json({ error: "Erro ao atualizar configurações" });
+    }
+  });
+
+  // Vehicle Documents endpoints
+  
+  // GET /api/vehicles/:id/documents - Listar documentos do veículo
+  app.get("/api/vehicles/:id/documents", async (req, res) => {
+    try {
+      const vehicle = await storage.getVehicle(req.params.id);
+      if (!vehicle) {
+        return res.status(404).json({ error: "Veículo não encontrado" });
+      }
+
+      const documents = await storage.getVehicleDocuments(req.params.id);
+      res.json(documents);
+    } catch (error) {
+      console.error("Erro ao listar documentos:", error);
+      res.status(500).json({ error: "Erro ao listar documentos" });
+    }
+  });
+
+  // POST /api/vehicles/:id/documents - Upload de documento
+  app.post("/api/vehicles/:id/documents", documentUpload.single("file"), async (req, res) => {
+    try {
+      const vehicle = await storage.getVehicle(req.params.id);
+      if (!vehicle) {
+        return res.status(404).json({ error: "Veículo não encontrado" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: "Nenhum arquivo enviado" });
+      }
+
+      const { documentType } = req.body;
+      if (!documentType) {
+        await fs.unlink(req.file.path);
+        return res.status(400).json({ error: "Tipo de documento é obrigatório" });
+      }
+
+      const document = await storage.addVehicleDocument({
+        vehicleId: req.params.id,
+        documentType: documentType as any,
+        originalFileName: req.file.originalname,
+        storedFileName: req.file.filename,
+        storagePath: req.file.path,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype,
+        uploadedBy: null,
+      });
+
+      io.emit("vehicleDocumentAdded", document);
+      
+      res.status(201).json(document);
+    } catch (error) {
+      console.error("Erro ao fazer upload de documento:", error);
+      if (req.file) {
+        await fs.unlink(req.file.path).catch(() => {});
+      }
+      res.status(500).json({ error: "Erro ao fazer upload de documento" });
+    }
+  });
+
+  // GET /api/vehicles/:id/documents/:docId/download - Download de documento
+  app.get("/api/vehicles/:id/documents/:docId/download", async (req, res) => {
+    try {
+      const document = await storage.getVehicleDocument(req.params.docId);
+      
+      if (!document || document.vehicleId !== req.params.id) {
+        return res.status(404).json({ error: "Documento não encontrado" });
+      }
+
+      if (!existsSync(document.storagePath)) {
+        return res.status(404).json({ error: "Arquivo não encontrado no servidor" });
+      }
+
+      res.setHeader("Content-Type", document.mimeType);
+      res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(document.originalFileName)}"`);
+      
+      const fileStream = require("fs").createReadStream(document.storagePath);
+      fileStream.pipe(res);
+    } catch (error) {
+      console.error("Erro ao fazer download de documento:", error);
+      res.status(500).json({ error: "Erro ao fazer download de documento" });
+    }
+  });
+
+  // DELETE /api/vehicles/:id/documents/:docId - Deletar documento
+  app.delete("/api/vehicles/:id/documents/:docId", async (req, res) => {
+    try {
+      const document = await storage.getVehicleDocument(req.params.docId);
+      
+      if (!document || document.vehicleId !== req.params.id) {
+        return res.status(404).json({ error: "Documento não encontrado" });
+      }
+
+      await storage.deleteVehicleDocument(req.params.docId);
+      
+      if (existsSync(document.storagePath)) {
+        await fs.unlink(document.storagePath);
+      }
+
+      io.emit("vehicleDocumentDeleted", req.params.docId);
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error("Erro ao deletar documento:", error);
+      res.status(500).json({ error: "Erro ao deletar documento" });
     }
   });
 

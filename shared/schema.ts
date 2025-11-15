@@ -175,6 +175,39 @@ export const insertVehicleCostSchema = createInsertSchema(vehicleCosts).omit({
 export type InsertVehicleCost = z.infer<typeof insertVehicleCostSchema>;
 export type VehicleCost = typeof vehicleCosts.$inferSelect;
 
+// Document types enum
+export const documentTypeEnum = pgEnum("document_type", [
+  "CRLV",
+  "Nota Fiscal",
+  "Laudo Cautelar",
+  "Contrato de Compra",
+  "Transferência"
+]);
+
+// Vehicle documents table
+export const vehicleDocuments = pgTable("vehicle_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vehicleId: varchar("vehicle_id")
+    .notNull()
+    .references(() => vehicles.id, { onDelete: "cascade" }),
+  documentType: documentTypeEnum("document_type").notNull(),
+  originalFileName: text("original_file_name").notNull(),
+  storedFileName: text("stored_file_name").notNull(),
+  storagePath: text("storage_path").notNull(),
+  fileSize: integer("file_size").notNull(), // in bytes
+  mimeType: text("mime_type").notNull().default("application/pdf"),
+  uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
+  uploadedBy: varchar("uploaded_by").references(() => users.id),
+});
+
+export const insertVehicleDocumentSchema = createInsertSchema(vehicleDocuments).omit({
+  id: true,
+  uploadedAt: true,
+});
+
+export type InsertVehicleDocument = z.infer<typeof insertVehicleDocumentSchema>;
+export type VehicleDocument = typeof vehicleDocuments.$inferSelect;
+
 // Store observations table
 export const storeObservations = pgTable("store_observations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

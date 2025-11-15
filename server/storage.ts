@@ -13,6 +13,8 @@ import {
   type InsertStoreObservation,
   type CompanySettings,
   type InsertCompanySettings,
+  type VehicleDocument,
+  type InsertVehicleDocument,
   users,
   vehicles,
   vehicleImages,
@@ -20,6 +22,7 @@ import {
   vehicleCosts,
   storeObservations,
   companySettings,
+  vehicleDocuments,
 } from "@shared/schema";
 import { normalizeChecklistData } from "@shared/checklistUtils";
 import { db } from "./db";
@@ -55,6 +58,11 @@ export interface IStorage {
   createStoreObservation(observation: InsertStoreObservation): Promise<StoreObservation>;
   updateStoreObservation(id: string, updates: Partial<InsertStoreObservation>): Promise<StoreObservation | undefined>;
   deleteStoreObservation(id: string): Promise<boolean>;
+  
+  getVehicleDocuments(vehicleId: string): Promise<VehicleDocument[]>;
+  addVehicleDocument(document: InsertVehicleDocument): Promise<VehicleDocument>;
+  getVehicleDocument(id: string): Promise<VehicleDocument | undefined>;
+  deleteVehicleDocument(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -269,6 +277,30 @@ export class DatabaseStorage implements IStorage {
       const result = await db.insert(companySettings).values({ ...settings, updatedAt: new Date() }).returning();
       return result[0];
     }
+  }
+
+  // Vehicle Documents
+  async getVehicleDocuments(vehicleId: string): Promise<VehicleDocument[]> {
+    const result = await db.select()
+      .from(vehicleDocuments)
+      .where(eq(vehicleDocuments.vehicleId, vehicleId))
+      .orderBy(desc(vehicleDocuments.uploadedAt));
+    return result;
+  }
+
+  async addVehicleDocument(document: InsertVehicleDocument): Promise<VehicleDocument> {
+    const result = await db.insert(vehicleDocuments).values(document).returning();
+    return result[0];
+  }
+
+  async getVehicleDocument(id: string): Promise<VehicleDocument | undefined> {
+    const result = await db.select().from(vehicleDocuments).where(eq(vehicleDocuments.id, id));
+    return result[0];
+  }
+
+  async deleteVehicleDocument(id: string): Promise<boolean> {
+    const result = await db.delete(vehicleDocuments).where(eq(vehicleDocuments.id, id)).returning();
+    return result.length > 0;
   }
 }
 
