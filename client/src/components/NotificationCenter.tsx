@@ -11,9 +11,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { checklistItems, getChecklistStats, normalizeChecklistData, hasChecklistStarted } from "@shared/checklistUtils";
+import { useSettings } from "@/hooks/use-settings";
 
 export function NotificationCenter() {
   const [open, setOpen] = useState(false);
+  const { settings } = useSettings();
 
   const { data: vehicles = [] } = useQuery<any[]>({
     queryKey: ["/api/vehicles"],
@@ -57,11 +59,19 @@ export function NotificationCenter() {
 
   const pendingObservations = observations.filter((obs: any) => obs.status === "Pendente");
   
-  // Contar total de veículos com problemas de checklist
-  const totalVehiclesWithChecklistIssues = vehiclesWithoutChecklist.length + vehiclesWithPendingChecklist.length;
+  // Aplicar filtros baseado nas configurações
+  const showChecklistAlerts = settings.readyForSaleAlerts;
+  const showTaskAlerts = settings.taskAlerts;
   
-  // Badge mostra número total de alertas (veículos + observações)
-  const totalNotifications = totalVehiclesWithChecklistIssues + pendingObservations.length;
+  // Total de problemas reais (independente de estarem habilitados)
+  const actualChecklistIssues = vehiclesWithoutChecklist.length + vehiclesWithPendingChecklist.length;
+  const actualObservationIssues = pendingObservations.length;
+  
+  // Problemas exibidos (filtrados pelas configurações)
+  const totalVehiclesWithChecklistIssues = showChecklistAlerts ? actualChecklistIssues : 0;
+  const displayedObservations = showTaskAlerts ? actualObservationIssues : 0;
+  
+  const totalNotifications = totalVehiclesWithChecklistIssues + displayedObservations;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -87,7 +97,10 @@ export function NotificationCenter() {
           <h3 className="font-semibold text-lg">Centro de Notificações</h3>
           <p className="text-sm text-muted-foreground">
             {totalNotifications === 0 
-              ? "Tudo em dia!" 
+              ? (actualChecklistIssues > 0 || actualObservationIssues > 0 
+                  ? "Alertas desabilitados nas configurações" 
+                  : "Tudo em dia!"
+                )
               : `${totalNotifications} ${totalNotifications === 1 ? 'categoria com pendências' : 'categorias com pendências'}`
             }
           </p>
@@ -95,7 +108,7 @@ export function NotificationCenter() {
 
         <ScrollArea className="h-[400px]">
           <div className="p-4 space-y-4">
-            {vehiclesWithoutChecklist.length > 0 && (
+            {showChecklistAlerts && vehiclesWithoutChecklist.length > 0 && (
               <>
                 <div className="space-y-3">
                   <div className="flex items-start gap-3">
@@ -130,7 +143,7 @@ export function NotificationCenter() {
               </>
             )}
 
-            {checklistPending > 0 && (
+            {showChecklistAlerts && checklistPending > 0 && (
               <>
                 <div className="space-y-3">
                   <div className="flex items-start gap-3">
@@ -166,7 +179,7 @@ export function NotificationCenter() {
               </>
             )}
 
-            {vehiclesWithoutChecklist.length === 0 && checklistPending === 0 && (
+            {showChecklistAlerts && vehiclesWithoutChecklist.length === 0 && checklistPending === 0 && (
               <>
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-green-500/10">
@@ -183,7 +196,7 @@ export function NotificationCenter() {
               </>
             )}
 
-            {pendingObservations.length > 0 ? (
+            {showTaskAlerts && pendingObservations.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/10">
@@ -215,7 +228,9 @@ export function NotificationCenter() {
                   )}
                 </div>
               </div>
-            ) : (
+            )}
+
+            {showTaskAlerts && pendingObservations.length === 0 && (
               <div className="flex items-start gap-3">
                 <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-green-500/10">
                   <CheckCircle2 className="h-4 w-4 text-green-600" />
@@ -229,7 +244,7 @@ export function NotificationCenter() {
               </div>
             )}
 
-            {totalNotifications === 0 && (
+            {totalNotifications === 0 && actualChecklistIssues === 0 && actualObservationIssues === 0 && (
               <>
                 <Separator />
                 <div className="text-center py-8">

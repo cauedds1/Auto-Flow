@@ -14,6 +14,8 @@ import Notes from "@/pages/Notes";
 import Checklists from "@/pages/Checklists";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
+import { useSettings } from "@/hooks/use-settings";
+import { useEffect } from "react";
 
 function Router() {
   return (
@@ -32,6 +34,16 @@ function Router() {
 }
 
 export default function App() {
+  const { settings } = useSettings();
+  
+  useEffect(() => {
+    if (settings.darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [settings.darkMode]);
+
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",

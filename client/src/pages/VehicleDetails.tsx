@@ -569,7 +569,7 @@ export default function VehicleDetails() {
                 return {
                   id: h.id,
                   status: statusText,
-                  date: new Date(h.movedAt).toLocaleString('pt-BR'),
+                  date: new Date(h.movedAt).toLocaleDateString('pt-BR'),
                   user: h.userId,
                   notes: h.notes,
                   toStatus: h.toStatus,
