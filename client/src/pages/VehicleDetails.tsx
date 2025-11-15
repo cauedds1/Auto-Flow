@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VehicleDetailsHeader } from "@/components/VehicleDetailsHeader";
 import { VehicleTimeline } from "@/components/VehicleTimeline";
 import { VehicleCosts } from "@/components/VehicleCosts";
+import { VehicleDocuments } from "@/components/VehicleDocuments";
 import { AdGenerator } from "@/components/AdGenerator";
 import { EditVehicleDialog } from "@/components/EditVehicleDialog";
 import { AddCostDialog } from "@/components/AddCostDialog";
@@ -686,64 +687,7 @@ export default function VehicleDetails() {
           </TabsContent>
 
           <TabsContent value="documentos">
-            <div className="grid gap-6 md:grid-cols-2">
-              <Card className="p-6">
-                <div className="flex items-center mb-4">
-                  <FileText className="h-5 w-5 text-primary mr-2" />
-                  <h3 className="text-lg font-semibold text-card-foreground">
-                    Documentos do Veículo
-                  </h3>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 border rounded hover:bg-accent">
-                    <div>
-                      <p className="font-medium">CRLV</p>
-                      <p className="text-sm text-muted-foreground">Certificado de Registro</p>
-                    </div>
-                    <Checkbox />
-                  </div>
-                  <div className="flex items-center justify-between p-3 border rounded hover:bg-accent">
-                    <div>
-                      <p className="font-medium">Nota Fiscal</p>
-                      <p className="text-sm text-muted-foreground">Compra do veículo</p>
-                    </div>
-                    <Checkbox />
-                  </div>
-                  <div className="flex items-center justify-between p-3 border rounded hover:bg-accent">
-                    <div>
-                      <p className="font-medium">Laudo Cautelar</p>
-                      <p className="text-sm text-muted-foreground">Vistoria técnica</p>
-                    </div>
-                    <Checkbox />
-                  </div>
-                </div>
-              </Card>
-              
-              <Card className="p-6">
-                <div className="flex items-center mb-4">
-                  <FileText className="h-5 w-5 text-primary mr-2" />
-                  <h3 className="text-lg font-semibold text-card-foreground">
-                    Contratos
-                  </h3>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 border rounded hover:bg-accent">
-                    <div>
-                      <p className="font-medium">Contrato de Compra</p>
-                      <p className="text-sm text-muted-foreground">Aquisição do veículo</p>
-                    </div>
-                    <Checkbox />
-                  </div>
-                  <div className="flex items-center justify-between p-3 border rounded hover:bg-accent">
-                    <div>
-                      <p className="font-medium">Transferência</p>
-                      <p className="text-sm text-muted-foreground">Documentação de transferência</p>
-                    </div>
-                    <Checkbox />
-                  </div>
-                </div>
-              </Card>
-            </div>
+            <VehicleDocuments vehicleId={vehicleId} />
           </TabsContent>
 
           <TabsContent value="checklist">
