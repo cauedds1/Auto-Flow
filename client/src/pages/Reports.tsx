@@ -16,7 +16,8 @@ export default function Reports() {
   const [dateFilter, setDateFilter] = useState<string>("last-3-months");
   const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
   const [checklistDialogType, setChecklistDialogType] = useState<"completed" | "missing">("missing");
-  const [observationsTab, setObservationsTab] = useState<"pending" | "resolved">("pending");
+  const [observationsDialogOpen, setObservationsDialogOpen] = useState(false);
+  const [observationsDialogType, setObservationsDialogType] = useState<"pending" | "resolved">("pending");
 
   const { data: vehicles = [], isLoading: isLoadingVehicles } = useQuery<any[]>({
     queryKey: ["/api/vehicles"],
@@ -505,112 +506,124 @@ export default function Reports() {
                 Observações Gerais da Loja
               </h3>
               <div className="space-y-4">
-                {observations.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-sm text-muted-foreground">Nenhuma observação registrada</p>
-                  </div>
-                ) : (
-                  <>
-                    {(() => {
-                      const pendingObs = observations.filter((o: any) => o.status === "Pendente");
-                      const resolvedObs = observations.filter((o: any) => o.status === "Resolvido");
-                      const totalObs = observations.length;
+                {(() => {
+                  const pendingObs = observations.filter((o: any) => o.status === "Pendente");
+                  const resolvedObs = observations.filter((o: any) => o.status === "Resolvido");
+                  const totalObs = observations.length;
 
-                      return (
-                        <>
-                          <div className="grid grid-cols-2 gap-4">
-                            <button
-                              onClick={() => setObservationsTab("pending")}
-                              className={`text-center p-4 rounded-lg transition-all ${
-                                observationsTab === "pending"
-                                  ? "bg-yellow-500/20 ring-2 ring-yellow-500"
-                                  : "bg-yellow-500/10 hover:bg-yellow-500/15"
-                              }`}
-                            >
-                              <p className="text-2xl font-bold text-yellow-600">{pendingObs.length}</p>
-                              <p className="text-xs text-muted-foreground mt-1">Pendentes</p>
-                            </button>
-                            <button
-                              onClick={() => setObservationsTab("resolved")}
-                              className={`text-center p-4 rounded-lg transition-all ${
-                                observationsTab === "resolved"
-                                  ? "bg-green-500/20 ring-2 ring-green-500"
-                                  : "bg-green-500/10 hover:bg-green-500/15"
-                              }`}
-                            >
-                              <p className="text-2xl font-bold text-green-600">{resolvedObs.length}</p>
-                              <p className="text-xs text-muted-foreground mt-1">Resolvidas</p>
-                            </button>
-                          </div>
-                          <div className="pt-4">
-                            <p className="text-sm text-muted-foreground">Total de Observações</p>
-                            <p className="text-3xl font-bold">{totalObs}</p>
-                          </div>
-                          
-                          <div className="mt-6 space-y-3">
-                            {observationsTab === "pending" ? (
-                              pendingObs.length > 0 ? (
-                                pendingObs.map((obs: any) => (
-                                  <div key={obs.id} className="p-4 border border-yellow-500/20 rounded-lg bg-yellow-500/5">
-                                    <div className="flex items-start justify-between gap-2">
-                                      <div className="flex-1">
-                                        <p className="font-medium text-card-foreground">{obs.title}</p>
-                                        {obs.description && (
-                                          <p className="text-sm text-muted-foreground mt-1">{obs.description}</p>
-                                        )}
-                                        <div className="flex items-center gap-2 mt-2">
-                                          <span className="text-xs px-2 py-1 rounded bg-yellow-500/20 text-yellow-700">
-                                            {obs.category || "Sem categoria"}
-                                          </span>
-                                          <span className="text-xs text-muted-foreground">
-                                            {new Date(obs.createdAt).toLocaleDateString('pt-BR')}
-                                          </span>
-                                        </div>
-                                      </div>
-                                      <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0" />
-                                    </div>
-                                  </div>
-                                ))
+                  return (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Button
+                          variant="outline"
+                          className="h-auto p-3 flex flex-col items-center gap-1 bg-yellow-500/10 hover:bg-yellow-500/20 border-yellow-600/20"
+                          onClick={() => {
+                            setObservationsDialogType("pending");
+                            setObservationsDialogOpen(true);
+                          }}
+                        >
+                          <p className="text-xs text-muted-foreground">Pendentes</p>
+                          <p className="text-2xl font-bold text-yellow-600">{pendingObs.length}</p>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="h-auto p-3 flex flex-col items-center gap-1 bg-green-500/10 hover:bg-green-500/20 border-green-600/20"
+                          onClick={() => {
+                            setObservationsDialogType("resolved");
+                            setObservationsDialogOpen(true);
+                          }}
+                        >
+                          <p className="text-xs text-muted-foreground">Resolvidas</p>
+                          <p className="text-2xl font-bold text-green-600">{resolvedObs.length}</p>
+                        </Button>
+                      </div>
+                      <div className="pt-2">
+                        <p className="text-sm text-muted-foreground">Total de Observações</p>
+                        <p className="text-3xl font-bold">{totalObs}</p>
+                      </div>
+
+                      {/* Dialog para mostrar lista de observações */}
+                      <Dialog open={observationsDialogOpen} onOpenChange={setObservationsDialogOpen}>
+                        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2">
+                              {observationsDialogType === "pending" ? (
+                                <>
+                                  <AlertCircle className="h-5 w-5 text-yellow-600" />
+                                  Observações Pendentes ({pendingObs.length})
+                                </>
                               ) : (
-                                <p className="text-center text-sm text-muted-foreground py-8">
-                                  Nenhuma observação pendente
-                                </p>
+                                <>
+                                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                  Observações Resolvidas ({resolvedObs.length})
+                                </>
+                              )}
+                            </DialogTitle>
+                          </DialogHeader>
+                          <div className="mt-4">
+                            {observationsDialogType === "pending" ? (
+                              pendingObs.length > 0 ? (
+                                <div className="space-y-2">
+                                  {pendingObs.map((obs: any) => (
+                                    <div key={obs.id} className="p-4 border border-yellow-500/20 rounded-lg bg-yellow-500/5 hover:bg-yellow-500/10">
+                                      <div className="flex items-start justify-between gap-2">
+                                        <div className="flex-1">
+                                          <p className="font-medium text-card-foreground">{obs.title}</p>
+                                          {obs.description && (
+                                            <p className="text-sm text-muted-foreground mt-1">{obs.description}</p>
+                                          )}
+                                          <div className="flex items-center gap-2 mt-2">
+                                            <span className="text-xs px-2 py-1 rounded bg-yellow-500/20 text-yellow-700">
+                                              {obs.category || "Sem categoria"}
+                                            </span>
+                                            <span className="text-xs text-muted-foreground">
+                                              {new Date(obs.createdAt).toLocaleDateString('pt-BR')}
+                                            </span>
+                                          </div>
+                                        </div>
+                                        <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0" />
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-center text-muted-foreground py-8">Nenhuma observação pendente</p>
                               )
                             ) : (
                               resolvedObs.length > 0 ? (
-                                resolvedObs.map((obs: any) => (
-                                  <div key={obs.id} className="p-4 border border-green-500/20 rounded-lg bg-green-500/5">
-                                    <div className="flex items-start justify-between gap-2">
-                                      <div className="flex-1">
-                                        <p className="font-medium text-card-foreground">{obs.title}</p>
-                                        {obs.description && (
-                                          <p className="text-sm text-muted-foreground mt-1">{obs.description}</p>
-                                        )}
-                                        <div className="flex items-center gap-2 mt-2">
-                                          <span className="text-xs px-2 py-1 rounded bg-green-500/20 text-green-700">
-                                            {obs.category || "Sem categoria"}
-                                          </span>
-                                          <span className="text-xs text-muted-foreground">
-                                            {new Date(obs.createdAt).toLocaleDateString('pt-BR')}
-                                          </span>
+                                <div className="space-y-2">
+                                  {resolvedObs.map((obs: any) => (
+                                    <div key={obs.id} className="p-4 border border-green-500/20 rounded-lg bg-green-500/5 hover:bg-green-500/10">
+                                      <div className="flex items-start justify-between gap-2">
+                                        <div className="flex-1">
+                                          <p className="font-medium text-card-foreground">{obs.title}</p>
+                                          {obs.description && (
+                                            <p className="text-sm text-muted-foreground mt-1">{obs.description}</p>
+                                          )}
+                                          <div className="flex items-center gap-2 mt-2">
+                                            <span className="text-xs px-2 py-1 rounded bg-green-500/20 text-green-700">
+                                              {obs.category || "Sem categoria"}
+                                            </span>
+                                            <span className="text-xs text-muted-foreground">
+                                              {new Date(obs.createdAt).toLocaleDateString('pt-BR')}
+                                            </span>
+                                          </div>
                                         </div>
+                                        <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
                                       </div>
-                                      <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
                                     </div>
-                                  </div>
-                                ))
+                                  ))}
+                                </div>
                               ) : (
-                                <p className="text-center text-sm text-muted-foreground py-8">
-                                  Nenhuma observação resolvida
-                                </p>
+                                <p className="text-center text-muted-foreground py-8">Nenhuma observação resolvida</p>
                               )
                             )}
                           </div>
-                        </>
-                      );
-                    })()}
-                  </>
-                )}
+                        </DialogContent>
+                      </Dialog>
+                    </>
+                  );
+                })()}
               </div>
             </Card>
           </div>
