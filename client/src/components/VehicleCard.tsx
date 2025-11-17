@@ -91,7 +91,7 @@ export function VehicleCard({
           <div className="mt-2 text-sm">
             <span className="text-muted-foreground">Preço:</span>
             <span className="ml-1 text-card-foreground font-bold text-green-600">
-              R$ {(salePrice / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              R$ {Number(salePrice).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
         )}

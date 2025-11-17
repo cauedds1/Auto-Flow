@@ -258,7 +258,7 @@ export default function Vehicles() {
                         {new Intl.NumberFormat('pt-BR', {
                           style: 'currency',
                           currency: 'BRL'
-                        }).format(vehicle.salePrice / 100)}
+                        }).format(Number(vehicle.salePrice))}
                       </p>
                     )}
                   </div>
