@@ -407,6 +407,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DELETE /api/vehicles/:id/costs/:costId - Excluir custo
+  app.delete("/api/vehicles/:id/costs/:costId", async (req, res) => {
+    try {
+      const success = await storage.deleteCost(req.params.costId);
+
+      if (!success) {
+        return res.status(404).json({ error: "Custo não encontrado" });
+      }
+
+      io.emit("cost:deleted", { vehicleId: req.params.id, costId: req.params.costId });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Erro ao excluir custo:", error);
+      res.status(500).json({ error: "Erro ao excluir custo" });
+    }
+  });
+
   // POST /api/vehicles/:id/images - Adicionar imagens ao veículo
   app.post("/api/vehicles/:id/images", upload.array("images", 8), async (req, res) => {
     try {

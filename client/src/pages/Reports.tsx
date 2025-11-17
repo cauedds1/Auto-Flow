@@ -13,7 +13,7 @@ import { checklistItems, getChecklistStats, normalizeChecklistData, hasChecklist
 const COLORS = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
 
 export default function Reports() {
-  const [dateFilter, setDateFilter] = useState<string>("last-3-months");
+  const [dateFilter, setDateFilter] = useState<string>("current-month");
   const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
   const [checklistDialogType, setChecklistDialogType] = useState<"completed" | "missing">("missing");
   const [observationsDialogOpen, setObservationsDialogOpen] = useState(false);

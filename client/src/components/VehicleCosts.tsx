@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Pencil } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -24,9 +24,10 @@ interface VehicleCostsProps {
   costs: Cost[];
   addCostTrigger?: React.ReactNode;
   onEditCost?: (cost: Cost) => void;
+  onDeleteCost?: (costId: string) => void;
 }
 
-export function VehicleCosts({ costs, addCostTrigger, onEditCost }: VehicleCostsProps) {
+export function VehicleCosts({ costs, addCostTrigger, onEditCost, onDeleteCost }: VehicleCostsProps) {
   const total = costs.reduce((sum, cost) => sum + cost.value, 0);
 
   const formatCurrency = (value: number) =>
@@ -62,7 +63,7 @@ export function VehicleCosts({ costs, addCostTrigger, onEditCost }: VehicleCosts
               <TableHead>Data</TableHead>
               <TableHead>Pagamento</TableHead>
               <TableHead className="text-right">Valor</TableHead>
-              {onEditCost && <TableHead className="w-[80px]">Ações</TableHead>}
+              {(onEditCost || onDeleteCost) && <TableHead className="w-[120px]">Ações</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -83,16 +84,31 @@ export function VehicleCosts({ costs, addCostTrigger, onEditCost }: VehicleCosts
                 <TableCell className="text-right font-semibold tabular-nums">
                   {formatCurrency(cost.value)}
                 </TableCell>
-                {onEditCost && (
+                {(onEditCost || onDeleteCost) && (
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onEditCost(cost)}
-                      title="Editar custo"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      {onEditCost && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onEditCost(cost)}
+                          title="Editar custo"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {onDeleteCost && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onDeleteCost(cost.id)}
+                          title="Excluir custo"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 )}
               </TableRow>

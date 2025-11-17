@@ -21,6 +21,16 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Save, Upload, Trash2, FileText, CheckSquare, MessageSquare, CheckCheck } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { type ChecklistData, type ChecklistItem, getChecklistItemStatus, getChecklistCategories, getChecklistItems, type VehicleType } from "@shared/checklistUtils";
 
 export default function VehicleDetails() {
@@ -41,6 +51,7 @@ export default function VehicleDetails() {
   const [isChangeLocationOpen, setIsChangeLocationOpen] = useState(false);
   const [selectedCost, setSelectedCost] = useState<any>(null);
   const [isEditCostOpen, setIsEditCostOpen] = useState(false);
+  const [costToDelete, setCostToDelete] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [checklist, setChecklist] = useState<ChecklistData>({
@@ -327,6 +338,34 @@ export default function VehicleDetails() {
   const handleEditCost = (cost: any) => {
     setSelectedCost(cost);
     setIsEditCostOpen(true);
+  };
+
+  const handleDeleteCost = async () => {
+    if (!costToDelete) return;
+    
+    try {
+      const response = await fetch(`/api/vehicles/${vehicleId}/costs/${costToDelete}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Erro ao excluir custo");
+
+      toast({
+        title: "Custo excluído!",
+        description: "O custo foi removido com sucesso.",
+      });
+
+      queryClient.invalidateQueries({ queryKey: [`/api/vehicles/${vehicleId}/costs`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/vehicles/${vehicleId}`] });
+      
+      setCostToDelete(null);
+    } catch (error) {
+      toast({
+        title: "Erro ao excluir custo",
+        description: "Ocorreu um erro. Tente novamente.",
+        variant: "destructive",
+      });
+    }
   };
 
   if (isLoading) {
@@ -643,6 +682,7 @@ export default function VehicleDetails() {
                   });
                 }
               }}
+              onDeleteCost={(costId) => setCostToDelete(costId)}
             />
           </TabsContent>
 
@@ -797,6 +837,23 @@ export default function VehicleDetails() {
         currentObservation={observationDialog.currentObservation}
         onSave={saveObservation}
       />
+
+      <AlertDialog open={!!costToDelete} onOpenChange={(open) => !open && setCostToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este custo? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteCost} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
