@@ -89,11 +89,11 @@ export default function Reports() {
     
     filteredCosts.forEach((cost) => {
       const current = categoryMap.get(cost.category) || 0;
-      categoryMap.set(cost.category, current + cost.value);
+      categoryMap.set(cost.category, current + Number(cost.value));
     });
 
     return Array.from(categoryMap.entries())
-      .map(([name, value]) => ({ name, value: Number(value) }))
+      .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
   };
 
