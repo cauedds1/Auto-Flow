@@ -76,7 +76,7 @@ export const vehicles = pgTable("vehicles", {
   physicalLocationDetail: text("physical_location_detail"),
   kmOdometer: integer("km_odometer"),
   fuelType: text("fuel_type"),
-  salePrice: integer("sale_price"), // stored in cents
+  salePrice: numeric("sale_price", { precision: 10, scale: 2 }), // stored in reais
   mainImageUrl: text("main_image_url"),
   features: text("features").array(),
   notes: text("notes"),
