@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { storage } from "./storage";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 import multer from "multer";
 import { z } from "zod";
 import { insertVehicleSchema, insertVehicleCostSchema, insertStoreObservationSchema, updateVehicleHistorySchema } from "@shared/schema";
@@ -50,6 +51,9 @@ async function getDefaultCompanyId(): Promise<string | null> {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Setup authentication - Replit Auth
+  await setupAuth(app);
+
   const httpServer = createServer(app);
   const io = new SocketIOServer(httpServer, {
     cors: {
@@ -63,6 +67,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     socket.on("disconnect", () => {
       console.log("Cliente desconectado do WebSocket");
     });
+  });
+
+  // Auth endpoint - Get current user
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
   });
 
   // GET /api/vehicles - Listar todos os veículos (FILTRADO POR EMPRESA)
@@ -988,9 +1004,20 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
   });
 
   // POST /api/companies - Criar nova empresa
-  app.post("/api/companies", async (req, res) => {
+  // POST /api/companies - Criar empresa e vincular ao usuário autenticado
+  app.post("/api/companies", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      
+      // Criar a empresa
       const company = await storage.createCompany(req.body);
+      
+      // Vincular empresa ao usuário autenticado
+      await storage.upsertUser({
+        id: userId,
+        empresaId: company.id,
+      });
+      
       io.emit("company:created", company);
       res.status(201).json(company);
     } catch (error) {

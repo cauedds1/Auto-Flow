@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { Button } from "@/components/ui/button";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { ModeToggle } from "@/components/ModeToggle";
 import Dashboard from "@/pages/Dashboard";
@@ -15,11 +16,13 @@ import Notes from "@/pages/Notes";
 import Checklists from "@/pages/Checklists";
 import Settings from "@/pages/Settings";
 import FirstTimeSetup from "@/pages/FirstTimeSetup";
+import Landing from "@/pages/Landing";
 import NotFound from "@/pages/not-found";
 import { useSettings } from "@/hooks/use-settings";
 import { useEffect } from "react";
 import { useCurrentCompany } from "@/hooks/use-company";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 
 function MainAppRouter() {
   return (
@@ -42,20 +45,30 @@ import { CompanyThemeProvider, useCompanyTheme } from "@/components/CompanyTheme
 
 function AppContent() {
   const [location, setLocation] = useLocation();
-  const { hasCompany, isLoading } = useCurrentCompany();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { hasCompany, isLoading: companyLoading } = useCurrentCompany();
   const { logoUrl, companyName } = useCompanyTheme();
 
+  const isLoading = authLoading || companyLoading;
+
+  // Redirect logic: not authenticated → landing, authenticated without company → setup
   useEffect(() => {
-    if (!isLoading && !hasCompany && location !== "/setup") {
+    if (!authLoading && isAuthenticated && !companyLoading && !hasCompany && location !== "/setup") {
       setLocation("/setup");
     }
-  }, [hasCompany, isLoading, location, setLocation]);
+  }, [hasCompany, isAuthenticated, authLoading, companyLoading, location, setLocation]);
 
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
   };
 
+  // Show landing page if not authenticated or still loading auth
+  if (authLoading || !isAuthenticated) {
+    return <Landing />;
+  }
+
+  // Show onboarding if authenticated but no company setup
   if (location === "/setup") {
     return <FirstTimeSetup />;
   }
@@ -75,6 +88,14 @@ function AppContent() {
                 alt={companyName} 
                 className="h-10 w-auto object-contain"
               />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => window.location.href = '/api/logout'}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                Sair
+              </Button>
             </div>
           </header>
           <main className="flex-1 overflow-auto">

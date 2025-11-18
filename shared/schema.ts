@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, pgEnum, json, numeric } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, pgEnum, json, numeric, index, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -20,8 +20,6 @@ export type ChecklistItem = z.infer<typeof checklistItemSchema>;
 export type VehicleChecklist = z.infer<typeof vehicleChecklistSchema>;
 
 // Enums
-export const userRoleEnum = pgEnum("user_role", ["DONO", "EQUIPE"]);
-
 export const vehicleTypeEnum = pgEnum("vehicle_type", ["Carro", "Moto"]);
 
 export const vehicleStatusEnum = pgEnum("vehicle_status", [
@@ -44,22 +42,32 @@ export const storeObservationStatusEnum = pgEnum("store_observation_status", [
   "Resolvido"
 ]);
 
-// Users table
+// Session storage table - Replit Auth
+// (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
+
+// Users table - Replit Auth with multi-tenant support
+// (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  empresaId: varchar("empresa_id"),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
-  role: userRoleEnum("role").notNull().default("EQUIPE"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  empresaId: varchar("empresa_id"), // Multi-tenant: user belongs to one company
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const insertUserSchema = createInsertSchema(users).omit({
-  id: true,
-  createdAt: true,
-});
-
-export type InsertUser = z.infer<typeof insertUserSchema>;
+export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 
 // Vehicles table

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "./use-toast";
+import { useAuth } from "./useAuth";
 
 export interface Company {
   id: string;
@@ -65,6 +66,8 @@ export function useCreateCompany() {
       return response.json();
     },
     onSuccess: () => {
+      // Invalidar user e empresas para recarregar após vínculo
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       queryClient.invalidateQueries({ queryKey: ["/api/companies"] });
       toast({
         title: "Empresa criada!",
@@ -116,13 +119,25 @@ export function useUpdateCompany(id: string) {
 }
 
 export function useCurrentCompany() {
-  const { data: companies, isLoading } = useCompanies();
+  const { user, isLoading: authLoading } = useAuth();
   
-  const currentCompany = companies?.[0];
+  // Buscar empresa do usuário autenticado
+  const { data: company, isLoading: companyLoading } = useQuery<Company>({
+    queryKey: [`/api/companies/${user?.empresaId}`],
+    queryFn: async () => {
+      if (!user?.empresaId) throw new Error("Usuário sem empresa vinculada");
+      const response = await fetch(`/api/companies/${user.empresaId}`);
+      if (!response.ok) {
+        throw new Error("Erro ao carregar empresa");
+      }
+      return response.json();
+    },
+    enabled: !!user?.empresaId,
+  });
   
   return {
-    company: currentCompany,
-    isLoading,
-    hasCompany: !!currentCompany,
+    company,
+    isLoading: authLoading || companyLoading,
+    hasCompany: !!company,
   };
 }
