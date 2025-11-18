@@ -174,9 +174,9 @@ export function NotificationCenter() {
         <Button 
           variant="ghost" 
           size="icon" 
-          className="relative h-9 w-9 hover:bg-transparent"
+          className="relative h-9 w-9"
         >
-          <Bell className={`h-5 w-5 text-white ${urgentCount > 0 ? 'animate-shake-bell' : ''}`} />
+          <Bell className={`h-5 w-5 text-foreground ${urgentCount > 0 ? 'animate-shake-bell' : ''}`} />
           {totalNotifications > 0 && (
             <Badge 
               variant="destructive" 

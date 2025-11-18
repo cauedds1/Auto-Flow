@@ -15,7 +15,7 @@ import {
 
 const menuItems = [
   {
-    title: "Painel de Controle",
+    title: "Dashboard",
     url: "/",
     icon: LayoutDashboard,
   },

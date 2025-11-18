@@ -167,7 +167,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/vehicles - Criar novo veículo
   app.post("/api/vehicles", upload.array("images", 8), async (req, res) => {
     try {
+      const empresaId = await getDefaultCompanyId();
+      if (!empresaId) {
+        return res.status(400).json({ error: "Nenhuma empresa cadastrada no sistema" });
+      }
+
       const vehicleData = insertVehicleSchema.parse({
+        empresaId,
         brand: req.body.brand,
         model: req.body.model,
         year: parseInt(req.body.year),
@@ -204,7 +210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       io.emit("vehicle:created", vehicle);
 
-      const updatedVehicle = await storage.getVehicle(vehicle.id);
+      const updatedVehicle = await storage.getVehicle(vehicle.id, empresaId);
       const images = await storage.getVehicleImages(vehicle.id);
       
       res.json({ ...updatedVehicle, images });

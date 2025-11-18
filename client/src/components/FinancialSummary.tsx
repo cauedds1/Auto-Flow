@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign } from "lucide-react";
+import { DollarSign, TrendingUp, Package, Wallet } from "lucide-react";
 
 export function FinancialSummary() {
   const { data: vehicles = [] } = useQuery<any[]>({
@@ -8,10 +8,18 @@ export function FinancialSummary() {
   });
 
   const readyForSale = vehicles.filter(v => v.status === "Pronto para Venda");
+  const sold = vehicles.filter(v => v.status === "Vendido");
 
-  // Calcular valor total do estoque (apenas veículos com preço definido e prontos para venda)
   const inventoryValue = readyForSale.reduce((sum, v) => {
     return sum + Number(v.salePrice || 0);
+  }, 0);
+
+  const totalRevenue = sold.reduce((sum, v) => {
+    return sum + Number(v.salePrice || 0);
+  }, 0);
+
+  const totalCosts = vehicles.reduce((sum, v) => {
+    return sum + Number(v.totalCost || 0);
   }, 0);
 
   const formatCurrency = (value: number) => {
@@ -21,23 +29,69 @@ export function FinancialSummary() {
     }).format(value);
   };
 
+  const stats = [
+    {
+      label: "Valor do Estoque",
+      value: formatCurrency(inventoryValue),
+      subtext: `${readyForSale.length} ${readyForSale.length === 1 ? 'veículo' : 'veículos'} disponíveis`,
+      icon: Package,
+      gradient: "from-blue-500 to-cyan-600",
+      bgGradient: "from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20",
+    },
+    {
+      label: "Receita Total",
+      value: formatCurrency(totalRevenue),
+      subtext: `${sold.length} ${sold.length === 1 ? 'venda' : 'vendas'} realizadas`,
+      icon: TrendingUp,
+      gradient: "from-green-500 to-emerald-600",
+      bgGradient: "from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20",
+    },
+    {
+      label: "Custos Totais",
+      value: formatCurrency(totalCosts),
+      subtext: "Investimentos em veículos",
+      icon: Wallet,
+      gradient: "from-orange-500 to-amber-600",
+      bgGradient: "from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20",
+    },
+  ];
+
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Valor do Estoque
-          </CardTitle>
-          <DollarSign className="h-4 w-4 text-green-500" />
+    <Card className="overflow-hidden border-none shadow-lg">
+      <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10 border-b">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-gradient-to-br from-primary to-secondary">
+            <DollarSign className="h-5 w-5 text-white" />
+          </div>
+          <CardTitle className="text-xl font-bold">Resumo Financeiro</CardTitle>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">
-          {formatCurrency(inventoryValue)}
+      <CardContent className="p-6">
+        <div className="space-y-4">
+          {stats.map((stat, index) => (
+            <div 
+              key={index}
+              className={`relative overflow-hidden rounded-xl p-4 bg-gradient-to-br ${stat.bgGradient} border border-border/50 hover:shadow-md transition-all duration-300`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-muted-foreground mb-1">
+                    {stat.label}
+                  </p>
+                  <p className={`text-2xl font-bold bg-gradient-to-br ${stat.gradient} bg-clip-text text-transparent`}>
+                    {stat.value}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {stat.subtext}
+                  </p>
+                </div>
+                <div className={`p-3 rounded-xl bg-gradient-to-br ${stat.gradient} shadow-md`}>
+                  <stat.icon className="h-6 w-6 text-white" />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
-        <p className="text-xs text-muted-foreground mt-1">
-          {readyForSale.length} {readyForSale.length === 1 ? 'veículo pronto' : 'veículos prontos'}
-        </p>
       </CardContent>
     </Card>
   );
