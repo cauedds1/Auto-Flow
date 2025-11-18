@@ -5,6 +5,7 @@ VeloStock is a universal multi-tenant SaaS platform for complete vehicle dealers
 
 ## Recent Major Changes (November 2024)
 - **Multi-tenant architecture**: Full data isolation by empresaId across all tables
+- **Production-ready authentication**: Dual authentication system with native email/password and Google OAuth
 - **Custom branding**: Each company can configure logo and color theme
 - **AI integration**: OpenAI-powered price suggestions and ad generation (3 styles)
 - **Intelligent alerts**: Automated notifications for stuck vehicles, missing photos/prices
@@ -12,6 +13,7 @@ VeloStock is a universal multi-tenant SaaS platform for complete vehicle dealers
 - **First-time setup**: Professional onboarding flow with company configuration
 - **FIPE integration**: Proxy API for real-time vehicle pricing data
 - **VeloStock branding**: Unique geometric logo and identity (purple/green color scheme)
+- **Public landing page**: Professional marketing page with authentication options
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -34,12 +36,21 @@ Preferred communication style: Simple, everyday language.
 ### Backend
 - **Technology Stack**: Node.js with Express.js, TypeScript, PostgreSQL (via Neon serverless driver), Drizzle ORM.
 - **API Design**: RESTful API using JSON, session-based authentication, Multer for file uploads, WebSocket for real-time updates.
+- **Authentication**: Dual authentication system:
+  - **Native auth**: Email/password with bcrypt hashing, passport-local strategy
+  - **Google OAuth**: Replit Auth integration with OIDC, automatic user creation
+  - Session management with PostgreSQL store, 7-day TTL, environment-aware secure cookies
+  - Protected API routes with isAuthenticated middleware
+  - User-company linking via empresaId for multi-tenant isolation
 - **Database Schema**: Multi-tenant tables with empresaId isolation:
   - companies (14 fields: branding, contact, locations, alert config)
-  - users, vehicles, vehicle_images, vehicle_history, vehicle_costs, vehicle_documents, store_observations
+  - users (with passwordHash, authProvider, empresaId), vehicles, vehicle_images, vehicle_history, vehicle_costs, vehicle_documents, store_observations
 - **Key Entities**: Vehicle status pipeline (Entrada, Preparação Mecânica, Preparação Estética, Documentação, Pronto para Venda, Vendido, Arquivado), cost categories (Mecânica, Estética, Documentação, Outros).
 - **Architectural Decisions**: 
   - Multi-tenant with empresaId filtering on all queries
+  - Dual authentication: native (bcrypt + passport-local) and Google OAuth (Replit Auth + OIDC)
+  - Public routes: Landing (/), Login (/login), Signup (/signup), Google OAuth (/api/auth/google)
+  - Protected routes: All app pages and API endpoints require authentication via isAuthenticated middleware
   - Separation of vehicle status and physical location (localizacaoFisica required except for Vendido/Arquivado)
   - Editable vehicle history with complete location tracking
   - Direct image storage in database (Base64)

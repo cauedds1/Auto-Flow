@@ -17,6 +17,8 @@ import Checklists from "@/pages/Checklists";
 import Settings from "@/pages/Settings";
 import FirstTimeSetup from "@/pages/FirstTimeSetup";
 import Landing from "@/pages/Landing";
+import Login from "@/pages/Login";
+import Signup from "@/pages/Signup";
 import NotFound from "@/pages/not-found";
 import { useSettings } from "@/hooks/use-settings";
 import { useEffect } from "react";
@@ -62,6 +64,14 @@ function AppContent() {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
   };
+
+  // Show login/signup pages without auth check
+  if (location === "/login") {
+    return <Login />;
+  }
+  if (location === "/signup") {
+    return <Signup />;
+  }
 
   // Show landing page if not authenticated or still loading auth
   if (authLoading || !isAuthenticated) {

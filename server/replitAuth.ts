@@ -7,6 +7,7 @@ import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
+import { setupLocalAuth } from "./localAuth";
 
 const getOidcConfig = memoize(
   async () => {
@@ -27,6 +28,10 @@ export function getSession() {
     ttl: sessionTtl,
     tableName: "sessions",
   });
+  
+  // Only use secure cookies in production (HTTPS)
+  const isProduction = process.env.NODE_ENV === "production";
+  
   return session({
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
@@ -34,7 +39,8 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
       maxAge: sessionTtl,
     },
   });
@@ -46,8 +52,19 @@ function updateUserSession(
 ) {
   user.claims = tokens.claims();
   user.access_token = tokens.access_token;
-  user.refresh_token = tokens.refresh_token;
+  
+  // Only update refresh_token if a new one is provided
+  // (subsequent OAuth refreshes may not return a new refresh_token)
+  if (tokens.refresh_token) {
+    user.refresh_token = tokens.refresh_token;
+  }
+  
   user.expires_at = user.claims?.exp;
+  
+  // Normalize claims: ensure 'id' field exists for consistency with local auth
+  if (user.claims && !user.claims.id) {
+    user.claims.id = user.claims.sub;
+  }
 }
 
 async function upsertUser(
@@ -59,6 +76,7 @@ async function upsertUser(
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
+    authProvider: "google",
   });
 }
 
@@ -67,6 +85,9 @@ export async function setupAuth(app: Express) {
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
+
+  // Setup local authentication (email/password)
+  setupLocalAuth();
 
   const config = await getOidcConfig();
 
@@ -104,7 +125,66 @@ export async function setupAuth(app: Express) {
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
-  app.get("/api/login", (req, res, next) => {
+  // Local signup endpoint
+  app.post("/api/auth/signup", (req, res, next) => {
+    // Server-side validation
+    const { email, password, firstName, lastName } = req.body;
+    
+    if (!email || !password || !firstName || !lastName) {
+      return res.status(400).json({ message: "Todos os campos são obrigatórios" });
+    }
+    
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: "Email inválido" });
+    }
+    
+    if (password.length < 6) {
+      return res.status(400).json({ message: "A senha deve ter pelo menos 6 caracteres" });
+    }
+    
+    passport.authenticate("local-signup", (err: any, user: any, info: any) => {
+      if (err) {
+        return res.status(500).json({ message: "Erro ao criar conta" });
+      }
+      if (!user) {
+        return res.status(400).json({ message: info?.message || "Erro ao criar conta" });
+      }
+      req.logIn(user, (err) => {
+        if (err) {
+          return res.status(500).json({ message: "Erro ao fazer login" });
+        }
+        return res.status(201).json({ success: true });
+      });
+    })(req, res, next);
+  });
+
+  // Local login endpoint
+  app.post("/api/auth/login", (req, res, next) => {
+    // Server-side validation
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email e senha são obrigatórios" });
+    }
+    
+    passport.authenticate("local-login", (err: any, user: any, info: any) => {
+      if (err) {
+        return res.status(500).json({ message: "Erro ao fazer login" });
+      }
+      if (!user) {
+        return res.status(401).json({ message: info?.message || "Email ou senha incorretos" });
+      }
+      req.logIn(user, (err) => {
+        if (err) {
+          return res.status(500).json({ message: "Erro ao fazer login" });
+        }
+        return res.json({ success: true });
+      });
+    })(req, res, next);
+  });
+
+  // Google OAuth endpoint
+  app.get("/api/auth/google", (req, res, next) => {
     ensureStrategy(req.hostname);
     passport.authenticate(`replitauth:${req.hostname}`, {
       prompt: "login consent",
@@ -135,10 +215,16 @@ export async function setupAuth(app: Express) {
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
 
-  if (!req.isAuthenticated() || !user.expires_at) {
+  if (!req.isAuthenticated() || !user) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
+  // Local auth doesn't have expires_at, so skip token refresh check
+  if (!user.expires_at) {
+    return next();
+  }
+
+  // OAuth token refresh logic
   const now = Math.floor(Date.now() / 1000);
   if (now <= user.expires_at) {
     return next();

@@ -37,9 +37,11 @@ export interface IStorage {
   createCompany(company: InsertCompany): Promise<Company>;
   updateCompany(id: string, updates: Partial<InsertCompany>): Promise<Company | undefined>;
   
-  // User operations - Replit Auth
+  // User operations - Replit Auth + Local Auth
   getUser(id: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  createLocalUser(user: UpsertUser): Promise<User>;
   
   getAllVehicles(empresaId?: string): Promise<Vehicle[]>;
   getVehicle(id: string, empresaId?: string): Promise<Vehicle | undefined>;
@@ -107,6 +109,11 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.email, email));
+    return result[0];
+  }
+
   async upsertUser(userData: UpsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
@@ -119,6 +126,11 @@ export class DatabaseStorage implements IStorage {
         },
       })
       .returning();
+    return user;
+  }
+
+  async createLocalUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db.insert(users).values(userData).returning();
     return user;
   }
 
