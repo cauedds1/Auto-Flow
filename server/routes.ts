@@ -1239,13 +1239,31 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
     }
   });
 
-  // PATCH /api/companies/:id - Atualizar empresa
-  app.patch("/api/companies/:id", async (req, res) => {
+  // PATCH /api/companies/:id - Atualizar empresa (COM VALIDAÇÃO DE PROPRIETÁRIO)
+  app.patch("/api/companies/:id", isAuthenticated, requireProprietario, async (req: any, res) => {
     try {
+      const userCompany = await getUserWithCompany(req);
+      if (!userCompany) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+
+      // Validar que o usuário está editando sua própria empresa
+      if (req.params.id !== userCompany.empresaId) {
+        return res.status(403).json({ error: "Acesso negado. Você não pode editar outra empresa." });
+      }
+
       const company = await storage.updateCompany(req.params.id, req.body);
       if (!company) {
         return res.status(404).json({ error: "Empresa não encontrada" });
       }
+      
+      console.log("[COMPANY] Empresa atualizada:", {
+        id: company.id,
+        nome: company.nomeFantasia,
+        corPrimaria: company.corPrimaria,
+        corSecundaria: company.corSecundaria,
+      });
+      
       io.emit("company:updated", company);
       res.json(company);
     } catch (error) {
