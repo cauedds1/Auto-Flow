@@ -102,15 +102,10 @@ export async function setupAuth(app: Express) {
   // Setup local authentication (email/password)
   setupLocalAuth();
 
-  let config;
-  try {
-    config = await getOidcConfig();
-  } catch (error) {
-    console.warn("[AUTH] Failed to configure Google OAuth. Only local authentication will be available.");
-    console.warn("[AUTH] Error details:", error);
-    // Continue without Google OAuth - local auth will still work
-    config = null;
-  }
+  // Disable Google OAuth to avoid DNS/network issues during initialization
+  // Only local email/password authentication is enabled
+  const config = null;
+  console.log("[AUTH] Google OAuth disabled. Using email/password authentication only.");
 
   const verify: VerifyFunction = async (
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
