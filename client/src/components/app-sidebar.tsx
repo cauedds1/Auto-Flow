@@ -61,7 +61,7 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-sidebar-border p-6">
         <div className="flex items-center gap-3">
           <img 
-            src="/velostock-logo.png" 
+            src="/velostock-logo.svg" 
             alt="VeloStock" 
             className="h-14 w-auto object-contain"
           />

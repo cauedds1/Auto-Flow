@@ -38,7 +38,7 @@ export default function FirstTimeSetup() {
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
             <img 
-              src="/velostock-logo.png" 
+              src="/velostock-logo.svg" 
               alt="VeloStock" 
               className="h-28 w-auto mx-auto"
             />

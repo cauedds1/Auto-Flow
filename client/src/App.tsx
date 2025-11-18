@@ -68,7 +68,7 @@ function AppContent() {
             <div className="flex items-center gap-3">
               <NotificationCenter />
               <img 
-                src={logoUrl || "/velostock-logo.png"} 
+                src={logoUrl || "/velostock-logo.svg"} 
                 alt={companyName} 
                 className="h-10 w-auto object-contain"
               />
