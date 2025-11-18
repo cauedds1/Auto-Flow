@@ -104,6 +104,20 @@ export async function setupAuth(app: Express) {
   // Keep track of registered strategies
   const registeredStrategies = new Set<string>();
 
+  // Helper function to get valid domain from request
+  const getValidDomain = (req: any): string => {
+    // Try request hostname first
+    if (req.hostname && req.hostname !== "localhost" && req.hostname !== "hello") {
+      return req.hostname;
+    }
+    // Fallback to REPLIT_DOMAINS environment variable
+    if (process.env.REPLIT_DOMAINS) {
+      return process.env.REPLIT_DOMAINS;
+    }
+    // Last resort fallback
+    return req.get("host") || "localhost:5000";
+  };
+
   // Helper function to ensure strategy exists for a domain
   const ensureStrategy = (domain: string) => {
     const strategyName = `replitauth:${domain}`;
@@ -185,27 +199,30 @@ export async function setupAuth(app: Express) {
 
   // Google OAuth endpoint
   app.get("/api/auth/google", (req, res, next) => {
-    ensureStrategy(req.hostname);
-    passport.authenticate(`replitauth:${req.hostname}`, {
+    const domain = getValidDomain(req);
+    ensureStrategy(domain);
+    passport.authenticate(`replitauth:${domain}`, {
       prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
     })(req, res, next);
   });
 
   app.get("/api/callback", (req, res, next) => {
-    ensureStrategy(req.hostname);
-    passport.authenticate(`replitauth:${req.hostname}`, {
+    const domain = getValidDomain(req);
+    ensureStrategy(domain);
+    passport.authenticate(`replitauth:${domain}`, {
       successReturnToOrRedirect: "/",
       failureRedirect: "/api/login",
     })(req, res, next);
   });
 
   app.get("/api/logout", (req, res) => {
+    const domain = getValidDomain(req);
     req.logout(() => {
       res.redirect(
         client.buildEndSessionUrl(config, {
           client_id: process.env.REPL_ID!,
-          post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
+          post_logout_redirect_uri: `${req.protocol}://${domain}`,
         }).href
       );
     });
