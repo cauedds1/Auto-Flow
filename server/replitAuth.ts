@@ -106,16 +106,31 @@ export async function setupAuth(app: Express) {
 
   // Helper function to get valid domain from request
   const getValidDomain = (req: any): string => {
-    // Try request hostname first
+    // 1. Try x-forwarded-host header (common in production/proxy environments)
+    const forwardedHost = req.get("x-forwarded-host");
+    if (forwardedHost && forwardedHost !== "localhost" && forwardedHost !== "hello") {
+      return forwardedHost;
+    }
+    
+    // 2. Try host header
+    const hostHeader = req.get("host");
+    if (hostHeader && hostHeader !== "localhost" && hostHeader !== "hello" && !hostHeader.includes("localhost:")) {
+      return hostHeader.replace(/:\d+$/, ""); // Remove port if present
+    }
+    
+    // 3. Try request hostname
     if (req.hostname && req.hostname !== "localhost" && req.hostname !== "hello") {
       return req.hostname;
     }
-    // Fallback to REPLIT_DOMAINS environment variable
+    
+    // 4. Fallback to REPLIT_DOMAINS environment variable
     if (process.env.REPLIT_DOMAINS) {
       return process.env.REPLIT_DOMAINS;
     }
-    // Last resort fallback
-    return req.get("host") || "localhost:5000";
+    
+    // 5. Last resort fallback
+    console.warn("[AUTH] Could not determine valid domain, using fallback");
+    return "localhost:5000";
   };
 
   // Helper function to ensure strategy exists for a domain
