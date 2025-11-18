@@ -214,10 +214,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const images = await storage.getVehicleImages(vehicle.id);
       
       res.json({ ...updatedVehicle, images });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao criar veículo:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });
+      }
+      if (error.code === '23505' && error.constraint === 'vehicles_plate_unique') {
+        return res.status(409).json({ error: "Já existe um veículo cadastrado com essa placa" });
       }
       res.status(500).json({ error: "Erro ao criar veículo" });
     }
