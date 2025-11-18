@@ -39,7 +39,7 @@ Preferred communication style: Simple, everyday language.
 - **Authentication**: Dual authentication system:
   - **Native auth**: Email/password with bcrypt hashing, passport-local strategy
   - **Google OAuth**: Replit Auth integration with OIDC, automatic user creation
-  - Session management with PostgreSQL store, 7-day TTL, environment-aware secure cookies
+  - Session management with PostgreSQL store, 30-day TTL (persistent login), environment-aware secure cookies
   - Protected API routes with isAuthenticated middleware
   - User-company linking via empresaId for multi-tenant isolation
 - **Database Schema**: Multi-tenant tables with empresaId isolation:
