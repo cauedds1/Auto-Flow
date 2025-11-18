@@ -44,10 +44,15 @@ const documentUpload = multer({
   }
 });
 
-// Helper para obter empresa padrão (primeira empresa do sistema)
-async function getDefaultCompanyId(): Promise<string | null> {
-  const companies = await storage.getAllCompanies();
-  return companies.length > 0 ? companies[0].id : null;
+// Helper para validar autenticação e obter empresaId do usuário logado
+async function getUserWithCompany(req: any): Promise<{ userId: string; empresaId: string } | null> {
+  const userId = req.user?.claims?.id || req.user?.claims?.sub;
+  if (!userId) return null;
+  
+  const user = await storage.getUser(userId);
+  if (!user?.empresaId) return null;
+  
+  return { userId, empresaId: user.empresaId };
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -93,10 +98,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/vehicles - Listar todos os veículos (FILTRADO POR EMPRESA)
-  app.get("/api/vehicles", async (req, res) => {
+  app.get("/api/vehicles", isAuthenticated, async (req: any, res) => {
     try {
-      const empresaId = await getDefaultCompanyId();
-      const vehicles = await storage.getAllVehicles(empresaId || undefined);
+      const userId = req.user.claims?.id || req.user.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ error: "Usuário não autenticado" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user?.empresaId) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+
+      const vehicles = await storage.getAllVehicles(user.empresaId);
       
       // Otimização: buscar TODO o histórico de uma vez ao invés de N queries
       const allHistory = await storage.getAllVehicleHistory();
@@ -171,12 +185,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/vehicles/:id - Buscar veículo por ID (COM VALIDAÇÃO DE EMPRESA)
-  app.get("/api/vehicles/:id", async (req, res) => {
+  app.get("/api/vehicles/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const empresaId = await getDefaultCompanyId();
-      if (!empresaId) {
-        return res.status(403).json({ error: "Empresa não configurada" });
+      const userId = req.user.claims?.id || req.user.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ error: "Usuário não autenticado" });
       }
+
+      const user = await storage.getUser(userId);
+      if (!user?.empresaId) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+      
+      const empresaId = user.empresaId;
 
       const vehicle = await storage.getVehicle(req.params.id, empresaId);
       if (!vehicle) {
@@ -192,12 +213,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/vehicles - Criar novo veículo
-  app.post("/api/vehicles", upload.array("images", 8), async (req, res) => {
+  app.post("/api/vehicles", isAuthenticated, upload.array("images", 8), async (req: any, res) => {
     try {
-      const empresaId = await getDefaultCompanyId();
-      if (!empresaId) {
-        return res.status(400).json({ error: "Nenhuma empresa cadastrada no sistema" });
+      const userId = req.user.claims?.id || req.user.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ error: "Usuário não autenticado" });
       }
+
+      const user = await storage.getUser(userId);
+      if (!user?.empresaId) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+      
+      const empresaId = user.empresaId;
 
       const vehicleData = insertVehicleSchema.parse({
         empresaId,
@@ -254,12 +282,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PATCH /api/vehicles/:id - Atualizar veículo (COM VALIDAÇÃO DE EMPRESA)
-  app.patch("/api/vehicles/:id", async (req, res) => {
+  app.patch("/api/vehicles/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const empresaId = await getDefaultCompanyId();
-      if (!empresaId) {
-        return res.status(403).json({ error: "Empresa não configurada" });
+      const userId = req.user.claims?.id || req.user.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ error: "Usuário não autenticado" });
       }
+
+      const user = await storage.getUser(userId);
+      if (!user?.empresaId) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+      
+      const empresaId = user.empresaId;
 
       const existingVehicle = await storage.getVehicle(req.params.id, empresaId);
       if (!existingVehicle) {
@@ -320,12 +355,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/vehicles/:id - Deletar veículo (COM VALIDAÇÃO DE EMPRESA)
-  app.delete("/api/vehicles/:id", async (req, res) => {
+  app.delete("/api/vehicles/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const empresaId = await getDefaultCompanyId();
-      if (!empresaId) {
-        return res.status(403).json({ error: "Empresa não configurada" });
+      const userId = req.user.claims?.id || req.user.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ error: "Usuário não autenticado" });
       }
+
+      const user = await storage.getUser(userId);
+      if (!user?.empresaId) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+      
+      const empresaId = user.empresaId;
 
       // Validar que o veículo pertence à empresa antes de deletar
       const vehicle = await storage.getVehicle(req.params.id, empresaId);
@@ -348,8 +390,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/vehicles/:id/history - Buscar histórico do veículo
-  app.get("/api/vehicles/:id/history", async (req, res) => {
+  app.get("/api/vehicles/:id/history", isAuthenticated, async (req: any, res) => {
     try {
+      const userCompany = await getUserWithCompany(req);
+      if (!userCompany) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+
+      // Validar que o veículo pertence à empresa
+      const vehicle = await storage.getVehicle(req.params.id, userCompany.empresaId);
+      if (!vehicle) {
+        return res.status(404).json({ error: "Veículo não encontrado ou não pertence a esta empresa" });
+      }
+
       const history = await storage.getVehicleHistory(req.params.id);
       res.json(history);
     } catch (error) {
@@ -359,8 +412,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PUT /api/vehicles/:vehicleId/history/:historyId - Atualizar entrada do histórico
-  app.put("/api/vehicles/:vehicleId/history/:historyId", async (req, res) => {
+  app.put("/api/vehicles/:vehicleId/history/:historyId", isAuthenticated, async (req: any, res) => {
     try {
+      const userCompany = await getUserWithCompany(req);
+      if (!userCompany) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+
+      // Validar que o veículo pertence à empresa
+      const vehicle = await storage.getVehicle(req.params.vehicleId, userCompany.empresaId);
+      if (!vehicle) {
+        return res.status(404).json({ error: "Veículo não encontrado ou não pertence a esta empresa" });
+      }
+
       const historyEntry = await storage.getHistoryEntry(req.params.historyId);
       
       if (!historyEntry) {
@@ -405,20 +469,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/costs/all - Buscar todos os custos (para análise geral)
-  app.get("/api/costs/all", async (req, res) => {
+  // GET /api/costs/all - Buscar todos os custos (para análise geral) - DESATIVADA POR SEGURANÇA
+  // Esta rota deve filtrar por empresaId se for reativada
+  /* app.get("/api/costs/all", isAuthenticated, async (req: any, res) => {
     try {
+      const userCompany = await getUserWithCompany(req);
+      if (!userCompany) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+
+      // TODO: Implementar storage.getAllCosts com filtro por empresaId
       const costs = await storage.getAllCosts();
       res.json(costs);
     } catch (error) {
       console.error("Erro ao buscar todos os custos:", error);
       res.status(500).json({ error: "Erro ao buscar todos os custos" });
     }
-  });
+  }); */
 
   // GET /api/vehicles/:id/costs - Buscar custos do veículo
-  app.get("/api/vehicles/:id/costs", async (req, res) => {
+  app.get("/api/vehicles/:id/costs", isAuthenticated, async (req: any, res) => {
     try {
+      const userCompany = await getUserWithCompany(req);
+      if (!userCompany) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+
+      // Validar que o veículo pertence à empresa
+      const vehicle = await storage.getVehicle(req.params.id, userCompany.empresaId);
+      if (!vehicle) {
+        return res.status(404).json({ error: "Veículo não encontrado ou não pertence a esta empresa" });
+      }
+
       const costs = await storage.getVehicleCosts(req.params.id);
       res.json(costs);
     } catch (error) {
@@ -428,8 +510,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/vehicles/:id/costs - Adicionar custo
-  app.post("/api/vehicles/:id/costs", async (req, res) => {
+  app.post("/api/vehicles/:id/costs", isAuthenticated, async (req: any, res) => {
     try {
+      const userCompany = await getUserWithCompany(req);
+      if (!userCompany) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+
+      // Validar que o veículo pertence à empresa
+      const vehicle = await storage.getVehicle(req.params.id, userCompany.empresaId);
+      if (!vehicle) {
+        return res.status(404).json({ error: "Veículo não encontrado ou não pertence a esta empresa" });
+      }
+
       const costData = insertVehicleCostSchema.parse({
         vehicleId: req.params.id,
         category: req.body.category,
@@ -455,8 +548,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PATCH /api/vehicles/:id/costs/:costId - Atualizar custo
-  app.patch("/api/vehicles/:id/costs/:costId", async (req, res) => {
+  app.patch("/api/vehicles/:id/costs/:costId", isAuthenticated, async (req: any, res) => {
     try {
+      const userCompany = await getUserWithCompany(req);
+      if (!userCompany) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+
+      // Validar que o veículo pertence à empresa
+      const vehicle = await storage.getVehicle(req.params.id, userCompany.empresaId);
+      if (!vehicle) {
+        return res.status(404).json({ error: "Veículo não encontrado ou não pertence a esta empresa" });
+      }
+
       const updates: Partial<any> = {};
       
       if (req.body.category !== undefined) updates.category = req.body.category;
@@ -484,8 +588,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/vehicles/:id/costs/:costId - Excluir custo
-  app.delete("/api/vehicles/:id/costs/:costId", async (req, res) => {
+  app.delete("/api/vehicles/:id/costs/:costId", isAuthenticated, async (req: any, res) => {
     try {
+      const userCompany = await getUserWithCompany(req);
+      if (!userCompany) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+
+      // Validar que o veículo pertence à empresa
+      const vehicle = await storage.getVehicle(req.params.id, userCompany.empresaId);
+      if (!vehicle) {
+        return res.status(404).json({ error: "Veículo não encontrado ou não pertence a esta empresa" });
+      }
+
       const success = await storage.deleteCost(req.params.costId);
 
       if (!success) {
@@ -502,11 +617,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/vehicles/:id/images - Adicionar imagens ao veículo
-  app.post("/api/vehicles/:id/images", upload.array("images", 8), async (req, res) => {
+  app.post("/api/vehicles/:id/images", isAuthenticated, upload.array("images", 8), async (req: any, res) => {
     try {
-      const vehicle = await storage.getVehicle(req.params.id);
+      const userCompany = await getUserWithCompany(req);
+      if (!userCompany) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+
+      // Validar que o veículo pertence à empresa
+      const vehicle = await storage.getVehicle(req.params.id, userCompany.empresaId);
       if (!vehicle) {
-        return res.status(404).json({ error: "Veículo não encontrado" });
+        return res.status(404).json({ error: "Veículo não encontrado ou não pertence a esta empresa" });
       }
 
       const files = req.files as Express.Multer.File[];
@@ -542,11 +663,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/vehicles/:id/images/:imageId - Remover imagem do veículo
-  app.delete("/api/vehicles/:id/images/:imageId", async (req, res) => {
+  app.delete("/api/vehicles/:id/images/:imageId", isAuthenticated, async (req: any, res) => {
     try {
-      const vehicle = await storage.getVehicle(req.params.id);
+      const userCompany = await getUserWithCompany(req);
+      if (!userCompany) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+
+      // Validar que o veículo pertence à empresa
+      const vehicle = await storage.getVehicle(req.params.id, userCompany.empresaId);
       if (!vehicle) {
-        return res.status(404).json({ error: "Veículo não encontrado" });
+        return res.status(404).json({ error: "Veículo não encontrado ou não pertence a esta empresa" });
       }
 
       const success = await storage.deleteVehicleImage(req.params.imageId);
@@ -564,9 +691,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       remainingImages = await storage.getVehicleImages(req.params.id);
       
-      const updatedVehicle = await storage.getVehicle(req.params.id);
+      // A vehicle já foi validada acima, então não precisa passar empresaId novamente
+      // mas vamos manter consistência
       if (remainingImages.length > 0) {
-        const stillHasCover = remainingImages.find(img => img.imageUrl === updatedVehicle?.mainImageUrl);
+        const stillHasCover = remainingImages.find(img => img.imageUrl === vehicle?.mainImageUrl);
         if (!stillHasCover) {
           await storage.updateVehicle(req.params.id, { mainImageUrl: remainingImages[0].imageUrl });
         }
@@ -584,10 +712,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/metrics - Métricas do dashboard (FILTRADO POR EMPRESA)
-  app.get("/api/metrics", async (req, res) => {
+  app.get("/api/metrics", isAuthenticated, async (req: any, res) => {
     try {
-      const empresaId = await getDefaultCompanyId();
-      const vehicles = await storage.getAllVehicles(empresaId || undefined);
+      const userId = req.user.claims?.id || req.user.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ error: "Usuário não autenticado" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user?.empresaId) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+
+      const vehicles = await storage.getAllVehicles(user.empresaId);
       
       const totalVehicles = vehicles.length;
       const readyForSale = vehicles.filter(v => v.status === "Pronto para Venda").length;
@@ -646,15 +783,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/vehicles/:id/generate-ad - Gerar anúncio com OpenAI
-  app.post("/api/vehicles/:id/generate-ad", async (req, res) => {
+  app.post("/api/vehicles/:id/generate-ad", isAuthenticated, async (req: any, res) => {
     try {
+      const userCompany = await getUserWithCompany(req);
+      if (!userCompany) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+
       if (!process.env.OPENAI_API_KEY) {
         return res.status(500).json({ error: "Chave da API OpenAI não configurada" });
       }
 
-      const vehicle = await storage.getVehicle(req.params.id);
+      // Validar que o veículo pertence à empresa
+      const vehicle = await storage.getVehicle(req.params.id, userCompany.empresaId);
       if (!vehicle) {
-        return res.status(404).json({ error: "Veículo não encontrado" });
+        return res.status(404).json({ error: "Veículo não encontrado ou não pertence a esta empresa" });
       }
 
       const openai = new OpenAI({
@@ -737,10 +880,19 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
   // Store Observations endpoints
 
   // GET /api/store-observations - Listar todas as observações da loja (FILTRADO POR EMPRESA)
-  app.get("/api/store-observations", async (req, res) => {
+  app.get("/api/store-observations", isAuthenticated, async (req: any, res) => {
     try {
-      const empresaId = await getDefaultCompanyId();
-      const observations = await storage.getAllStoreObservations(empresaId || undefined);
+      const userId = req.user.claims?.id || req.user.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ error: "Usuário não autenticado" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user?.empresaId) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+
+      const observations = await storage.getAllStoreObservations(user.empresaId);
       
       // Calcular dias pendentes para cada observação
       const observationsWithDays = observations.map((obs: any) => {
@@ -778,12 +930,19 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
   });
 
   // POST /api/store-observations - Criar nova observação
-  app.post("/api/store-observations", async (req, res) => {
+  app.post("/api/store-observations", isAuthenticated, async (req: any, res) => {
     try {
-      const empresaId = await getDefaultCompanyId();
-      if (!empresaId) {
-        return res.status(400).json({ error: "Nenhuma empresa cadastrada no sistema" });
+      const userId = req.user.claims?.id || req.user.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ error: "Usuário não autenticado" });
       }
+
+      const user = await storage.getUser(userId);
+      if (!user?.empresaId) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+      
+      const empresaId = user.empresaId;
 
       const observationData = insertStoreObservationSchema.parse({
         ...req.body,
@@ -869,11 +1028,17 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
   // Vehicle Documents endpoints
   
   // GET /api/vehicles/:id/documents - Listar documentos do veículo
-  app.get("/api/vehicles/:id/documents", async (req, res) => {
+  app.get("/api/vehicles/:id/documents", isAuthenticated, async (req: any, res) => {
     try {
-      const vehicle = await storage.getVehicle(req.params.id);
+      const userCompany = await getUserWithCompany(req);
+      if (!userCompany) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+
+      // Validar que o veículo pertence à empresa
+      const vehicle = await storage.getVehicle(req.params.id, userCompany.empresaId);
       if (!vehicle) {
-        return res.status(404).json({ error: "Veículo não encontrado" });
+        return res.status(404).json({ error: "Veículo não encontrado ou não pertence a esta empresa" });
       }
 
       const documents = await storage.getVehicleDocuments(req.params.id);
@@ -885,11 +1050,17 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
   });
 
   // POST /api/vehicles/:id/documents - Upload de documento
-  app.post("/api/vehicles/:id/documents", documentUpload.single("file"), async (req, res) => {
+  app.post("/api/vehicles/:id/documents", isAuthenticated, documentUpload.single("file"), async (req: any, res) => {
     try {
-      const vehicle = await storage.getVehicle(req.params.id);
+      const userCompany = await getUserWithCompany(req);
+      if (!userCompany) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+
+      // Validar que o veículo pertence à empresa
+      const vehicle = await storage.getVehicle(req.params.id, userCompany.empresaId);
       if (!vehicle) {
-        return res.status(404).json({ error: "Veículo não encontrado" });
+        return res.status(404).json({ error: "Veículo não encontrado ou não pertence a esta empresa" });
       }
 
       if (!req.file) {
@@ -926,8 +1097,19 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
   });
 
   // GET /api/vehicles/:id/documents/:docId/download - Download de documento
-  app.get("/api/vehicles/:id/documents/:docId/download", async (req, res) => {
+  app.get("/api/vehicles/:id/documents/:docId/download", isAuthenticated, async (req: any, res) => {
     try {
+      const userCompany = await getUserWithCompany(req);
+      if (!userCompany) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+
+      // Validar que o veículo pertence à empresa
+      const vehicle = await storage.getVehicle(req.params.id, userCompany.empresaId);
+      if (!vehicle) {
+        return res.status(404).json({ error: "Veículo não encontrado ou não pertence a esta empresa" });
+      }
+
       const document = await storage.getVehicleDocument(req.params.docId);
       
       if (!document || document.vehicleId !== req.params.id) {
@@ -962,8 +1144,19 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
   });
 
   // DELETE /api/vehicles/:id/documents/:docId - Deletar documento
-  app.delete("/api/vehicles/:id/documents/:docId", async (req, res) => {
+  app.delete("/api/vehicles/:id/documents/:docId", isAuthenticated, async (req: any, res) => {
     try {
+      const userCompany = await getUserWithCompany(req);
+      if (!userCompany) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+
+      // Validar que o veículo pertence à empresa
+      const vehicle = await storage.getVehicle(req.params.id, userCompany.empresaId);
+      if (!vehicle) {
+        return res.status(404).json({ error: "Veículo não encontrado ou não pertence a esta empresa" });
+      }
+
       const document = await storage.getVehicleDocument(req.params.docId);
       
       if (!document || document.vehicleId !== req.params.id) {
@@ -1018,14 +1211,20 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
   // POST /api/companies - Criar empresa e vincular ao usuário autenticado
   app.post("/api/companies", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.claims?.id || req.user.claims?.sub;
+      
+      // Buscar usuário atual
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
       
       // Criar a empresa
       const company = await storage.createCompany(req.body);
       
       // Vincular empresa ao usuário autenticado
       await storage.upsertUser({
-        id: userId,
+        ...user,
         empresaId: company.id,
       });
       
@@ -1153,15 +1352,21 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
   });
 
   // POST /api/vehicles/:id/suggest-price - Sugerir preço de venda com IA
-  app.post("/api/vehicles/:id/suggest-price", async (req, res) => {
+  app.post("/api/vehicles/:id/suggest-price", isAuthenticated, async (req: any, res) => {
+    const userCompany = await getUserWithCompany(req);
+    if (!userCompany) {
+      return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+    }
+
     if (!process.env.OPENAI_API_KEY) {
       return res.status(400).json({ error: "API key da OpenAI não configurada" });
     }
 
     try {
-      const vehicle = await storage.getVehicle(req.params.id);
+      // Validar que o veículo pertence à empresa
+      const vehicle = await storage.getVehicle(req.params.id, userCompany.empresaId);
       if (!vehicle) {
-        return res.status(404).json({ error: "Veículo não encontrado" });
+        return res.status(404).json({ error: "Veículo não encontrado ou não pertence a esta empresa" });
       }
 
       const costs = await storage.getVehicleCosts(req.params.id);
@@ -1206,16 +1411,22 @@ Retorne APENAS um JSON válido no formato:
     }
   });
 
-  // POST /api/vehicles/:id/generate-ad - Gerar anúncio com IA (3 estilos)
-  app.post("/api/vehicles/:id/generate-ad", async (req, res) => {
+  // POST /api/vehicles/:id/generate-ad - Gerar anúncio com IA (3 estilos) - DUPLICADA, REMOVER
+  app.post("/api/vehicles/:id/generate-ad-old", isAuthenticated, async (req: any, res) => {
+    const userCompany = await getUserWithCompany(req);
+    if (!userCompany) {
+      return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+    }
+
     if (!process.env.OPENAI_API_KEY) {
       return res.status(400).json({ error: "API key da OpenAI não configurada" });
     }
 
     try {
-      const vehicle = await storage.getVehicle(req.params.id);
+      // Validar que o veículo pertence à empresa
+      const vehicle = await storage.getVehicle(req.params.id, userCompany.empresaId);
       if (!vehicle) {
-        return res.status(404).json({ error: "Veículo não encontrado" });
+        return res.status(404).json({ error: "Veículo não encontrado ou não pertence a esta empresa" });
       }
 
       const { style } = req.body; // "economico", "completo", ou "urgente"

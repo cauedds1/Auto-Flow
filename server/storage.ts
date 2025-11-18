@@ -42,6 +42,8 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   createLocalUser(user: UpsertUser): Promise<User>;
+  updateUserVerificationCode(userId: string, code: string, expiry: Date): Promise<User | undefined>;
+  verifyUserEmail(userId: string): Promise<User | undefined>;
   
   getAllVehicles(empresaId?: string): Promise<Vehicle[]>;
   getVehicle(id: string, empresaId?: string): Promise<Vehicle | undefined>;
@@ -132,6 +134,31 @@ export class DatabaseStorage implements IStorage {
   async createLocalUser(userData: UpsertUser): Promise<User> {
     const [user] = await db.insert(users).values(userData).returning();
     return user;
+  }
+
+  async updateUserVerificationCode(userId: string, code: string, expiry: Date): Promise<User | undefined> {
+    const result = await db.update(users)
+      .set({
+        verificationCode: code,
+        verificationCodeExpiry: expiry,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return result[0];
+  }
+
+  async verifyUserEmail(userId: string): Promise<User | undefined> {
+    const result = await db.update(users)
+      .set({
+        emailVerified: "true",
+        verificationCode: null,
+        verificationCodeExpiry: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return result[0];
   }
 
   async getAllVehicles(empresaId?: string): Promise<Vehicle[]> {
