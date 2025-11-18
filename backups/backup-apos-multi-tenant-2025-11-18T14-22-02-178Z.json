@@ -1,0 +1,39 @@
+{
+  "timestamp": "2025-11-18T14:22:02.181Z",
+  "version": "1.0",
+  "data": {
+    "companies": [
+      {
+        "id": "05ac56e3-5390-415c-9405-16f0ec0c20df",
+        "nomeFantasia": "Capoeiras Automóveis",
+        "razaoSocial": "Capoeiras Automóveis LTDA",
+        "cnpj": null,
+        "endereco": null,
+        "telefone": null,
+        "telefone2": null,
+        "email": null,
+        "logoUrl": null,
+        "corPrimaria": "#dc2626",
+        "corSecundaria": "#000000",
+        "whatsappNumero": null,
+        "locaisComuns": [
+          "Matriz",
+          "Filial",
+          "Pátio Externo",
+          "Oficina"
+        ],
+        "alertaDiasParado": 7,
+        "createdAt": "2025-11-18T14:22:01.994Z",
+        "updatedAt": "2025-11-18T14:22:01.994Z"
+      }
+    ],
+    "users": [],
+    "vehicles": [],
+    "vehicleImages": [],
+    "vehicleHistory": [],
+    "vehicleCosts": [],
+    "vehicleDocuments": [],
+    "storeObservations": [],
+    "companySettings": []
+  }
+}

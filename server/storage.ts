@@ -15,6 +15,8 @@ import {
   type InsertCompanySettings,
   type VehicleDocument,
   type InsertVehicleDocument,
+  type Company,
+  type InsertCompany,
   users,
   vehicles,
   vehicleImages,
@@ -23,12 +25,18 @@ import {
   storeObservations,
   companySettings,
   vehicleDocuments,
+  companies,
 } from "@shared/schema";
 import { normalizeChecklistData } from "@shared/checklistUtils";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
 
 export interface IStorage {
+  getAllCompanies(): Promise<Company[]>;
+  getCompany(id: string): Promise<Company | undefined>;
+  createCompany(company: InsertCompany): Promise<Company>;
+  updateCompany(id: string, updates: Partial<InsertCompany>): Promise<Company | undefined>;
+  
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
@@ -67,6 +75,32 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  async getAllCompanies(): Promise<Company[]> {
+    return await db.select().from(companies).orderBy(desc(companies.createdAt));
+  }
+
+  async getCompany(id: string): Promise<Company | undefined> {
+    const result = await db.select().from(companies).where(eq(companies.id, id));
+    return result[0];
+  }
+
+  async createCompany(insertCompany: InsertCompany): Promise<Company> {
+    const result = await db.insert(companies).values(insertCompany as any).returning();
+    return result[0];
+  }
+
+  async updateCompany(id: string, updates: Partial<InsertCompany>): Promise<Company | undefined> {
+    const dataToUpdate: any = {
+      ...updates,
+      updatedAt: new Date()
+    };
+    const result = await db.update(companies)
+      .set(dataToUpdate)
+      .where(eq(companies.id, id))
+      .returning();
+    return result[0];
+  }
+
   async getUser(id: string): Promise<User | undefined> {
     const result = await db.select().from(users).where(eq(users.id, id));
     return result[0];

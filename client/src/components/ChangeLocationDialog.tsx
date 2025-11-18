@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
+import { useCurrentCompany } from "@/hooks/use-company";
 import { MapPin, CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -77,6 +78,8 @@ export function ChangeLocationDialog({
     }
   }, [open, currentStatus, currentPhysicalLocation, currentPhysicalLocationDetail]);
 
+  const { company } = useCurrentCompany();
+  
   const statusOptions = [
     "Entrada",
     "Em Reparos",
@@ -86,17 +89,26 @@ export function ChangeLocationDialog({
     "Arquivado",
   ];
 
+  const locaisComuns = company?.locaisComuns || ["Matriz", "Filial", "Pátio Externo", "Oficina"];
   const physicalLocationOptions = [
     { value: "__none__", label: "Não especificado" },
-    { value: "Pátio da Loja", label: "Pátio da Loja" },
-    { value: "Casa", label: "Casa" },
-    { value: "Oficina", label: "Oficina" },
-    { value: "Higienização", label: "Higienização" },
-    { value: "Outra Loja", label: "Outra Loja" },
+    ...locaisComuns.map(local => ({ value: local, label: local })),
   ];
+  
+  const isLocationRequired = formData.status !== "Vendido" && formData.status !== "Arquivado";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isLocationRequired && (!formData.physicalLocation || formData.physicalLocation === "__none__")) {
+      toast({
+        title: "Localização obrigatória",
+        description: `Para o status "${formData.status}", é obrigatório informar a localização física do veículo.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsSubmitting(true);
 
     try {
@@ -106,7 +118,6 @@ export function ChangeLocationDialog({
         moveDate: formData.date.toISOString(),
       };
 
-      // Convert __none__ to null, otherwise use the value
       if (formData.physicalLocation && formData.physicalLocation !== "__none__") {
         payload.physicalLocation = formData.physicalLocation;
         payload.physicalLocationDetail = formData.physicalLocationDetail.trim() || null;
@@ -197,12 +208,15 @@ export function ChangeLocationDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="physicalLocation">Localização Física (opcional)</Label>
+            <Label htmlFor="physicalLocation" className="flex items-center gap-2">
+              Localização Física
+              {isLocationRequired && <span className="text-destructive text-sm">*</span>}
+            </Label>
             <Select
               value={formData.physicalLocation}
               onValueChange={(value) => setFormData({ ...formData, physicalLocation: value, physicalLocationDetail: "" })}
             >
-              <SelectTrigger id="physicalLocation">
+              <SelectTrigger id="physicalLocation" className={isLocationRequired && formData.physicalLocation === "__none__" ? "border-destructive" : ""}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -213,6 +227,11 @@ export function ChangeLocationDialog({
                 ))}
               </SelectContent>
             </Select>
+            {isLocationRequired && (
+              <p className="text-xs text-muted-foreground">
+                * Obrigatório para este status
+              </p>
+            )}
           </div>
 
           {formData.physicalLocation && formData.physicalLocation !== "__none__" && (

@@ -9,6 +9,7 @@ import OpenAI from "openai";
 import path from "path";
 import fs from "fs/promises";
 import { existsSync, createReadStream } from "fs";
+import { createBackup, listBackups, getBackupPath } from "./backup";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -590,7 +591,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Pegar custos do veículo para contextualizar o valor
       const costs = await storage.getVehicleCosts(vehicle.id);
       const totalCosts = costs.reduce((sum, cost) => sum + Number(cost.value), 0);
-      const hasPriceSet = vehicle.salePrice && vehicle.salePrice > 0;
+      const hasPriceSet = vehicle.salePrice && Number(vehicle.salePrice) > 0;
 
       const prompt = `Você é um redator de publicidade EXPERT em vendas de carros para a "Capoeiras Automóveis", uma concessionária confiável e estabelecida. 
 
@@ -900,6 +901,274 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
     } catch (error) {
       console.error("Erro ao deletar documento:", error);
       res.status(500).json({ error: "Erro ao deletar documento" });
+    }
+  });
+
+  // GET /api/companies - Listar todas as empresas
+  app.get("/api/companies", async (req, res) => {
+    try {
+      const companies = await storage.getAllCompanies();
+      res.json(companies);
+    } catch (error) {
+      console.error("Erro ao listar empresas:", error);
+      res.status(500).json({ error: "Erro ao listar empresas" });
+    }
+  });
+
+  // GET /api/companies/:id - Obter empresa específica
+  app.get("/api/companies/:id", async (req, res) => {
+    try {
+      const company = await storage.getCompany(req.params.id);
+      if (!company) {
+        return res.status(404).json({ error: "Empresa não encontrada" });
+      }
+      res.json(company);
+    } catch (error) {
+      console.error("Erro ao buscar empresa:", error);
+      res.status(500).json({ error: "Erro ao buscar empresa" });
+    }
+  });
+
+  // POST /api/companies - Criar nova empresa
+  app.post("/api/companies", async (req, res) => {
+    try {
+      const company = await storage.createCompany(req.body);
+      io.emit("company:created", company);
+      res.status(201).json(company);
+    } catch (error) {
+      console.error("Erro ao criar empresa:", error);
+      res.status(500).json({ error: "Erro ao criar empresa" });
+    }
+  });
+
+  // PATCH /api/companies/:id - Atualizar empresa
+  app.patch("/api/companies/:id", async (req, res) => {
+    try {
+      const company = await storage.updateCompany(req.params.id, req.body);
+      if (!company) {
+        return res.status(404).json({ error: "Empresa não encontrada" });
+      }
+      io.emit("company:updated", company);
+      res.json(company);
+    } catch (error) {
+      console.error("Erro ao atualizar empresa:", error);
+      res.status(500).json({ error: "Erro ao atualizar empresa" });
+    }
+  });
+
+  // GET /api/backups - Listar todos os backups
+  app.get("/api/backups", async (req, res) => {
+    try {
+      const backups = await listBackups();
+      res.json(backups);
+    } catch (error) {
+      console.error("Erro ao listar backups:", error);
+      res.status(500).json({ error: "Erro ao listar backups" });
+    }
+  });
+
+  // POST /api/backups - Criar backup manual
+  app.post("/api/backups", async (req, res) => {
+    try {
+      const backupPath = await createBackup("manual");
+      res.json({ 
+        success: true, 
+        message: "Backup criado com sucesso",
+        path: backupPath 
+      });
+    } catch (error) {
+      console.error("Erro ao criar backup:", error);
+      res.status(500).json({ error: "Erro ao criar backup" });
+    }
+  });
+
+  // GET /api/backups/:filename/download - Download de backup
+  app.get("/api/backups/:filename/download", async (req, res) => {
+    try {
+      const backupPath = await getBackupPath(req.params.filename);
+      
+      if (!existsSync(backupPath)) {
+        return res.status(404).json({ error: "Backup não encontrado" });
+      }
+
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader("Content-Disposition", `attachment; filename="${req.params.filename}"`);
+      
+      const fileStream = createReadStream(backupPath);
+      fileStream.pipe(res);
+    } catch (error) {
+      console.error("Erro ao fazer download de backup:", error);
+      res.status(500).json({ error: "Erro ao fazer download de backup" });
+    }
+  });
+
+  // FIPE API Routes
+  const FIPE_BASE_URL = "https://parallelum.com.br/fipe/api/v1";
+
+  // GET /api/fipe/brands - Listar marcas
+  app.get("/api/fipe/brands", async (req, res) => {
+    try {
+      const response = await fetch(`${FIPE_BASE_URL}/carros/marcas`);
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Erro ao buscar marcas FIPE:", error);
+      res.status(500).json({ error: "Erro ao buscar marcas" });
+    }
+  });
+
+  // GET /api/fipe/brands/:brandId/models - Listar modelos por marca
+  app.get("/api/fipe/brands/:brandId/models", async (req, res) => {
+    try {
+      const { brandId } = req.params;
+      const response = await fetch(`${FIPE_BASE_URL}/carros/marcas/${brandId}/modelos`);
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Erro ao buscar modelos FIPE:", error);
+      res.status(500).json({ error: "Erro ao buscar modelos" });
+    }
+  });
+
+  // GET /api/fipe/brands/:brandId/models/:modelId/years - Listar anos por modelo
+  app.get("/api/fipe/brands/:brandId/models/:modelId/years", async (req, res) => {
+    try {
+      const { brandId, modelId } = req.params;
+      const response = await fetch(`${FIPE_BASE_URL}/carros/marcas/${brandId}/modelos/${modelId}/anos`);
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Erro ao buscar anos FIPE:", error);
+      res.status(500).json({ error: "Erro ao buscar anos" });
+    }
+  });
+
+  // GET /api/fipe/brands/:brandId/models/:modelId/years/:year/price - Consultar preço FIPE
+  app.get("/api/fipe/brands/:brandId/models/:modelId/years/:year/price", async (req, res) => {
+    try {
+      const { brandId, modelId, year } = req.params;
+      const response = await fetch(`${FIPE_BASE_URL}/carros/marcas/${brandId}/modelos/${modelId}/anos/${year}`);
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Erro ao consultar preço FIPE:", error);
+      res.status(500).json({ error: "Erro ao consultar preço" });
+    }
+  });
+
+  // POST /api/vehicles/:id/suggest-price - Sugerir preço de venda com IA
+  app.post("/api/vehicles/:id/suggest-price", async (req, res) => {
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(400).json({ error: "API key da OpenAI não configurada" });
+    }
+
+    try {
+      const vehicle = await storage.getVehicleById(req.params.id);
+      if (!vehicle) {
+        return res.status(404).json({ error: "Veículo não encontrado" });
+      }
+
+      const costs = await storage.getVehicleCosts(req.params.id);
+      const totalCost = costs.reduce((sum, cost) => sum + (Number(cost.amount) || 0), 0);
+
+      const { fipePrice, targetMarginPercent } = req.body;
+
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+      const prompt = `Você é um especialista em precificação de veículos usados. 
+Analise as informações abaixo e sugira um preço de venda adequado:
+
+Veículo: ${vehicle.brand} ${vehicle.model} ${vehicle.year}
+Cor: ${vehicle.color || "Não especificada"}
+Custo Total Investido: R$ ${totalCost.toFixed(2)}
+Preço FIPE (referência de mercado): ${fipePrice ? `R$ ${fipePrice}` : "Não disponível"}
+Margem de Lucro Desejada: ${targetMarginPercent || 20}%
+
+Com base nessas informações, sugira:
+1. Um preço de venda competitivo considerando o custo, a margem desejada e o valor FIPE
+2. Uma breve justificativa (2-3 linhas) da sua sugestão
+3. Se o preço sugerido difere muito da FIPE, explique o motivo
+
+Retorne APENAS um JSON válido no formato:
+{
+  "suggestedPrice": número,
+  "reasoning": "texto justificativa"
+}`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7,
+        response_format: { type: "json_object" },
+      });
+
+      const result = JSON.parse(completion.choices[0].message.content || "{}");
+      res.json(result);
+    } catch (error) {
+      console.error("Erro ao sugerir preço:", error);
+      res.status(500).json({ error: "Erro ao gerar sugestão de preço" });
+    }
+  });
+
+  // POST /api/vehicles/:id/generate-ad - Gerar anúncio com IA (3 estilos)
+  app.post("/api/vehicles/:id/generate-ad", async (req, res) => {
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(400).json({ error: "API key da OpenAI não configurada" });
+    }
+
+    try {
+      const vehicle = await storage.getVehicleById(req.params.id);
+      if (!vehicle) {
+        return res.status(404).json({ error: "Veículo não encontrado" });
+      }
+
+      const { style } = req.body; // "economico", "completo", ou "urgente"
+
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+      const styleInstructions = {
+        economico: "Foque em economia, baixo custo, oportunidade única. Tom direto e objetivo.",
+        completo: "Destaque todos os detalhes, equipamentos, diferenciais. Tom profissional e descritivo.",
+        urgente: "Crie senso de urgência, oferta por tempo limitado. Tom persuasivo e chamativo."
+      };
+
+      const prompt = `Você é um especialista em copywriting para venda de veículos.
+Crie um anúncio profissional e atrativo para o seguinte veículo:
+
+Veículo: ${vehicle.brand} ${vehicle.model} ${vehicle.year}
+Cor: ${vehicle.color || "Não especificada"}
+${vehicle.salePrice ? `Preço: R$ ${vehicle.salePrice}` : ""}
+${vehicle.notes ? `Observações: ${vehicle.notes}` : ""}
+
+Estilo solicitado: ${style || "completo"}
+${styleInstructions[style as keyof typeof styleInstructions] || styleInstructions.completo}
+
+Crie:
+1. Um título chamativo (max 80 caracteres)
+2. Uma descrição completa e atrativa (200-300 palavras)
+3. Uma lista de 10 hashtags relevantes (incluindo marca, modelo, ano, características)
+4. Um call-to-action final
+
+Retorne APENAS um JSON válido no formato:
+{
+  "title": "título",
+  "description": "descrição completa",
+  "hashtags": ["#tag1", "#tag2", ...],
+  "callToAction": "texto CTA"
+}`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.8,
+        response_format: { type: "json_object" },
+      });
+
+      const result = JSON.parse(completion.choices[0].message.content || "{}");
+      res.json(result);
+    } catch (error) {
+      console.error("Erro ao gerar anúncio:", error);
+      res.status(500).json({ error: "Erro ao gerar anúncio" });
     }
   });
 

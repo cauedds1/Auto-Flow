@@ -47,6 +47,7 @@ export const storeObservationStatusEnum = pgEnum("store_observation_status", [
 // Users table
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  empresaId: varchar("empresa_id"),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   role: userRoleEnum("role").notNull().default("EQUIPE"),
@@ -64,6 +65,7 @@ export type User = typeof users.$inferSelect;
 // Vehicles table
 export const vehicles = pgTable("vehicles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  empresaId: varchar("empresa_id"),
   brand: text("brand").notNull(),
   model: text("model").notNull(),
   year: integer("year").notNull(),
@@ -213,6 +215,7 @@ export type VehicleDocument = typeof vehicleDocuments.$inferSelect;
 // Store observations table
 export const storeObservations = pgTable("store_observations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  empresaId: varchar("empresa_id"),
   description: text("description").notNull(),
   category: text("category"),
   status: storeObservationStatusEnum("status").notNull().default("Pendente"),
@@ -230,7 +233,36 @@ export const insertStoreObservationSchema = createInsertSchema(storeObservations
 export type InsertStoreObservation = z.infer<typeof insertStoreObservationSchema>;
 export type StoreObservation = typeof storeObservations.$inferSelect;
 
-// Company settings table
+// Companies table (multi-tenant)
+export const companies = pgTable("companies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  nomeFantasia: text("nome_fantasia").notNull(),
+  razaoSocial: text("razao_social"),
+  cnpj: text("cnpj"),
+  endereco: text("endereco"),
+  telefone: text("telefone"),
+  telefone2: text("telefone2"),
+  email: text("email"),
+  logoUrl: text("logo_url"),
+  corPrimaria: text("cor_primaria").default("#dc2626"),
+  corSecundaria: text("cor_secundaria").default("#000000"),
+  whatsappNumero: text("whatsapp_numero"),
+  locaisComuns: json("locais_comuns").$type<string[]>().default([]),
+  alertaDiasParado: integer("alerta_dias_parado").default(7),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertCompanySchema = createInsertSchema(companies).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCompany = z.infer<typeof insertCompanySchema>;
+export type Company = typeof companies.$inferSelect;
+
+// Company settings table (deprecated - mantido para compatibilidade)
 export const companySettings = pgTable("company_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyName: text("company_name"),

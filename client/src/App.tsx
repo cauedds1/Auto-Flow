@@ -13,13 +13,26 @@ import Reports from "@/pages/Reports";
 import Notes from "@/pages/Notes";
 import Checklists from "@/pages/Checklists";
 import Settings from "@/pages/Settings";
+import FirstTimeSetup from "@/pages/FirstTimeSetup";
 import NotFound from "@/pages/not-found";
 import { useSettings } from "@/hooks/use-settings";
 import { useEffect } from "react";
+import { useCurrentCompany } from "@/hooks/use-company";
+import { useLocation } from "wouter";
 
 function Router() {
+  const [location, setLocation] = useLocation();
+  const { hasCompany, isLoading } = useCurrentCompany();
+
+  useEffect(() => {
+    if (!isLoading && !hasCompany && location !== "/setup") {
+      setLocation("/setup");
+    }
+  }, [hasCompany, isLoading, location, setLocation]);
+
   return (
     <Switch>
+      <Route path="/setup" component={FirstTimeSetup} />
       <Route path="/" component={Dashboard} />
       <Route path="/veiculos" component={Vehicles} />
       <Route path="/veiculo/:id" component={VehicleDetails} />
@@ -30,6 +43,42 @@ function Router() {
       <Route path="/configuracoes" component={Settings} />
       <Route component={NotFound} />
     </Switch>
+  );
+}
+
+import { ThemeProvider, useTheme } from "@/components/ThemeProvider";
+
+function AppContent() {
+  const { logoUrl, companyName } = useTheme();
+
+  const style = {
+    "--sidebar-width": "16rem",
+    "--sidebar-width-icon": "3rem",
+  };
+
+  return (
+    <SidebarProvider style={style as React.CSSProperties}>
+      <div className="flex h-screen w-full">
+        <AppSidebar />
+        <div className="flex flex-1 flex-col">
+          <header className="flex h-14 items-center justify-between border-b border-border px-4">
+            <SidebarTrigger data-testid="button-sidebar-toggle" />
+            <div className="flex items-center gap-3">
+              <NotificationCenter />
+              <img 
+                src={logoUrl || "/logo.png"} 
+                alt={companyName} 
+                className="h-8 w-auto object-contain"
+                style={{ mixBlendMode: 'screen' }}
+              />
+            </div>
+          </header>
+          <main className="flex-1 overflow-auto">
+            <Router />
+          </main>
+        </div>
+      </div>
+    </SidebarProvider>
   );
 }
 
@@ -44,38 +93,14 @@ export default function App() {
     }
   }, [settings.darkMode]);
 
-  const style = {
-    "--sidebar-width": "16rem",
-    "--sidebar-width-icon": "3rem",
-  };
-
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <SidebarProvider style={style as React.CSSProperties}>
-          <div className="flex h-screen w-full">
-            <AppSidebar />
-            <div className="flex flex-1 flex-col">
-              <header className="flex h-14 items-center justify-between border-b border-border px-4">
-                <SidebarTrigger data-testid="button-sidebar-toggle" />
-                <div className="flex items-center gap-3">
-                  <NotificationCenter />
-                  <img 
-                    src="/logo.png" 
-                    alt="Capoeiras Automóveis" 
-                    className="h-8 w-auto object-contain"
-                    style={{ mixBlendMode: 'screen' }}
-                  />
-                </div>
-              </header>
-              <main className="flex-1 overflow-auto">
-                <Router />
-              </main>
-            </div>
-          </div>
-        </SidebarProvider>
-        <Toaster />
-      </TooltipProvider>
+      <ThemeProvider>
+        <TooltipProvider>
+          <AppContent />
+          <Toaster />
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

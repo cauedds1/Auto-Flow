@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-11-18T14:22:01.845Z",
+  "version": "1.0",
+  "data": {
+    "companies": [],
+    "users": [],
+    "vehicles": [],
+    "vehicleImages": [],
+    "vehicleHistory": [],
+    "vehicleCosts": [],
+    "vehicleDocuments": [],
+    "storeObservations": [],
+    "companySettings": []
+  }
+}
