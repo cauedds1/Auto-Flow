@@ -15,7 +15,7 @@ The frontend utilizes React with TypeScript, Vite, Tailwind CSS, Radix UI primit
 **Frontend:**
 - **Technology Stack**: React, TypeScript, Vite, Wouter, TanStack React Query, Tailwind CSS.
 - **State Management**: React Query for server state, React hooks for local state, React Hook Form with Zod for form validation.
-- **Key Features**: Vehicle management (sorting, checklists, dynamic adaptation for Carro/Moto), physical location tracking (7 predefined + custom), document management (PDF upload/download), intelligent alerts, AI features (price suggestions, ad generation in 3 styles), enhanced dashboard with 6 key metrics, user management (role-based permissions, invite users), first-time setup onboarding, and theme customization.
+- **Key Features**: Vehicle management (sorting, checklists, dynamic adaptation for Carro/Moto), physical location tracking (7 predefined + custom), document management (PDF upload/download), intelligent alerts, AI features (price suggestions, ad generation in 3 styles), enhanced dashboard with 6 key metrics (Total em Estoque correctly excludes Vendidos/Arquivados), user management (role-based permissions, invite users), first-time setup onboarding, theme customization, sale workflow with automatic SaleDialog when marking vehicle as "Vendido" (captures seller and optional repasse target), reorganized vehicle filters (horizontal layout), and complete Bills system (Contas a Pagar/Receber) with RBAC.
 
 **Backend:**
 - **Technology Stack**: Node.js with Express.js, TypeScript, PostgreSQL (via Neon serverless driver), Drizzle ORM.
