@@ -6,13 +6,14 @@ VeloStock is a universal multi-tenant SaaS platform for complete vehicle dealers
 ## Recent Major Changes (November 2024)
 - **INTEGRAÇÃO FIPE COMPLETA E FUNCIONAL** (Nov 19, 2024): Sistema de consulta FIPE integrado ao cadastro de veículos e sugestão de preços com IA
   - **Hooks FIPE**: `useFipeBrands`, `useFipeModels`, `useFipeYears`, `useFipePrice`, `useFipeVehicleVersions`, `useFipePriceByVersion`
-  - **Fuzzy Matching Robusto**: Normalização de acentos (NFD), aliases de marcas (GM/Chevrolet, VW/Volkswagen), matching bidirecional
-  - **Seletor de Versões**: Dropdown inteligente para escolher motorização/acabamento exato (ex: Polo 1.0 TSI vs 1.6 MSI)
-  - **Cadastro de Veículo**: Botão "Consultar FIPE" → Lista de versões → Seleção manual → Preço específico persistido
-  - **Sugestão de Preço**: Nova aba "Sugestão de Preço" com busca FIPE automática + IA (GPT-4o-mini)
-  - **Fluxo Completo**: FIPE → Seleção de Versão → Margem de Lucro → IA → Preço Sugerido + Justificativa
-  - **Correções Críticas**: toFixed() com parseFloat, persistência fipeReferencePrice, fuzzy matching com normalização, seleção de versões
-  - **Status**: ✅ 100% funcional com seleção de versões
+  - **Fuzzy Matching Robusto**: Normalização de acentos (NFD), aliases de marcas bidirecionais (GM↔Chevrolet, VW↔Volkswagen), matching por grupos de aliases
+  - **Seletor de Versões Integrado**: Campo "Versão" integrado ao formulário principal (após "Ano"), carrega versões automaticamente ao abrir dropdown
+  - **Fluxo UX Simplificado**: Marca → Modelo → Ano → Versão → Preço FIPE auto-preenchido (sem botão "Consultar FIPE")
+  - **Cache Inteligente**: useEffect reseta versões FIPE quando marca/modelo/ano mudam (evita dados obsoletos)
+  - **Persistência Completa**: fipeReferencePrice salvo corretamente em AddVehicleDialog e EditVehicleDialog
+  - **Sugestão de Preço IA**: Nova aba "Sugestão de Preço" com busca FIPE automática + GPT-4o-mini
+  - **Correções Críticas**: Fuzzy matching com grupos de aliases (input e FIPE brand devem pertencer ao mesmo grupo), cache reset via watched fields, schema completo com fipeReferencePrice
+  - **Status**: ✅ 100% funcional - versões específicas com preços precisos
 - **SISTEMA CRM COMPLETO IMPLEMENTADO** (Nov 19, 2024): Sistema de gestão de relacionamento com clientes (CRM) com isolamento total de dados
   - **Schemas**: Leads, Follow-ups, Activity Log, Cost Approvals, User Permissions, Approval Settings
   - **Isolamento de Dados**: 4 camadas de proteção (Middleware → Query Filters → FK Validation → Whitelist)
