@@ -31,7 +31,8 @@ import { Button } from "@/components/ui/button";
 import { ImageUpload } from "./ImageUpload";
 import { Plus, TrendingUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useFipePriceByVehicle } from "@/hooks/use-fipe";
+import { useFipeVehicleVersions, useFipePriceByVersion } from "@/hooks/use-fipe";
+import type { FipeYear } from "@/hooks/use-fipe";
 
 const vehicleFormSchema = z.object({
   brand: z.string().min(1, "Marca é obrigatória"),
@@ -59,6 +60,8 @@ interface AddVehicleDialogProps {
 export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
   const [open, setOpen] = useState(false);
   const [images, setImages] = useState<File[]>([]);
+  const [fipeVersions, setFipeVersions] = useState<FipeYear[]>([]);
+  const [fipeMetadata, setFipeMetadata] = useState<{brandId: string, modelId: string} | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -78,11 +81,13 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
     },
   });
 
-  const fipeMutation = useFipePriceByVehicle(
+  const versionsMutation = useFipeVehicleVersions(
     form.watch("brand"),
     form.watch("model"),
     form.watch("year")
   );
+  
+  const priceMutation = useFipePriceByVersion("", "", "");
 
   const handleConsultFipe = async () => {
     const brand = form.getValues("brand");
@@ -99,7 +104,32 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
     }
 
     try {
-      const result = await fipeMutation.mutateAsync();
+      const result = await versionsMutation.mutateAsync();
+      setFipeVersions(result.versions);
+      setFipeMetadata({ brandId: result.brandId, modelId: result.modelId });
+      
+      if (result.versions.length === 1) {
+        // Se há apenas uma versão, consultar automaticamente
+        await handleSelectVersion(result.versions[0].codigo, result.brandId, result.modelId);
+      } else {
+        toast({
+          title: "Versões encontradas!",
+          description: `Encontradas ${result.versions.length} versões. Selecione a versão correta abaixo.`,
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro ao consultar FIPE",
+        description: error.message || "Não foi possível encontrar o veículo. Verifique os dados.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSelectVersion = async (versionCode: string, brandId: string, modelId: string) => {
+    try {
+      const priceMut = useFipePriceByVersion(brandId, modelId, versionCode);
+      const result = await priceMut.mutateAsync();
       const priceValue = result.Valor.replace("R$", "").trim();
       form.setValue("fipeReferencePrice", priceValue);
       
@@ -107,10 +137,13 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
         title: "Preço FIPE encontrado!",
         description: `${result.Marca} ${result.Modelo} (${result.AnoModelo}): ${result.Valor}`,
       });
+      
+      // Limpar versões após seleção
+      setFipeVersions([]);
     } catch (error: any) {
       toast({
-        title: "Erro ao consultar FIPE",
-        description: error.message || "Não foi possível encontrar o preço. Verifique os dados.",
+        title: "Erro ao consultar preço",
+        description: error.message || "Não foi possível consultar o preço FIPE.",
         variant: "destructive",
       });
     }
@@ -394,9 +427,9 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
                         type="button"
                         variant="outline"
                         onClick={handleConsultFipe}
-                        disabled={fipeMutation.isPending}
+                        disabled={versionsMutation.isPending}
                       >
-                        {fipeMutation.isPending ? "Consultando..." : "Consultar FIPE"}
+                        {versionsMutation.isPending ? "Consultando..." : "Consultar FIPE"}
                       </Button>
                     </div>
                     <p className="text-sm text-muted-foreground">
@@ -406,6 +439,28 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
                   </FormItem>
                 )}
               />
+              
+              {/* Dropdown de versões FIPE (aparece apenas quando há múltiplas versões) */}
+              {fipeVersions.length > 1 && fipeMetadata && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Selecione a Versão / Motorização</label>
+                  <Select onValueChange={(value) => handleSelectVersion(value, fipeMetadata.brandId, fipeMetadata.modelId)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Escolha a versão exata do veículo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fipeVersions.map((version) => (
+                        <SelectItem key={version.codigo} value={version.codigo}>
+                          {version.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Foram encontradas {fipeVersions.length} versões. Selecione a motorização/acabamento correto.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="border-t border-border pt-6">

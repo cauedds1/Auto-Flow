@@ -105,8 +105,9 @@ const BRAND_ALIASES: Record<string, string[]> = {
   "land rover": ["landrover"],
 };
 
-// Hook para buscar preço FIPE automaticamente baseado em marca/modelo/ano (texto)
-export function useFipePriceByVehicle(brand?: string, model?: string, year?: number) {
+// Hook para buscar VERSÕES disponíveis baseado em marca/modelo/ano (texto)
+// Retorna lista de versões para o usuário selecionar a correta
+export function useFipeVehicleVersions(brand?: string, model?: string, year?: number) {
   return useMutation({
     mutationFn: async () => {
       if (!brand || !model || !year) {
@@ -169,23 +170,47 @@ export function useFipePriceByVehicle(brand?: string, model?: string, year?: num
       if (!yearsResponse.ok) throw new Error("Erro ao buscar anos");
       const years: FipeYear[] = await yearsResponse.json();
 
-      // 6. Encontrar ano correspondente (pode vir como "2025-1" ou "2025")
-      const matchedYear = years.find(
-        (y) => y.nome.includes(year.toString()) || y.codigo.includes(year.toString())
+      // 6. Filtrar versões do ano especificado
+      const yearVersions = years.filter(
+        (y) => y.nome.includes(year.toString())
       );
 
-      if (!matchedYear) {
+      if (yearVersions.length === 0) {
         throw new Error(`Ano ${year} não encontrado para ${matchedBrand.nome} ${matchedModel.nome}`);
       }
 
-      // 7. Buscar preço FIPE
-      const priceResponse = await fetch(
-        `/api/fipe/brands/${matchedBrand.codigo}/models/${matchedModel.codigo}/years/${matchedYear.codigo}/price`
-      );
-      if (!priceResponse.ok) throw new Error("Erro ao consultar preço");
-      const priceData: FipePrice = await priceResponse.json();
+      // Retornar dados para seleção de versão
+      return {
+        brandId: matchedBrand.codigo,
+        brandName: matchedBrand.nome,
+        modelId: matchedModel.codigo,
+        modelName: matchedModel.nome,
+        year,
+        versions: yearVersions,
+      };
+    },
+  });
+}
 
+// Hook para consultar preço de uma versão específica
+export function useFipePriceByVersion(
+  brandId: string,
+  modelId: string,
+  versionCode: string
+) {
+  return useMutation({
+    mutationFn: async () => {
+      const priceResponse = await fetch(
+        `/api/fipe/brands/${brandId}/models/${modelId}/years/${versionCode}/price`
+      );
+      if (!priceResponse.ok) throw new Error("Erro ao consultar preço FIPE");
+      const priceData: FipePrice = await priceResponse.json();
       return priceData;
     },
   });
+}
+
+// DEPRECATED: Hook legado - use useFipeVehicleVersions + useFipePriceByVersion
+export function useFipePriceByVehicle(brand?: string, model?: string, year?: number) {
+  return useFipeVehicleVersions(brand, model, year);
 }
