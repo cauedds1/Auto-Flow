@@ -22,6 +22,7 @@ import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
 import NotFound from "@/pages/not-found";
 import Leads from "@/pages/Leads";
+import Bills from "@/pages/Bills";
 import { useSettings } from "@/hooks/use-settings";
 import { useEffect } from "react";
 import { useCurrentCompany } from "@/hooks/use-company";
@@ -39,6 +40,7 @@ function MainAppRouter() {
       <Route path="/anotacoes" component={Notes} />
       <Route path="/checklists" component={Checklists} />
       <Route path="/leads" component={Leads} />
+      <Route path="/contas" component={Bills} />
       <Route path="/usuarios" component={Users} />
       <Route path="/configuracoes" component={Settings} />
       <Route component={NotFound} />

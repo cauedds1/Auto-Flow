@@ -31,6 +31,11 @@ const menuItems = [
     icon: UserPlus,
   },
   {
+    title: "Contas",
+    url: "/contas",
+    icon: DollarSign,
+  },
+  {
     title: "Relatórios",
     url: "/relatorios",
     icon: BarChart3,
