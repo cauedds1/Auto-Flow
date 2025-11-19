@@ -1885,67 +1885,156 @@ Retorne APENAS um JSON válido no formato:
   });
 
   // ============================================
-  // BUSCA FIPE
+  // BUSCA FIPE GRATUITA - API Pública Parallelum
   // ============================================
-  app.post("/api/fipe/search", isAuthenticated, async (req: any, res) => {
+  
+  // Cache simples em memória (1 hora)
+  const fipeCache = new Map<string, { data: any; timestamp: number }>();
+  const CACHE_TTL = 60 * 60 * 1000; // 1 hora
+
+  function getCachedData(key: string) {
+    const cached = fipeCache.get(key);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return cached.data;
+    }
+    return null;
+  }
+
+  function setCachedData(key: string, data: any) {
+    fipeCache.set(key, { data, timestamp: Date.now() });
+  }
+
+  // GET /api/fipe/brands - Lista de marcas
+  app.get("/api/fipe/brands", isAuthenticated, async (req: any, res) => {
     try {
-      const { plate } = req.body;
-
-      if (!plate) {
-        return res.status(400).json({ message: "Placa é obrigatória" });
-      }
-
-      // Validação básica de placa brasileira
-      const plateRegex = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/;
-      const cleanPlate = plate.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+      const vehicleType = req.query.type || "carros"; // carros, motos, caminhoes
+      const cacheKey = `brands-${vehicleType}`;
       
-      if (!plateRegex.test(cleanPlate) && cleanPlate.length !== 7) {
-        return res.status(400).json({ message: "Formato de placa inválido" });
+      const cached = getCachedData(cacheKey);
+      if (cached) {
+        return res.json(cached);
       }
 
-      // Verificar se as credenciais da API existem
-      const bearerToken = process.env.APIBRASIL_BEARER_TOKEN;
-      const deviceToken = process.env.APIBRASIL_DEVICE_TOKEN;
-
-      if (!bearerToken || !deviceToken) {
-        return res.status(503).json({ 
-          message: "API FIPE não configurada. Entre em contato com o administrador do sistema." 
-        });
-      }
-
-      // Chamar a API Brasil
-      const response = await fetch("https://gateway.apibrasil.io/api/v2/vehicles/dados", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${bearerToken}`,
-          "DeviceToken": deviceToken,
-        },
-        body: JSON.stringify({ placa: cleanPlate }),
-      });
+      const response = await fetch(
+        `https://parallelum.com.br/fipe/api/v1/${vehicleType}/marcas`
+      );
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Erro na API Brasil:", errorText);
-        
-        if (response.status === 404) {
-          return res.status(404).json({ 
-            message: "Veículo não encontrado na base de dados FIPE. Verifique a placa e tente novamente." 
-          });
-        }
-        
-        return res.status(response.status).json({ 
-          message: "Erro ao buscar dados do veículo. Tente novamente mais tarde." 
-        });
+        throw new Error("Erro ao buscar marcas");
       }
 
       const data = await response.json();
+      setCachedData(cacheKey, data);
       res.json(data);
     } catch (error: any) {
-      console.error("Erro ao buscar FIPE:", error);
-      res.status(500).json({ 
-        message: error.message || "Erro ao buscar dados da FIPE" 
-      });
+      console.error("Erro ao buscar marcas FIPE:", error);
+      res.status(500).json({ message: "Erro ao buscar marcas" });
+    }
+  });
+
+  // GET /api/fipe/models - Lista de modelos de uma marca
+  app.get("/api/fipe/models", isAuthenticated, async (req: any, res) => {
+    try {
+      const vehicleType = req.query.type || "carros";
+      const brandCode = req.query.brandCode;
+
+      if (!brandCode) {
+        return res.status(400).json({ message: "Código da marca é obrigatório" });
+      }
+
+      const cacheKey = `models-${vehicleType}-${brandCode}`;
+      const cached = getCachedData(cacheKey);
+      if (cached) {
+        return res.json(cached);
+      }
+
+      const response = await fetch(
+        `https://parallelum.com.br/fipe/api/v1/${vehicleType}/marcas/${brandCode}/modelos`
+      );
+
+      if (!response.ok) {
+        throw new Error("Erro ao buscar modelos");
+      }
+
+      const data = await response.json();
+      setCachedData(cacheKey, data);
+      res.json(data);
+    } catch (error: any) {
+      console.error("Erro ao buscar modelos FIPE:", error);
+      res.status(500).json({ message: "Erro ao buscar modelos" });
+    }
+  });
+
+  // GET /api/fipe/years - Lista de anos de um modelo
+  app.get("/api/fipe/years", isAuthenticated, async (req: any, res) => {
+    try {
+      const vehicleType = req.query.type || "carros";
+      const brandCode = req.query.brandCode;
+      const modelCode = req.query.modelCode;
+
+      if (!brandCode || !modelCode) {
+        return res.status(400).json({ 
+          message: "Código da marca e modelo são obrigatórios" 
+        });
+      }
+
+      const cacheKey = `years-${vehicleType}-${brandCode}-${modelCode}`;
+      const cached = getCachedData(cacheKey);
+      if (cached) {
+        return res.json(cached);
+      }
+
+      const response = await fetch(
+        `https://parallelum.com.br/fipe/api/v1/${vehicleType}/marcas/${brandCode}/modelos/${modelCode}/anos`
+      );
+
+      if (!response.ok) {
+        throw new Error("Erro ao buscar anos");
+      }
+
+      const data = await response.json();
+      setCachedData(cacheKey, data);
+      res.json(data);
+    } catch (error: any) {
+      console.error("Erro ao buscar anos FIPE:", error);
+      res.status(500).json({ message: "Erro ao buscar anos" });
+    }
+  });
+
+  // GET /api/fipe/value - Valor FIPE de um veículo específico
+  app.get("/api/fipe/value", isAuthenticated, async (req: any, res) => {
+    try {
+      const vehicleType = req.query.type || "carros";
+      const brandCode = req.query.brandCode;
+      const modelCode = req.query.modelCode;
+      const yearCode = req.query.yearCode;
+
+      if (!brandCode || !modelCode || !yearCode) {
+        return res.status(400).json({ 
+          message: "Código da marca, modelo e ano são obrigatórios" 
+        });
+      }
+
+      const cacheKey = `value-${vehicleType}-${brandCode}-${modelCode}-${yearCode}`;
+      const cached = getCachedData(cacheKey);
+      if (cached) {
+        return res.json(cached);
+      }
+
+      const response = await fetch(
+        `https://parallelum.com.br/fipe/api/v1/${vehicleType}/marcas/${brandCode}/modelos/${modelCode}/anos/${yearCode}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Erro ao buscar valor FIPE");
+      }
+
+      const data = await response.json();
+      setCachedData(cacheKey, data);
+      res.json(data);
+    } catch (error: any) {
+      console.error("Erro ao buscar valor FIPE:", error);
+      res.status(500).json({ message: "Erro ao buscar valor FIPE" });
     }
   });
 
