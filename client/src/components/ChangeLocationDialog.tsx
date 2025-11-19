@@ -245,161 +245,164 @@ export function ChangeLocationDialog({
   );
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || defaultTrigger}
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>Atualizar Status e Localização</DialogTitle>
-          <DialogDescription>
-            Altere o status do veículo no pipeline e sua localização física
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          {trigger || defaultTrigger}
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Atualizar Status e Localização</DialogTitle>
+            <DialogDescription>
+              Altere o status do veículo no pipeline e sua localização física
+            </DialogDescription>
+          </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="status">Status do Veículo</Label>
-            <Select
-              value={formData.status}
-              onValueChange={(value) => setFormData({ ...formData, status: value })}
-            >
-              <SelectTrigger id="status">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {statusOptions.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {status}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="physicalLocation" className="flex items-center gap-2">
-              Localização Física
-              {isLocationRequired && <span className="text-destructive text-sm">*</span>}
-            </Label>
-            <Select
-              value={formData.physicalLocation}
-              onValueChange={(value) => setFormData({ ...formData, physicalLocation: value, physicalLocationDetail: "", customLocation: "" })}
-            >
-              <SelectTrigger id="physicalLocation" className={isLocationRequired && formData.physicalLocation === "__none__" ? "border-destructive" : ""}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {physicalLocationOptions.map((loc) => (
-                  <SelectItem key={loc.value} value={loc.value}>
-                    {loc.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {isLocationRequired && (
-              <p className="text-xs text-muted-foreground">
-                * Obrigatório para este status
-              </p>
-            )}
-          </div>
-
-          {formData.physicalLocation === "__custom__" && (
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="customLocation" className="flex items-center gap-2">
-                Especifique a Localização
-                <span className="text-destructive text-sm">*</span>
-              </Label>
-              <Input
-                id="customLocation"
-                placeholder="Ex: Estacionamento Externo, Garagem..."
-                value={formData.customLocation}
-                onChange={(e) => setFormData({ ...formData, customLocation: e.target.value })}
-                required
-              />
+              <Label htmlFor="status">Status do Veículo</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) => setFormData({ ...formData, status: value })}
+              >
+                <SelectTrigger id="status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusOptions.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          )}
 
-          {formData.physicalLocation && formData.physicalLocation !== "__none__" && formData.physicalLocation !== "__custom__" && (
             <div className="space-y-2">
-              <Label htmlFor="physicalLocationDetail">
-                Detalhe da Localização (opcional)
+              <Label htmlFor="physicalLocation" className="flex items-center gap-2">
+                Localização Física
+                {isLocationRequired && <span className="text-destructive text-sm">*</span>}
               </Label>
-              <Input
-                id="physicalLocationDetail"
-                placeholder={
-                  formData.physicalLocation === "Oficina" 
-                    ? "Ex: Paulo, Pensin, Adailton..." 
-                    : formData.physicalLocation === "Higienização"
-                    ? "Ex: Lavagem do João, Estética Car..."
-                    : formData.physicalLocation === "Outra Loja"
-                    ? "Ex: Loja do João..."
-                    : "Ex: Especifique o local..."
-                }
-                value={formData.physicalLocationDetail}
-                onChange={(e) => setFormData({ ...formData, physicalLocationDetail: e.target.value })}
-              />
+              <Select
+                value={formData.physicalLocation}
+                onValueChange={(value) => setFormData({ ...formData, physicalLocation: value, physicalLocationDetail: "", customLocation: "" })}
+              >
+                <SelectTrigger id="physicalLocation" className={isLocationRequired && formData.physicalLocation === "__none__" ? "border-destructive" : ""}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {physicalLocationOptions.map((loc) => (
+                    <SelectItem key={loc.value} value={loc.value}>
+                      {loc.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {isLocationRequired && (
+                <p className="text-xs text-muted-foreground">
+                  * Obrigatório para este status
+                </p>
+              )}
             </div>
-          )}
 
-          <div className="space-y-2">
-            <Label htmlFor="date">Data da Movimentação</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !formData.date && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {formData.date ? format(formData.date, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={formData.date}
-                  onSelect={(date) => date && setFormData({ ...formData, date })}
-                  initialFocus
+            {formData.physicalLocation === "__custom__" && (
+              <div className="space-y-2">
+                <Label htmlFor="customLocation" className="flex items-center gap-2">
+                  Especifique a Localização
+                  <span className="text-destructive text-sm">*</span>
+                </Label>
+                <Input
+                  id="customLocation"
+                  placeholder="Ex: Estacionamento Externo, Garagem..."
+                  value={formData.customLocation}
+                  onChange={(e) => setFormData({ ...formData, customLocation: e.target.value })}
+                  required
                 />
-              </PopoverContent>
-            </Popover>
-          </div>
+              </div>
+            )}
 
-          <div className="space-y-2">
-            <Label htmlFor="notes">Observações (opcional)</Label>
-            <Textarea
-              id="notes"
-              placeholder="Ex: Veículo enviado para conserto do motor"
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              rows={3}
-            />
-          </div>
+            {formData.physicalLocation && formData.physicalLocation !== "__none__" && formData.physicalLocation !== "__custom__" && (
+              <div className="space-y-2">
+                <Label htmlFor="physicalLocationDetail">
+                  Detalhe da Localização (opcional)
+                </Label>
+                <Input
+                  id="physicalLocationDetail"
+                  placeholder={
+                    formData.physicalLocation === "Oficina" 
+                      ? "Ex: Paulo, Pensin, Adailton..." 
+                      : formData.physicalLocation === "Higienização"
+                      ? "Ex: Lavagem do João, Estética Car..."
+                      : formData.physicalLocation === "Outra Loja"
+                      ? "Ex: Loja do João..."
+                      : "Ex: Especifique o local..."
+                  }
+                  value={formData.physicalLocationDetail}
+                  onChange={(e) => setFormData({ ...formData, physicalLocationDetail: e.target.value })}
+                />
+              </div>
+            )}
 
-          <div className="flex justify-end gap-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-              disabled={isSubmitting}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Salvando..." : "Salvar Alterações"}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
+            <div className="space-y-2">
+              <Label htmlFor="date">Data da Movimentação</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !formData.date && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formData.date ? format(formData.date, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={formData.date}
+                    onSelect={(date) => date && setFormData({ ...formData, date })}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Observações (opcional)</Label>
+              <Textarea
+                id="notes"
+                placeholder="Ex: Veículo enviado para conserto do motor"
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                rows={3}
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+                disabled={isSubmitting}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Salvando..." : "Salvar Alterações"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+      
       <SaleDialog
         open={isSaleDialogOpen}
         onOpenChange={setIsSaleDialogOpen}
         onSave={handleSaleDataSave}
         vehicleName={vehicleName}
       />
-    </Dialog>
+    </>
   );
 }
