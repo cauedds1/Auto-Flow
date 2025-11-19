@@ -161,35 +161,34 @@ export function useFipeVehicleVersions(brand?: string, model?: string, year?: nu
       if (!modelsResponse.ok) throw new Error("Erro ao buscar modelos");
       const modelsData: { modelos: FipeModel[] } = await modelsResponse.json();
 
-      // 4. Encontrar modelo correspondente (fuzzy match com normalização e word boundaries)
+      // 4. Encontrar modelo correspondente (fuzzy match priorizando mais genérico/curto)
       const normalizedModel = normalizeString(model);
       
-      // Primeiro: tentar match exato
-      let matchedModel = modelsData.modelos.find((m) => {
+      // Filtrar todos os modelos que correspondem ao input
+      const candidateModels = modelsData.modelos.filter((m) => {
         const normalizedModelName = normalizeString(m.nome);
-        return normalizedModelName === normalizedModel;
+        
+        // Match exato
+        if (normalizedModelName === normalizedModel) return true;
+        
+        // Match por palavra completa (evita "polo" casar com "apolo")
+        const words = normalizedModelName.split(/\s+/);
+        if (words.some(word => word === normalizedModel)) return true;
+        
+        // Match no início
+        if (normalizedModelName.startsWith(normalizedModel)) return true;
+        
+        return false;
       });
-      
-      // Segundo: tentar match por palavra completa (evita "polo" casar com "apolo")
-      if (!matchedModel) {
-        matchedModel = modelsData.modelos.find((m) => {
-          const normalizedModelName = normalizeString(m.nome);
-          const words = normalizedModelName.split(/\s+/);
-          return words.some(word => word === normalizedModel || word.startsWith(normalizedModel));
-        });
-      }
-      
-      // Terceiro: fallback para substring match (apenas se input está no início)
-      if (!matchedModel) {
-        matchedModel = modelsData.modelos.find((m) => {
-          const normalizedModelName = normalizeString(m.nome);
-          return normalizedModelName.startsWith(normalizedModel);
-        });
-      }
 
-      if (!matchedModel) {
+      if (candidateModels.length === 0) {
         throw new Error(`Modelo "${model}" não encontrado para a marca ${matchedBrand.nome}`);
       }
+      
+      // Escolher o modelo mais curto/genérico (geralmente tem mais versões/anos disponíveis)
+      const matchedModel = candidateModels.reduce((shortest, current) => 
+        current.nome.length < shortest.nome.length ? current : shortest
+      );
 
       // 5. Buscar anos disponíveis
       const yearsResponse = await fetch(
