@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
-import { TrendingUp, Clock, DollarSign, Package, CheckCircle2, AlertCircle } from "lucide-react";
+import { TrendingUp, Clock, DollarSign, Package, CheckCircle2, AlertCircle, TrendingDown, Calendar } from "lucide-react";
 import { subMonths, startOfMonth } from "date-fns";
 import { checklistItems, getChecklistStats, normalizeChecklistData, hasChecklistStarted } from "@shared/checklistUtils";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,6 +30,15 @@ type SellerRanking = {
   receitaTotal: string;
   ticketMedio: string;
   comissaoTotal: string;
+};
+
+type BillsDashboard = {
+  totalAPagar: { valor: string; quantidade: number };
+  totalAReceber: { valor: string; quantidade: number };
+  vencidas: { quantidade: number; total: string };
+  proximosVencimentos: { quantidade: number; total: string };
+  pagosMes: { totalPago: string; totalRecebido: string };
+  saldoPrevisto: string;
 };
 
 export default function Reports() {
@@ -73,6 +82,11 @@ export default function Reports() {
 
   const { data: sellersRanking = [], isLoading: isLoadingRanking } = useQuery<SellerRanking[]>({
     queryKey: ["/api/financial/sellers/ranking", { mes, ano }],
+    enabled: isOwner,
+  });
+
+  const { data: billsDashboard } = useQuery<BillsDashboard>({
+    queryKey: ["/api/bills/dashboard"],
     enabled: isOwner,
   });
 
@@ -734,6 +748,64 @@ export default function Reports() {
                     <p className="text-2xl font-bold text-orange-600">R$ {financialMetrics?.comissoes.aPagar.toLocaleString('pt-BR')}</p>
                   </Card>
                 </div>
+                
+                {/* Resumo de Contas a Pagar/Receber */}
+                {billsDashboard && (
+                  <>
+                    <div className="pt-4">
+                      <h3 className="mb-4 text-lg font-semibold flex items-center gap-2">
+                        <DollarSign className="h-5 w-5" />
+                        Contas a Pagar e Receber
+                      </h3>
+                      <div className="grid gap-4 md:grid-cols-4">
+                        <Card className="p-6">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                              <TrendingDown className="h-4 w-4 text-red-600" />
+                            </div>
+                            <p className="text-sm text-muted-foreground">A Pagar (Pendente)</p>
+                          </div>
+                          <p className="text-2xl font-bold text-red-600">R$ {parseFloat(billsDashboard.totalAPagar.valor).toLocaleString('pt-BR')}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{billsDashboard.totalAPagar.quantidade} contas</p>
+                        </Card>
+                        
+                        <Card className="p-6">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                              <TrendingUp className="h-4 w-4 text-green-600" />
+                            </div>
+                            <p className="text-sm text-muted-foreground">A Receber (Pendente)</p>
+                          </div>
+                          <p className="text-2xl font-bold text-green-600">R$ {parseFloat(billsDashboard.totalAReceber.valor).toLocaleString('pt-BR')}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{billsDashboard.totalAReceber.quantidade} contas</p>
+                        </Card>
+                        
+                        <Card className="p-6">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                              <DollarSign className="h-4 w-4 text-blue-600" />
+                            </div>
+                            <p className="text-sm text-muted-foreground">Saldo Previsto</p>
+                          </div>
+                          <p className={`text-2xl font-bold ${parseFloat(billsDashboard.saldoPrevisto) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            R$ {parseFloat(billsDashboard.saldoPrevisto).toLocaleString('pt-BR')}
+                          </p>
+                        </Card>
+                        
+                        <Card className="p-6">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                              <AlertCircle className="h-4 w-4 text-orange-600" />
+                            </div>
+                            <p className="text-sm text-muted-foreground">Contas Vencidas</p>
+                          </div>
+                          <p className="text-2xl font-bold text-orange-600">{billsDashboard.vencidas.quantidade}</p>
+                          <p className="text-xs text-muted-foreground mt-1">R$ {parseFloat(billsDashboard.vencidas.total).toLocaleString('pt-BR')}</p>
+                        </Card>
+                      </div>
+                    </div>
+                  </>
+                )}
                 
                 <Card className="p-6">
                   <h3 className="mb-6 text-lg font-semibold">Receitas vs Despesas</h3>
