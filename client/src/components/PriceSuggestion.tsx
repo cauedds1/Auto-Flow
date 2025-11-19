@@ -25,11 +25,13 @@ export function PriceSuggestion({ vehicleId, vehicleData }: PriceSuggestionProps
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   
-  const fipeMutation = useFipePriceByVehicle(
+  const versionsMutation = useFipeVehicleVersions(
     vehicleData.brand,
     vehicleData.model,
     vehicleData.year
   );
+  
+  const priceMutation = useFipePriceByVersion();
 
   const handleSuggestPrice = async () => {
     setIsLoading(true);
@@ -43,7 +45,25 @@ export function PriceSuggestion({ vehicleId, vehicleData }: PriceSuggestionProps
 
       let fipeValue = "";
       try {
-        const fipeData = await fipeMutation.mutateAsync();
+        // Buscar versões disponíveis
+        const versionsData = await versionsMutation.mutateAsync();
+        
+        if (versionsData.versions.length > 1) {
+          toast({
+            title: "Múltiplas versões encontradas",
+            description: `Usando a primeira versão encontrada (${versionsData.versions[0].nome}). Para escolher uma versão específica, consulte FIPE no cadastro do veículo.`,
+            variant: "default",
+          });
+        }
+        
+        // Usar primeira versão disponível
+        const firstVersion = versionsData.versions[0];
+        const fipeData = await priceMutation.mutateAsync({
+          brandId: versionsData.brandId,
+          modelId: versionsData.modelId,
+          versionCode: firstVersion.codigo
+        });
+        
         fipeValue = fipeData.Valor.replace("R$", "").trim();
         setFipePrice(fipeValue);
         

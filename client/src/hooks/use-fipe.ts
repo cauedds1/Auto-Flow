@@ -193,13 +193,10 @@ export function useFipeVehicleVersions(brand?: string, model?: string, year?: nu
 }
 
 // Hook para consultar preço de uma versão específica
-export function useFipePriceByVersion(
-  brandId: string,
-  modelId: string,
-  versionCode: string
-) {
+// Uso: const mutation = useFipePriceByVersion(); const result = await mutation.mutateAsync({brandId, modelId, versionCode});
+export function useFipePriceByVersion() {
   return useMutation({
-    mutationFn: async () => {
+    mutationFn: async ({ brandId, modelId, versionCode }: { brandId: string; modelId: string; versionCode: string }) => {
       const priceResponse = await fetch(
         `/api/fipe/brands/${brandId}/models/${modelId}/years/${versionCode}/price`
       );

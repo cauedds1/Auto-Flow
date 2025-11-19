@@ -87,7 +87,7 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
     form.watch("year")
   );
   
-  const priceMutation = useFipePriceByVersion("", "", "");
+  const priceMutation = useFipePriceByVersion();
 
   const handleConsultFipe = async () => {
     const brand = form.getValues("brand");
@@ -110,7 +110,7 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
       
       if (result.versions.length === 1) {
         // Se há apenas uma versão, consultar automaticamente
-        await handleSelectVersion(result.versions[0].codigo, result.brandId, result.modelId);
+        await handleSelectVersion(result.versions[0].codigo, result.brandId, result.modelId, true);
       } else {
         toast({
           title: "Versões encontradas!",
@@ -126,10 +126,9 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
     }
   };
 
-  const handleSelectVersion = async (versionCode: string, brandId: string, modelId: string) => {
+  const handleSelectVersion = async (versionCode: string, brandId: string, modelId: string, autoSelected: boolean = false) => {
     try {
-      const priceMut = useFipePriceByVersion(brandId, modelId, versionCode);
-      const result = await priceMut.mutateAsync();
+      const result = await priceMutation.mutateAsync({ brandId, modelId, versionCode });
       const priceValue = result.Valor.replace("R$", "").trim();
       form.setValue("fipeReferencePrice", priceValue);
       
@@ -138,8 +137,10 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
         description: `${result.Marca} ${result.Modelo} (${result.AnoModelo}): ${result.Valor}`,
       });
       
-      // Limpar versões após seleção
-      setFipeVersions([]);
+      // Limpar versões apenas se foi seleção manual (não auto-seleção de versão única)
+      if (!autoSelected) {
+        setFipeVersions([]);
+      }
     } catch (error: any) {
       toast({
         title: "Erro ao consultar preço",
@@ -405,62 +406,71 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
             </div>
 
             <div className="border-t border-border pt-4">
-              <FormField
-                control={form.control}
-                name="fipeReferencePrice"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4" />
-                      Preço de Referência FIPE
-                    </FormLabel>
-                    <div className="flex gap-2">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium">Consulta FIPE</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Preencha marca, modelo e ano acima, depois clique em "Consultar"
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleConsultFipe}
+                    disabled={versionsMutation.isPending}
+                  >
+                    {versionsMutation.isPending ? "Consultando..." : "Consultar FIPE"}
+                  </Button>
+                </div>
+
+                {/* Dropdown de versões FIPE (aparece quando há múltiplas versões) */}
+                {fipeVersions.length > 1 && fipeMetadata && (
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-primary" />
+                      <label className="text-sm font-semibold text-primary">
+                        Selecione a Versão / Motorização
+                      </label>
+                    </div>
+                    <Select onValueChange={(value) => handleSelectVersion(value, fipeMetadata.brandId, fipeMetadata.modelId)}>
+                      <SelectTrigger className="bg-background">
+                        <SelectValue placeholder="Escolha a versão exata do veículo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {fipeVersions.map((version) => (
+                          <SelectItem key={version.codigo} value={version.codigo}>
+                            {version.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      ⚠️ Foram encontradas <strong>{fipeVersions.length} versões diferentes</strong>. Selecione a motorização/acabamento correto para obter o preço FIPE preciso.
+                    </p>
+                  </div>
+                )}
+
+                {/* Campo de preço FIPE (preenchido após seleção de versão) */}
+                <FormField
+                  control={form.control}
+                  name="fipeReferencePrice"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Preço de Referência FIPE</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Ex: R$ 45.000,00"
+                          placeholder="Será preenchido após consultar FIPE"
                           {...field}
                           readOnly
                           className="bg-muted"
                         />
                       </FormControl>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleConsultFipe}
-                        disabled={versionsMutation.isPending}
-                      >
-                        {versionsMutation.isPending ? "Consultando..." : "Consultar FIPE"}
-                      </Button>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Consulta automática do preço FIPE baseado na marca, modelo e ano
-                    </p>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              {/* Dropdown de versões FIPE (aparece apenas quando há múltiplas versões) */}
-              {fipeVersions.length > 1 && fipeMetadata && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Selecione a Versão / Motorização</label>
-                  <Select onValueChange={(value) => handleSelectVersion(value, fipeMetadata.brandId, fipeMetadata.modelId)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Escolha a versão exata do veículo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {fipeVersions.map((version) => (
-                        <SelectItem key={version.codigo} value={version.codigo}>
-                          {version.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Foram encontradas {fipeVersions.length} versões. Selecione a motorização/acabamento correto.
-                  </p>
-                </div>
-              )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
 
             <div className="border-t border-border pt-6">
