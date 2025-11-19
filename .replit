@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "postgresql-16"]
+modules = ["nodejs-20", "web"]
 [agent]
 expertMode = true
 integrations = ["javascript_log_in_with_replit:1.0.0"]
@@ -49,6 +49,10 @@ externalPort = 3001
 [[ports]]
 localPort = 42607
 externalPort = 3002
+
+[[ports]]
+localPort = 46843
+externalPort = 4200
 
 [deployment]
 deploymentTarget = "autoscale"
