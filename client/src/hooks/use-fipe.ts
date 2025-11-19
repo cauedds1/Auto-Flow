@@ -161,13 +161,31 @@ export function useFipeVehicleVersions(brand?: string, model?: string, year?: nu
       if (!modelsResponse.ok) throw new Error("Erro ao buscar modelos");
       const modelsData: { modelos: FipeModel[] } = await modelsResponse.json();
 
-      // 4. Encontrar modelo correspondente (fuzzy match com normalização)
+      // 4. Encontrar modelo correspondente (fuzzy match com normalização e word boundaries)
       const normalizedModel = normalizeString(model);
       
-      const matchedModel = modelsData.modelos.find((m) => {
+      // Primeiro: tentar match exato
+      let matchedModel = modelsData.modelos.find((m) => {
         const normalizedModelName = normalizeString(m.nome);
-        return normalizedModelName.includes(normalizedModel) || normalizedModel.includes(normalizedModelName);
+        return normalizedModelName === normalizedModel;
       });
+      
+      // Segundo: tentar match por palavra completa (evita "polo" casar com "apolo")
+      if (!matchedModel) {
+        matchedModel = modelsData.modelos.find((m) => {
+          const normalizedModelName = normalizeString(m.nome);
+          const words = normalizedModelName.split(/\s+/);
+          return words.some(word => word === normalizedModel || word.startsWith(normalizedModel));
+        });
+      }
+      
+      // Terceiro: fallback para substring match (apenas se input está no início)
+      if (!matchedModel) {
+        matchedModel = modelsData.modelos.find((m) => {
+          const normalizedModelName = normalizeString(m.nome);
+          return normalizedModelName.startsWith(normalizedModel);
+        });
+      }
 
       if (!matchedModel) {
         throw new Error(`Modelo "${model}" não encontrado para a marca ${matchedBrand.nome}`);
