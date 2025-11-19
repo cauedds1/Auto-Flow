@@ -5,12 +5,32 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 import { TrendingUp, Clock, DollarSign, Package, CheckCircle2, AlertCircle } from "lucide-react";
 import { subMonths, startOfMonth } from "date-fns";
 import { checklistItems, getChecklistStats, normalizeChecklistData, hasChecklistStarted } from "@shared/checklistUtils";
+import { useAuth } from "@/hooks/useAuth";
 
 const COLORS = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
+
+type FinancialMetrics = {
+  periodo: { mes: number; ano: number };
+  vendas: { quantidade: number; receita: number; ticketMedio: number };
+  custos: { veiculos: number; operacionais: number; comissoes: number; total: number };
+  resultados: { lucroLiquido: number; margemLucro: number };
+  comissoes: { total: number; pagas: number; aPagar: number };
+};
+
+type SellerRanking = {
+  vendedorId: string;
+  vendedorNome: string;
+  vendedorEmail: string;
+  quantidadeVendas: number;
+  receitaTotal: string;
+  ticketMedio: string;
+  comissaoTotal: string;
+};
 
 export default function Reports() {
   const [dateFilter, setDateFilter] = useState<string>("current-month");
@@ -18,6 +38,21 @@ export default function Reports() {
   const [checklistDialogType, setChecklistDialogType] = useState<"completed" | "missing">("missing");
   const [observationsDialogOpen, setObservationsDialogOpen] = useState(false);
   const [observationsDialogType, setObservationsDialogType] = useState<"pending" | "resolved">("pending");
+
+  const { user } = useAuth();
+  const isOwner = user?.role === "proprietario";
+
+  const getPeriodFromFilter = () => {
+    const now = new Date();
+    if (dateFilter === "current-month") return { mes: now.getMonth() + 1, ano: now.getFullYear() };
+    if (dateFilter === "last-month") {
+      const lastMonth = subMonths(now, 1);
+      return { mes: lastMonth.getMonth() + 1, ano: lastMonth.getFullYear() };
+    }
+    return { mes: now.getMonth() + 1, ano: now.getFullYear() };
+  };
+
+  const { mes, ano } = getPeriodFromFilter();
 
   const { data: vehicles = [], isLoading: isLoadingVehicles } = useQuery<any[]>({
     queryKey: ["/api/vehicles"],
@@ -29,6 +64,16 @@ export default function Reports() {
 
   const { data: observations = [] } = useQuery<any[]>({
     queryKey: ["/api/store-observations"],
+  });
+
+  const { data: financialMetrics, isLoading: isLoadingMetrics } = useQuery<FinancialMetrics>({
+    queryKey: ["/api/financial/metrics", { mes, ano }],
+    enabled: isOwner,
+  });
+
+  const { data: sellersRanking = [], isLoading: isLoadingRanking } = useQuery<SellerRanking[]>({
+    queryKey: ["/api/financial/sellers/ranking", { mes, ano }],
+    enabled: isOwner,
   });
 
   const getFilteredData = () => {
@@ -149,29 +194,8 @@ export default function Reports() {
 
   const isLoading = isLoadingVehicles || isLoadingCosts;
 
-  return (
-    <div className="flex h-full flex-col p-8">
-      <div className="mb-8 flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Relatórios</h1>
-          <p className="mt-2 text-muted-foreground">
-            Análise e estatísticas do estoque
-          </p>
-        </div>
-        <Select value={dateFilter} onValueChange={setDateFilter}>
-          <SelectTrigger className="w-64">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os períodos</SelectItem>
-            <SelectItem value="current-month">Mês atual</SelectItem>
-            <SelectItem value="last-month">Mês passado</SelectItem>
-            <SelectItem value="last-3-months">Últimos 3 meses</SelectItem>
-            <SelectItem value="last-6-months">Últimos 6 meses</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
+  const inventoryContent = (
+    <>
       {isLoading ? (
         <div className="grid gap-6">
           <Skeleton className="h-96 w-full" />
@@ -642,6 +666,128 @@ export default function Reports() {
             </Card>
           </div>
         </div>
+      )}
+    </>
+  );
+
+  return (
+    <div className="flex h-full flex-col p-8">
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Relatórios</h1>
+          <p className="mt-2 text-muted-foreground">
+            Análise e estatísticas do estoque
+          </p>
+        </div>
+        <Select value={dateFilter} onValueChange={setDateFilter}>
+          <SelectTrigger className="w-64">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os períodos</SelectItem>
+            <SelectItem value="current-month">Mês atual</SelectItem>
+            <SelectItem value="last-month">Mês passado</SelectItem>
+            <SelectItem value="last-3-months">Últimos 3 meses</SelectItem>
+            <SelectItem value="last-6-months">Últimos 6 meses</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {isOwner ? (
+        <Tabs defaultValue="estoque" className="flex-1">
+          <TabsList className="mb-6">
+            <TabsTrigger value="estoque">Estoque</TabsTrigger>
+            <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="estoque" className="mt-0">
+            {inventoryContent}
+          </TabsContent>
+          
+          <TabsContent value="financeiro" className="mt-0">
+            {isLoadingMetrics ? (
+              <div className="grid gap-6">
+                <Skeleton className="h-96 w-full" />
+                <Skeleton className="h-96 w-full" />
+              </div>
+            ) : (
+              <div className="space-y-6 overflow-y-auto pb-8">
+                <div className="grid gap-6 md:grid-cols-4">
+                  <Card className="p-6">
+                    <p className="text-sm text-muted-foreground">Receita Total</p>
+                    <p className="text-2xl font-bold">R$ {financialMetrics?.vendas.receita.toLocaleString('pt-BR')}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{financialMetrics?.vendas.quantidade} vendas</p>
+                  </Card>
+                  
+                  <Card className="p-6">
+                    <p className="text-sm text-muted-foreground">Lucro Líquido</p>
+                    <p className="text-2xl font-bold">R$ {financialMetrics?.resultados.lucroLiquido.toLocaleString('pt-BR')}</p>
+                  </Card>
+                  
+                  <Card className="p-6">
+                    <p className="text-sm text-muted-foreground">Margem de Lucro</p>
+                    <p className="text-2xl font-bold">{financialMetrics?.resultados.margemLucro.toFixed(1)}%</p>
+                  </Card>
+                  
+                  <Card className="p-6">
+                    <p className="text-sm text-muted-foreground">Comissões a Pagar</p>
+                    <p className="text-2xl font-bold text-orange-600">R$ {financialMetrics?.comissoes.aPagar.toLocaleString('pt-BR')}</p>
+                  </Card>
+                </div>
+                
+                <Card className="p-6">
+                  <h3 className="mb-6 text-lg font-semibold">Receitas vs Despesas</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={[
+                      { name: 'Receita', valor: financialMetrics?.vendas.receita || 0 },
+                      { name: 'Custos Veículos', valor: financialMetrics?.custos.veiculos || 0 },
+                      { name: 'Despesas Operacionais', valor: financialMetrics?.custos.operacionais || 0 },
+                      { name: 'Comissões', valor: financialMetrics?.custos.comissoes || 0 },
+                    ]}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip formatter={(value: any) => `R$ ${value.toLocaleString('pt-BR')}`} />
+                      <Bar dataKey="valor" fill="#3b82f6" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Card>
+                
+                <Card className="p-6">
+                  <h3 className="mb-6 text-lg font-semibold">Ranking de Vendedores</h3>
+                  {sellersRanking.length > 0 ? (
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-3">Vendedor</th>
+                          <th className="text-right p-3">Vendas</th>
+                          <th className="text-right p-3">Receita</th>
+                          <th className="text-right p-3">Ticket Médio</th>
+                          <th className="text-right p-3">Comissão</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sellersRanking.map((seller: any) => (
+                          <tr key={seller.vendedorId} className="border-b hover:bg-muted/50">
+                            <td className="p-3">{seller.vendedorNome}</td>
+                            <td className="p-3 text-right">{seller.quantidadeVendas}</td>
+                            <td className="p-3 text-right">R$ {parseFloat(seller.receitaTotal).toLocaleString('pt-BR')}</td>
+                            <td className="p-3 text-right">R$ {parseFloat(seller.ticketMedio).toLocaleString('pt-BR')}</td>
+                            <td className="p-3 text-right text-green-600">R$ {parseFloat(seller.comissaoTotal).toLocaleString('pt-BR')}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p className="text-center text-muted-foreground py-8">Nenhuma venda no período</p>
+                  )}
+                </Card>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      ) : (
+        inventoryContent
       )}
     </div>
   );
