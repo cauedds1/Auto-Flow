@@ -15,7 +15,7 @@ The frontend utilizes React with TypeScript, Vite, Tailwind CSS, Radix UI primit
 **Frontend:**
 - **Technology Stack**: React, TypeScript, Vite, Wouter, TanStack React Query, Tailwind CSS.
 - **State Management**: React Query for server state, React hooks for local state, React Hook Form with Zod for form validation.
-- **Key Features**: Vehicle management (sorting, checklists, dynamic adaptation for Carro/Moto), physical location tracking (7 predefined + custom), document management (PDF upload/download), intelligent alerts, AI features (price suggestions, ad generation in 3 styles), enhanced dashboard with 6 key metrics (Total em Estoque correctly excludes Vendidos/Arquivados), user management (role-based permissions, invite users), first-time setup onboarding, theme customization, sale workflow with automatic SaleDialog when marking vehicle as "Vendido" (captures seller and optional repasse target), reorganized vehicle filters (horizontal layout), and complete Bills system (Contas a Pagar/Receber) with RBAC.
+- **Key Features**: Vehicle management (dynamic smart filtering by location/status/brand with unique options extracted from vehicles, persistent filter preferences in localStorage), physical location tracking (7 predefined + custom), document management (PDF upload/download), intelligent alerts, AI features (price suggestions, ad generation in 3 styles), enhanced dashboard with 6 key metrics (Total em Estoque correctly excludes Vendidos/Arquivados), user management (role-based permissions, invite users), first-time setup onboarding, theme customization, sale workflow with automatic SaleDialog when marking vehicle as "Vendido" (captures seller and optional repasse target) plus automatic commission creation, and complete Bills system (Contas a Pagar/Receber) with RBAC.
 
 **Backend:**
 - **Technology Stack**: Node.js with Express.js, TypeScript, PostgreSQL (via Neon serverless driver), Drizzle ORM.
@@ -23,8 +23,9 @@ The frontend utilizes React with TypeScript, Vite, Tailwind CSS, Radix UI primit
 - **Authentication**: Email/password authentication using bcrypt, passport-local strategy, and PostgreSQL session store (30-day TTL). Google OAuth has been removed.
 - **Multi-Tenant Security**: Complete data isolation enforced via `empresaId` validation on all routes and queries, preventing cross-company data access.
 - **Role-Based Access Control (RBAC)**: Four roles (Proprietário, Gerente, Vendedor, Motorista) with granular permissions managed by middleware.
-- **Key Entities**: Vehicle status pipeline (Entrada to Arquivado), cost categories (Mecânica, Estética, Documentação, Outros).
+- **Key Entities**: Vehicle status pipeline (Entrada to Arquivado), cost categories (Mecânica, Estética, Documentação, Outros), commission system with automatic commission_payments creation when vehicle marked as "Vendido".
 - **File Storage**: Images are stored as Base64 in the database. Documents are stored on disk at `/uploads/vehicles/<vehicleId>/`.
+- **Automatic Commission Creation**: When a vehicle is marked as "Vendido", the system automatically creates a commission payment record (status: "A Pagar") for the seller based on their configured commission percentage, visible to proprietários.
 
 ### System Design Choices
 - **Multi-tenancy**: Full data isolation per company (`empresaId`) across all tables and API routes.
