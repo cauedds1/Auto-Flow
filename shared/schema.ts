@@ -127,10 +127,12 @@ export const vehicles = pgTable("vehicles", {
   }>().default({}),
   // Campos de venda e comissão
   vendedorId: varchar("vendedor_id"), // FK para users - quem vendeu o veículo
+  vendedorNome: text("vendedor_nome"), // Nome do vendedor (cache)
   dataVenda: timestamp("data_venda"), // Quando foi vendido
   valorVenda: numeric("valor_venda", { precision: 10, scale: 2 }), // Valor real da venda (pode ser diferente do salePrice)
   formaPagamento: text("forma_pagamento"), // À vista, financiado, etc
   observacoesVenda: text("observacoes_venda"),
+  repassadoPara: text("repassado_para"), // Nome de quem recebeu o veículo repassado
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   locationChangedAt: timestamp("location_changed_at").defaultNow().notNull(),
