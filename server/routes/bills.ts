@@ -13,7 +13,7 @@ const router = Router();
 // Listar todas as contas
 router.get("/", async (req: any, res) => {
   try {
-    const { empresaId } = getUserWithCompany(req);
+    const { empresaId } = await getUserWithCompany(req);
     const { tipo, status, mes, ano } = req.query;
     
     let query = db
@@ -79,7 +79,7 @@ router.get("/", async (req: any, res) => {
 // Dashboard de resumo
 router.get("/dashboard", async (req: any, res) => {
   try {
-    const { empresaId } = getUserWithCompany(req);
+    const { empresaId } = await getUserWithCompany(req);
     
     // Total a pagar (pendente)
     const totalAPagarResult = await db
@@ -210,7 +210,7 @@ router.get("/dashboard", async (req: any, res) => {
 // Criar conta
 router.post("/", async (req: any, res) => {
   try {
-    const { empresaId, userId } = getUserWithCompany(req);
+    const { empresaId, userId } = await getUserWithCompany(req);
     const billData = req.body;
     
     const [newBill] = await db
@@ -246,7 +246,7 @@ router.post("/", async (req: any, res) => {
 // Atualizar conta
 router.put("/:id", async (req: any, res) => {
   try {
-    const { empresaId } = getUserWithCompany(req);
+    const { empresaId } = await getUserWithCompany(req);
     const { id } = req.params;
     const updates = req.body;
     
@@ -280,7 +280,7 @@ router.put("/:id", async (req: any, res) => {
 // Marcar como pago/recebido
 router.patch("/:id/pay", async (req: any, res) => {
   try {
-    const { empresaId, userId } = getUserWithCompany(req);
+    const { empresaId, userId } = await getUserWithCompany(req);
     const { id } = req.params;
     const { dataPagamento } = req.body;
     
@@ -315,7 +315,7 @@ router.patch("/:id/pay", async (req: any, res) => {
 // Excluir conta
 router.delete("/:id", async (req: any, res) => {
   try {
-    const { empresaId } = getUserWithCompany(req);
+    const { empresaId } = await getUserWithCompany(req);
     const { id } = req.params;
     
     const [deleted] = await db
@@ -342,7 +342,7 @@ router.delete("/:id", async (req: any, res) => {
 // Atualizar status de contas vencidas (para ser chamado periodicamente)
 router.post("/update-overdue", async (req: any, res) => {
   try {
-    const { empresaId } = getUserWithCompany(req);
+    const { empresaId } = await getUserWithCompany(req);
     const hoje = new Date();
     
     await db
