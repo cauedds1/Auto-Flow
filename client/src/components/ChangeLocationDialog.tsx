@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -26,12 +27,10 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
-import { useCurrentCompany } from "@/hooks/use-company";
 import { MapPin, CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { SaleDialog, SaleData } from "@/components/SaleDialog";
 
 interface ChangeLocationDialogProps {
   vehicleId: string;
@@ -56,8 +55,6 @@ export function ChangeLocationDialog({
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setOpen = onOpenChange || setInternalOpen;
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSaleDialogOpen, setIsSaleDialogOpen] = useState(false);
-  const [vehicleName, setVehicleName] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -68,10 +65,40 @@ export function ChangeLocationDialog({
     customLocation: "",
     notes: "",
     date: new Date(),
+    // Campos de venda
+    vendedorId: "",
+    isRepassado: false,
+    repassadoPara: "",
+    salePrice: "",
+  });
+
+  const { data: users = [] } = useQuery<Array<{ id: string; firstName: string; lastName: string }>>({
+    queryKey: ["/api/users"],
+    queryFn: async () => {
+      const response = await fetch("/api/users");
+      if (!response.ok) {
+        throw new Error("Erro ao buscar usuários");
+      }
+      return response.json();
+    },
+    enabled: open && formData.status === "Vendido",
+  });
+
+  // Buscar dados do veículo para pre-popular campos de venda
+  const { data: vehicleData } = useQuery({
+    queryKey: [`/api/vehicles/${vehicleId}`],
+    queryFn: async () => {
+      const response = await fetch(`/api/vehicles/${vehicleId}`);
+      if (!response.ok) {
+        throw new Error("Erro ao buscar dados do veículo");
+      }
+      return response.json();
+    },
+    enabled: open,
   });
 
   useEffect(() => {
-    if (open) {
+    if (open && vehicleData) {
       // Verificar se a localização atual é uma das opções pré-definidas
       const predefinedOptions = ["Casa", "Loja", "Pátio da Loja", "Oficina", "Higienização", "Outra Loja"];
       const isCustomLocation = currentPhysicalLocation && !predefinedOptions.includes(currentPhysicalLocation);
@@ -83,12 +110,15 @@ export function ChangeLocationDialog({
         customLocation: isCustomLocation ? currentPhysicalLocation : "",
         notes: "",
         date: new Date(),
+        // Pre-popular campos de venda se veículo já está vendido
+        vendedorId: vehicleData.vendedorId || "",
+        isRepassado: !!vehicleData.repassadoPara,
+        repassadoPara: vehicleData.repassadoPara || "",
+        salePrice: vehicleData.salePrice ? String(vehicleData.salePrice) : "",
       });
     }
-  }, [open, currentStatus, currentPhysicalLocation, currentPhysicalLocationDetail]);
+  }, [open, currentStatus, currentPhysicalLocation, currentPhysicalLocationDetail, vehicleData]);
 
-  const { company } = useCurrentCompany();
-  
   const statusOptions = [
     "Entrada",
     "Em Reparos",
@@ -111,27 +141,34 @@ export function ChangeLocationDialog({
   ];
   
   const isLocationRequired = formData.status !== "Vendido" && formData.status !== "Arquivado";
-
-  useEffect(() => {
-    const fetchVehicleData = async () => {
-      try {
-        const response = await fetch(`/api/vehicles/${vehicleId}`);
-        if (response.ok) {
-          const vehicle = await response.json();
-          setVehicleName(`${vehicle.brand} ${vehicle.model} ${vehicle.year}`);
-        }
-      } catch (error) {
-        console.error("Erro ao buscar dados do veículo:", error);
-      }
-    };
-    if (open) {
-      fetchVehicleData();
-    }
-  }, [open, vehicleId]);
+  const isVendido = formData.status === "Vendido";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validação para veículo vendido
+    if (isVendido) {
+      // Vendedor só é obrigatório se NÃO for repassado
+      if (!formData.isRepassado && !formData.vendedorId) {
+        toast({
+          title: "Vendedor obrigatório",
+          description: "Por favor, selecione o vendedor responsável pela venda.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (formData.isRepassado && !formData.repassadoPara.trim()) {
+        toast({
+          title: "Campo obrigatório",
+          description: "Por favor, informe para quem o veículo foi repassado.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    // Validação de localização para outros status
     if (isLocationRequired && (!formData.physicalLocation || formData.physicalLocation === "__none__")) {
       toast({
         title: "Localização obrigatória",
@@ -149,16 +186,7 @@ export function ChangeLocationDialog({
       });
       return;
     }
-    
-    if (formData.status === "Vendido") {
-      setIsSaleDialogOpen(true);
-      return;
-    }
 
-    await submitStatusChange();
-  };
-
-  const submitStatusChange = async (saleData?: SaleData) => {
     setIsSubmitting(true);
 
     try {
@@ -168,27 +196,29 @@ export function ChangeLocationDialog({
         moveDate: formData.date.toISOString(),
       };
 
-      if (formData.physicalLocation && formData.physicalLocation !== "__none__") {
-        if (formData.physicalLocation === "__custom__") {
-          payload.physicalLocation = formData.customLocation.trim();
-          payload.physicalLocationDetail = formData.physicalLocationDetail.trim() || null;
+      // Campos de localização (não aplicável para Vendido/Arquivado)
+      if (!isVendido && formData.status !== "Arquivado") {
+        if (formData.physicalLocation && formData.physicalLocation !== "__none__") {
+          if (formData.physicalLocation === "__custom__") {
+            payload.physicalLocation = formData.customLocation.trim();
+            payload.physicalLocationDetail = formData.physicalLocationDetail.trim() || null;
+          } else {
+            payload.physicalLocation = formData.physicalLocation;
+            payload.physicalLocationDetail = formData.physicalLocationDetail.trim() || null;
+          }
         } else {
-          payload.physicalLocation = formData.physicalLocation;
-          payload.physicalLocationDetail = formData.physicalLocationDetail.trim() || null;
+          payload.physicalLocation = null;
+          payload.physicalLocationDetail = null;
         }
-      } else {
-        payload.physicalLocation = null;
-        payload.physicalLocationDetail = null;
       }
 
-      if (saleData) {
-        payload.vendedorId = saleData.vendedorId;
-        payload.vendedorNome = saleData.vendedorNome;
-        payload.repassadoPara = saleData.repassadoPara;
-        payload.dataVenda = saleData.dataVenda;
-        payload.valorVenda = saleData.valorVenda;
-        payload.formaPagamento = saleData.formaPagamento;
-        payload.observacoesVenda = saleData.observacoesVenda;
+      // Campos de venda
+      if (isVendido) {
+        const selectedUser = users.find(u => u.id === formData.vendedorId);
+        payload.vendedorId = formData.vendedorId || null;
+        payload.vendedorNome = selectedUser ? `${selectedUser.firstName} ${selectedUser.lastName}` : null;
+        payload.repassadoPara = formData.isRepassado ? formData.repassadoPara.trim() : null;
+        payload.salePrice = formData.salePrice ? parseFloat(formData.salePrice) : null;
       }
 
       const response = await fetch(`/api/vehicles/${vehicleId}`, {
@@ -202,7 +232,7 @@ export function ChangeLocationDialog({
       }
 
       let description = `Status: ${formData.status}`;
-      if (formData.physicalLocation && formData.physicalLocation !== "__none__") {
+      if (!isVendido && formData.physicalLocation && formData.physicalLocation !== "__none__") {
         const locationName = formData.physicalLocation === "__custom__" ? formData.customLocation : formData.physicalLocation;
         description += formData.physicalLocationDetail
           ? ` | Local: ${locationName} - ${formData.physicalLocationDetail}`
@@ -220,7 +250,6 @@ export function ChangeLocationDialog({
       queryClient.invalidateQueries({ queryKey: ["/api/metrics"] });
 
       setOpen(false);
-      setIsSaleDialogOpen(false);
     } catch (error) {
       console.error("Erro ao atualizar veículo:", error);
       toast({
@@ -233,10 +262,6 @@ export function ChangeLocationDialog({
     }
   };
 
-  const handleSaleDataSave = (saleData: SaleData) => {
-    submitStatusChange(saleData);
-  };
-
   const defaultTrigger = (
     <Button variant="outline" size="sm">
       <MapPin className="mr-2 h-4 w-4" />
@@ -245,20 +270,19 @@ export function ChangeLocationDialog({
   );
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          {trigger || defaultTrigger}
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Atualizar Status e Localização</DialogTitle>
-            <DialogDescription>
-              Altere o status do veículo no pipeline e sua localização física
-            </DialogDescription>
-          </DialogHeader>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {trigger || defaultTrigger}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>Atualizar Status e Localização</DialogTitle>
+          <DialogDescription>
+            Altere o status do veículo no pipeline e sua localização física
+          </DialogDescription>
+        </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="status">Status do Veículo</Label>
               <Select
@@ -278,69 +302,148 @@ export function ChangeLocationDialog({
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="physicalLocation" className="flex items-center gap-2">
-                Localização Física
-                {isLocationRequired && <span className="text-destructive text-sm">*</span>}
-              </Label>
-              <Select
-                value={formData.physicalLocation}
-                onValueChange={(value) => setFormData({ ...formData, physicalLocation: value, physicalLocationDetail: "", customLocation: "" })}
-              >
-                <SelectTrigger id="physicalLocation" className={isLocationRequired && formData.physicalLocation === "__none__" ? "border-destructive" : ""}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {physicalLocationOptions.map((loc) => (
-                    <SelectItem key={loc.value} value={loc.value}>
-                      {loc.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {isLocationRequired && (
-                <p className="text-xs text-muted-foreground">
-                  * Obrigatório para este status
-                </p>
-              )}
-            </div>
+            {/* Campos específicos para status "Vendido" */}
+            {isVendido ? (
+              <>
+                <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                  <Switch
+                    id="repassado"
+                    checked={formData.isRepassado}
+                    onCheckedChange={(checked) => setFormData({ 
+                      ...formData, 
+                      isRepassado: checked,
+                      // Limpar vendedor quando ativar repassado
+                      vendedorId: checked ? "" : formData.vendedorId
+                    })}
+                  />
+                  <Label htmlFor="repassado" className="cursor-pointer font-medium">
+                    Repassado
+                  </Label>
+                </div>
 
-            {formData.physicalLocation === "__custom__" && (
-              <div className="space-y-2">
-                <Label htmlFor="customLocation" className="flex items-center gap-2">
-                  Especifique a Localização
-                  <span className="text-destructive text-sm">*</span>
-                </Label>
-                <Input
-                  id="customLocation"
-                  placeholder="Ex: Estacionamento Externo, Garagem..."
-                  value={formData.customLocation}
-                  onChange={(e) => setFormData({ ...formData, customLocation: e.target.value })}
-                  required
-                />
-              </div>
-            )}
+                <div className="space-y-2">
+                  <Label htmlFor="vendedor" className="flex items-center gap-2">
+                    Vendedor
+                    {!formData.isRepassado && <span className="text-destructive text-sm">*</span>}
+                  </Label>
+                  <Select
+                    value={formData.vendedorId}
+                    onValueChange={(value) => setFormData({ ...formData, vendedorId: value })}
+                    disabled={formData.isRepassado}
+                  >
+                    <SelectTrigger id="vendedor" disabled={formData.isRepassado}>
+                      <SelectValue placeholder="Selecione o vendedor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.firstName} {user.lastName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formData.isRepassado && (
+                    <p className="text-xs text-muted-foreground">
+                      Vendedor não é necessário para veículos repassados
+                    </p>
+                  )}
+                </div>
 
-            {formData.physicalLocation && formData.physicalLocation !== "__none__" && formData.physicalLocation !== "__custom__" && (
-              <div className="space-y-2">
-                <Label htmlFor="physicalLocationDetail">
-                  Detalhe da Localização (opcional)
-                </Label>
-                <Input
-                  id="physicalLocationDetail"
-                  placeholder={
-                    formData.physicalLocation === "Oficina" 
-                      ? "Ex: Paulo, Pensin, Adailton..." 
-                      : formData.physicalLocation === "Higienização"
-                      ? "Ex: Lavagem do João, Estética Car..."
-                      : formData.physicalLocation === "Outra Loja"
-                      ? "Ex: Loja do João..."
-                      : "Ex: Especifique o local..."
-                  }
-                  value={formData.physicalLocationDetail}
-                  onChange={(e) => setFormData({ ...formData, physicalLocationDetail: e.target.value })}
-                />
-              </div>
+                {formData.isRepassado && (
+                  <div className="space-y-2">
+                    <Label htmlFor="repassadoPara" className="flex items-center gap-2">
+                      Repassado Para
+                      <span className="text-destructive text-sm">*</span>
+                    </Label>
+                    <Input
+                      id="repassadoPara"
+                      placeholder="Nome da pessoa/empresa que recebeu o veículo"
+                      value={formData.repassadoPara}
+                      onChange={(e) => setFormData({ ...formData, repassadoPara: e.target.value })}
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="salePrice">Preço de Venda (R$)</Label>
+                  <Input
+                    id="salePrice"
+                    type="number"
+                    placeholder="0.00"
+                    step="0.01"
+                    value={formData.salePrice}
+                    onChange={(e) => setFormData({ ...formData, salePrice: e.target.value })}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Campos de localização física (para outros status) */}
+                <div className="space-y-2">
+                  <Label htmlFor="physicalLocation" className="flex items-center gap-2">
+                    Localização Física
+                    {isLocationRequired && <span className="text-destructive text-sm">*</span>}
+                  </Label>
+                  <Select
+                    value={formData.physicalLocation}
+                    onValueChange={(value) => setFormData({ ...formData, physicalLocation: value, physicalLocationDetail: "", customLocation: "" })}
+                  >
+                    <SelectTrigger id="physicalLocation" className={isLocationRequired && formData.physicalLocation === "__none__" ? "border-destructive" : ""}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {physicalLocationOptions.map((loc) => (
+                        <SelectItem key={loc.value} value={loc.value}>
+                          {loc.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {isLocationRequired && (
+                    <p className="text-xs text-muted-foreground">
+                      * Obrigatório para este status
+                    </p>
+                  )}
+                </div>
+
+                {formData.physicalLocation === "__custom__" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="customLocation" className="flex items-center gap-2">
+                      Especifique a Localização
+                      <span className="text-destructive text-sm">*</span>
+                    </Label>
+                    <Input
+                      id="customLocation"
+                      placeholder="Ex: Estacionamento Externo, Garagem..."
+                      value={formData.customLocation}
+                      onChange={(e) => setFormData({ ...formData, customLocation: e.target.value })}
+                      required
+                    />
+                  </div>
+                )}
+
+                {formData.physicalLocation && formData.physicalLocation !== "__none__" && formData.physicalLocation !== "__custom__" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="physicalLocationDetail">
+                      Detalhe da Localização (opcional)
+                    </Label>
+                    <Input
+                      id="physicalLocationDetail"
+                      placeholder={
+                        formData.physicalLocation === "Oficina" 
+                          ? "Ex: Paulo, Pensin, Adailton..." 
+                          : formData.physicalLocation === "Higienização"
+                          ? "Ex: Lavagem do João, Estética Car..."
+                          : formData.physicalLocation === "Outra Loja"
+                          ? "Ex: Loja do João..."
+                          : "Ex: Especifique o local..."
+                      }
+                      value={formData.physicalLocationDetail}
+                      onChange={(e) => setFormData({ ...formData, physicalLocationDetail: e.target.value })}
+                    />
+                  </div>
+                )}
+              </>
             )}
 
             <div className="space-y-2">
@@ -396,13 +499,5 @@ export function ChangeLocationDialog({
           </form>
         </DialogContent>
       </Dialog>
-      
-      <SaleDialog
-        open={isSaleDialogOpen}
-        onOpenChange={setIsSaleDialogOpen}
-        onSave={handleSaleDataSave}
-        vehicleName={vehicleName}
-      />
-    </>
   );
 }
