@@ -10,8 +10,24 @@ import {
   users
 } from "@shared/schema";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
-import { getUserWithCompany } from "../utils/getUserWithCompany";
 import { requireProprietarioOrGerente } from "../middleware/roleCheck";
+
+// Helper para validar autenticação e obter empresaId
+function getUserWithCompany(req: any): { userId: string; empresaId: string } {
+  const userId = req.user?.claims?.id || req.user?.claims?.sub;
+  
+  if (!userId) {
+    throw new Error("Unauthorized");
+  }
+  
+  const user = req.user;
+  
+  if (!user?.empresaId) {
+    throw new Error("User not linked to a company");
+  }
+  
+  return { userId, empresaId: user.empresaId };
+}
 
 const router = Router();
 

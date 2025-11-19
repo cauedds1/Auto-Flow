@@ -1746,6 +1746,30 @@ Retorne APENAS um JSON válido no formato:
   app.use("/api/financial", isAuthenticated, financialRoutes);
 
   // ============================================
+  // LEADS E CRM
+  // ============================================
+  const leadsRoutes = require("./routes/leads").default;
+  app.use("/api/leads", isAuthenticated, leadsRoutes);
+
+  // ============================================
+  // FOLLOW-UPS
+  // ============================================
+  const followupsRoutes = require("./routes/followups").default;
+  app.use("/api/followups", isAuthenticated, followupsRoutes);
+
+  // ============================================
+  // ACTIVITY LOG (AUDITORIA)
+  // ============================================
+  const activityLogRoutes = require("./routes/activityLog").default;
+  app.use("/api/activity", isAuthenticated, activityLogRoutes);
+
+  // ============================================
+  // APROVAÇÕES DE CUSTOS
+  // ============================================
+  const costApprovalsRoutes = require("./routes/costApprovals").default;
+  app.use("/api/approvals", isAuthenticated, costApprovalsRoutes);
+
+  // ============================================
   // GERENCIAR ACESSOS (Permissões Customizadas - Proprietário apenas)
   // ============================================
   

@@ -27,7 +27,11 @@ import {
   vehicleDocuments,
   companies,
   userPermissions,
+  activityLog,
+  leads,
+  followUps,
 } from "@shared/schema";
+import { or } from "drizzle-orm";
 import { normalizeChecklistData } from "@shared/checklistUtils";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
@@ -348,7 +352,7 @@ export class DatabaseStorage implements IStorage {
   async updateStoreObservation(id: string, updates: Partial<InsertStoreObservation>): Promise<StoreObservation | undefined> {
     const finalUpdates: any = { ...updates, updatedAt: new Date() };
     
-    if (updates.status === "Resolvido" && !updates.resolvedAt) {
+    if (updates.status === "Resolvido") {
       finalUpdates.resolvedAt = new Date();
     } else if (updates.status === "Pendente") {
       finalUpdates.resolvedAt = null;
@@ -450,6 +454,60 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return created;
     }
+  }
+
+  // Activity Log
+  async logActivity(activity: any) {
+    const [created] = await db.insert(activityLog).values(activity).returning();
+    return created;
+  }
+
+  async getActivities(empresaId: string, filters?: any) {
+    let query = db.select().from(activityLog).where(eq(activityLog.empresaId, empresaId));
+    
+    if (filters?.userId) {
+      query = query.where(and(
+        eq(activityLog.empresaId, empresaId),
+        eq(activityLog.userId, filters.userId)
+      )) as any;
+    }
+    
+    return await query.orderBy(desc(activityLog.createdAt)).limit(filters?.limit || 50);
+  }
+
+  // Leads
+  async getLeads(empresaId: string, userId?: string, role?: string) {
+    let query = db.select().from(leads);
+    
+    if (role === "Vendedor" || role === "Motorista") {
+      query = query.where(and(
+        eq(leads.empresaId, empresaId),
+        or(
+          eq(leads.vendedorResponsavel, userId!),
+          eq(leads.criadoPor, userId!)
+        )
+      )) as any;
+    } else {
+      query = query.where(eq(leads.empresaId, empresaId)) as any;
+    }
+    
+    return await query.orderBy(desc(leads.createdAt));
+  }
+
+  // Follow-ups
+  async getFollowUps(empresaId: string, userId?: string, role?: string) {
+    let query = db.select().from(followUps);
+    
+    if (role === "Vendedor" || role === "Motorista") {
+      query = query.where(and(
+        eq(followUps.empresaId, empresaId),
+        eq(followUps.assignedTo, userId!)
+      )) as any;
+    } else {
+      query = query.where(eq(followUps.empresaId, empresaId)) as any;
+    }
+    
+    return await query.orderBy(followUps.dataAgendada);
   }
 }
 

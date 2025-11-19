@@ -505,3 +505,196 @@ export const insertUserPermissionsSchema = createInsertSchema(userPermissions).o
 
 export type InsertUserPermissions = z.infer<typeof insertUserPermissionsSchema>;
 export type UserPermissions = typeof userPermissions.$inferSelect;
+
+// ============================================
+// ACTIVITY LOG (AUDITORIA COMPLETA)
+// ============================================
+
+export const activityTypeEnum = pgEnum("activity_type", [
+  "vehicle_created",
+  "vehicle_updated",
+  "vehicle_deleted",
+  "vehicle_status_changed",
+  "vehicle_sold",
+  "cost_added",
+  "cost_updated",
+  "cost_deleted",
+  "cost_approved",
+  "cost_rejected",
+  "document_uploaded",
+  "document_deleted",
+  "image_uploaded",
+  "image_deleted",
+  "user_created",
+  "user_updated",
+  "user_deactivated",
+  "settings_updated",
+  "lead_created",
+  "lead_updated",
+  "lead_converted",
+]);
+
+export const activityLog = pgTable("activity_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  empresaId: varchar("empresa_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  userName: text("user_name").notNull(),
+  activityType: activityTypeEnum("activity_type").notNull(),
+  entityType: text("entity_type").notNull(), // "vehicle", "cost", "user", etc
+  entityId: varchar("entity_id"), // ID do veículo, custo, etc
+  description: text("description").notNull(),
+  metadata: text("metadata"), // JSON com dados extras
+  ipAddress: varchar("ip_address"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertActivityLogSchema = createInsertSchema(activityLog).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
+export type ActivityLog = typeof activityLog.$inferSelect;
+
+// ============================================
+// LEADS / CLIENTES (Para vendedores)
+// ============================================
+
+export const leadStatusEnum = pgEnum("lead_status", [
+  "Novo",
+  "Contatado",
+  "Visitou Loja",
+  "Proposta Enviada",
+  "Negociando",
+  "Convertido",
+  "Perdido",
+]);
+
+export const leads = pgTable("leads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  empresaId: varchar("empresa_id").notNull(),
+  nome: text("nome").notNull(),
+  telefone: varchar("telefone").notNull(),
+  email: varchar("email"),
+  status: leadStatusEnum("status").notNull().default("Novo"),
+  veiculoInteresse: varchar("veiculo_interesse"), // ID do veículo
+  veiculoInteresseNome: text("veiculo_interesse_nome"), // Nome legível
+  origem: text("origem"), // WhatsApp, Telefone, Presencial, Site
+  observacoes: text("observacoes"),
+  vendedorResponsavel: varchar("vendedor_responsavel"), // ID do vendedor
+  proximoFollowup: timestamp("proximo_followup"),
+  valorProposta: numeric("valor_proposta", { precision: 10, scale: 2 }),
+  motivoPerdido: text("motivo_perdido"),
+  criadoPor: varchar("criado_por").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertLeadSchema = createInsertSchema(leads, {
+  valorProposta: z.union([z.number(), z.string(), z.null()]).transform(val => 
+    val === null ? null : (typeof val === 'string' ? val : val.toString())
+  ).optional(),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertLead = z.infer<typeof insertLeadSchema>;
+export type Lead = typeof leads.$inferSelect;
+
+// ============================================
+// APROVAÇÃO DE CUSTOS (Workflow de aprovação)
+// ============================================
+
+export const costApprovalStatusEnum = pgEnum("cost_approval_status", [
+  "Pendente",
+  "Aprovado",
+  "Rejeitado",
+]);
+
+export const costApprovals = pgTable("cost_approvals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  empresaId: varchar("empresa_id").notNull(),
+  costId: varchar("cost_id").notNull(), // FK para vehicle_costs
+  solicitadoPor: varchar("solicitado_por").notNull(),
+  valor: numeric("valor", { precision: 10, scale: 2 }).notNull(),
+  status: costApprovalStatusEnum("status").notNull().default("Pendente"),
+  aprovadoPor: varchar("aprovado_por"),
+  aprovadoEm: timestamp("aprovado_em"),
+  motivoRejeicao: text("motivo_rejeicao"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertCostApprovalSchema = createInsertSchema(costApprovals, {
+  valor: z.union([z.number(), z.string()]).transform(val => typeof val === 'string' ? val : val.toString()),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCostApproval = z.infer<typeof insertCostApprovalSchema>;
+export type CostApproval = typeof costApprovals.$inferSelect;
+
+// ============================================
+// CONFIGURAÇÕES DE APROVAÇÃO (Por empresa)
+// ============================================
+
+export const approvalSettings = pgTable("approval_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  empresaId: varchar("empresa_id").notNull().unique(),
+  limiteAprovacaoAutomatica: numeric("limite_aprovacao_automatica", { precision: 10, scale: 2 }).default("500.00"),
+  exigirAprovacaoGerente: varchar("exigir_aprovacao_gerente").default("true"),
+  notificarProprietario: varchar("notificar_proprietario").default("true"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertApprovalSettingsSchema = createInsertSchema(approvalSettings, {
+  limiteAprovacaoAutomatica: z.union([z.number(), z.string()]).transform(val => typeof val === 'string' ? val : val.toString()),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertApprovalSettings = z.infer<typeof insertApprovalSettingsSchema>;
+export type ApprovalSettings = typeof approvalSettings.$inferSelect;
+
+// ============================================
+// FOLLOW-UPS (Lembretes para vendedores)
+// ============================================
+
+export const followUpStatusEnum = pgEnum("followup_status", [
+  "Pendente",
+  "Concluído",
+  "Cancelado",
+]);
+
+export const followUps = pgTable("follow_ups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  empresaId: varchar("empresa_id").notNull(),
+  leadId: varchar("lead_id"), // FK para leads
+  vehicleId: varchar("vehicle_id"), // FK para vehicles
+  assignedTo: varchar("assigned_to").notNull(), // vendedor responsável
+  titulo: text("titulo").notNull(),
+  descricao: text("descricao"),
+  dataAgendada: timestamp("data_agendada").notNull(),
+  status: followUpStatusEnum("status").notNull().default("Pendente"),
+  concluidoEm: timestamp("concluido_em"),
+  resultado: text("resultado"), // O que aconteceu no follow-up
+  criadoPor: varchar("criado_por").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertFollowUpSchema = createInsertSchema(followUps).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertFollowUp = z.infer<typeof insertFollowUpSchema>;
+export type FollowUp = typeof followUps.$inferSelect;
