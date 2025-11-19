@@ -4,6 +4,14 @@
 VeloStock is a universal multi-tenant SaaS platform for complete vehicle dealership and store management. Originally designed for "Capoeiras Automóveis," it has evolved into a white-label solution for any automotive business. The system manages vehicles through their preparation pipeline from intake to sale, featuring Kanban-style workflow, detailed tracking, cost management, AI-powered features (price suggestions and ad generation), intelligent alerts, and complete store operations (including inventory/supplies management). The application is localized in Brazilian Portuguese (pt-BR) with a modern, professional design system.
 
 ## Recent Major Changes (November 2024)
+- **INTEGRAÇÃO FIPE COMPLETA E FUNCIONAL** (Nov 19, 2024): Sistema de consulta FIPE integrado ao cadastro de veículos e sugestão de preços com IA
+  - **Hooks FIPE**: `useFipeBrands`, `useFipeModels`, `useFipeYears`, `useFipePrice`, `useFipePriceByVehicle` (fuzzy matching automático)
+  - **Fuzzy Matching Robusto**: Normalização de acentos (NFD), aliases de marcas (GM/Chevrolet, VW/Volkswagen), matching bidirecional
+  - **Cadastro de Veículo**: Botão "Consultar FIPE" no formulário, campo fipeReferencePrice (persiste no banco)
+  - **Sugestão de Preço**: Nova aba "Sugestão de Preço" com busca FIPE automática + IA (GPT-4o-mini)
+  - **Fluxo Completo**: FIPE → Margem de Lucro → IA → Preço Sugerido + Justificativa
+  - **Correções Críticas**: toFixed() com parseFloat, persistência fipeReferencePrice, fuzzy matching com normalização
+  - **Status**: ✅ 100% funcional e aprovado pelo architect
 - **SISTEMA CRM COMPLETO IMPLEMENTADO** (Nov 19, 2024): Sistema de gestão de relacionamento com clientes (CRM) com isolamento total de dados
   - **Schemas**: Leads, Follow-ups, Activity Log, Cost Approvals, User Permissions, Approval Settings
   - **Isolamento de Dados**: 4 camadas de proteção (Middleware → Query Filters → FK Validation → Whitelist)
