@@ -699,3 +699,42 @@ export const insertFollowUpSchema = createInsertSchema(followUps).omit({
 
 export type InsertFollowUp = z.infer<typeof insertFollowUpSchema>;
 export type FollowUp = typeof followUps.$inferSelect;
+
+// ============================================
+// CONFIGURAÇÕES AVANÇADAS DA EMPRESA
+// ============================================
+
+export const advancedCompanySettings = pgTable("advanced_company_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  empresaId: varchar("empresa_id").notNull().unique(),
+  
+  // Categorias de custos customizadas (JSON array)
+  categoriasCustos: text("categorias_custos").array().default([
+    "Mecânica",
+    "Estética",
+    "Documentação",
+    "Outros"
+  ]),
+  
+  // Origens de leads customizadas
+  origensLeads: text("origens_leads").array().default([
+    "WhatsApp",
+    "Site",
+    "Indicação",
+    "Loja Física",
+    "Redes Sociais",
+    "Telefone"
+  ]),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertAdvancedCompanySettingsSchema = createInsertSchema(advancedCompanySettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAdvancedCompanySettings = z.infer<typeof insertAdvancedCompanySettingsSchema>;
+export type AdvancedCompanySettings = typeof advancedCompanySettings.$inferSelect;
