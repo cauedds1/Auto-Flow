@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,14 +13,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const STATUS_OPTIONS = [
-  { value: "all", label: "Todos os Status" },
-  { value: "Entrada", label: "Entrada" },
-  { value: "Em Reparos", label: "Em Reparos" },
-  { value: "Em Higienização", label: "Em Higienização" },
-  { value: "Pronto para Venda", label: "Pronto para Venda" },
-  { value: "Vendido", label: "Vendido" },
-  { value: "Arquivado", label: "Arquivado" },
+const ALL_STATUS = [
+  "Pronto para Venda",
+  "Em Higienização",
+  "Em Documentação",
+  "Aguardando Peças",
+  "Em Reparos",
+  "Entrada",
+  "Vendido",
+  "Arquivado",
 ];
 
 const STATUS_ORDER = {
@@ -56,25 +57,21 @@ const SORT_OPTIONS = [
   { value: "year-old", label: "Ordenar por Ano (Mais Antigo)" },
 ];
 
-const PRIORITY_STATUS_OPTIONS = [
-  { value: "Pronto para Venda", label: "Pronto para Venda" },
-  { value: "Em Higienização", label: "Em Higienização" },
-  { value: "Em Documentação", label: "Em Documentação" },
-  { value: "Aguardando Peças", label: "Aguardando Peças" },
-  { value: "Em Reparos", label: "Em Reparos" },
-  { value: "Entrada", label: "Entrada" },
-  { value: "Vendido", label: "Vendido" },
-  { value: "Arquivado", label: "Arquivado" },
-];
-
 export default function Vehicles() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState(() => {
     return localStorage.getItem("vehicles-sort-by") || "location";
   });
-  const [priorityStatus, setPriorityStatus] = useState(() => {
-    return localStorage.getItem("vehicles-priority-status") || "Pronto para Venda";
+  
+  // Filtros específicos para cada tipo de ordenação
+  const [selectedLocation, setSelectedLocation] = useState<string>(() => {
+    return localStorage.getItem("vehicles-selected-location") || "all";
+  });
+  const [selectedStatus, setSelectedStatus] = useState<string>(() => {
+    return localStorage.getItem("vehicles-selected-status") || "Pronto para Venda";
+  });
+  const [selectedBrand, setSelectedBrand] = useState<string>(() => {
+    return localStorage.getItem("vehicles-selected-brand") || "all";
   });
 
   const { data: vehicles = [], isLoading } = useQuery<any[]>({
@@ -88,35 +85,83 @@ export default function Vehicles() {
     },
   });
 
-  // Salvar preferências de ordenação no localStorage
+  // Salvar preferências no localStorage
   useEffect(() => {
     localStorage.setItem("vehicles-sort-by", sortBy);
   }, [sortBy]);
 
   useEffect(() => {
-    localStorage.setItem("vehicles-priority-status", priorityStatus);
-  }, [priorityStatus]);
+    localStorage.setItem("vehicles-selected-location", selectedLocation);
+  }, [selectedLocation]);
+
+  useEffect(() => {
+    localStorage.setItem("vehicles-selected-status", selectedStatus);
+  }, [selectedStatus]);
+
+  useEffect(() => {
+    localStorage.setItem("vehicles-selected-brand", selectedBrand);
+  }, [selectedBrand]);
+
+  // Extrair localizações únicas dos veículos
+  const uniqueLocations = useMemo(() => {
+    const locations = new Set<string>();
+    vehicles.forEach((v: any) => {
+      if (v.physicalLocation) {
+        locations.add(v.physicalLocation);
+      }
+    });
+    return Array.from(locations).sort();
+  }, [vehicles]);
+
+  // Extrair marcas únicas dos veículos
+  const uniqueBrands = useMemo(() => {
+    const brands = new Set<string>();
+    vehicles.forEach((v: any) => {
+      if (v.brand) {
+        brands.add(v.brand);
+      }
+    });
+    return Array.from(brands).sort();
+  }, [vehicles]);
 
   const filteredVehicles = vehicles
     .filter((vehicle: any) => {
+      // Busca por texto
       const matchesSearch = `${vehicle.brand} ${vehicle.model} ${vehicle.plate}`
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
       
-      // Oculta veículos arquivados por padrão, a menos que o filtro seja especificamente "Arquivado"
+      // Sempre oculta arquivados, exceto se selecionado explicitamente
       const isArchived = vehicle.status === "Arquivado";
-      if (statusFilter !== "Arquivado" && isArchived && statusFilter !== "all") {
+      if (isArchived && sortBy === "status" && selectedStatus !== "Arquivado") {
         return false;
       }
-      
-      // Se o filtro for "all", exclui arquivados
-      if (statusFilter === "all" && isArchived) {
+      if (isArchived && sortBy !== "status") {
         return false;
       }
+
+      // Filtrar por localização
+      if (sortBy === "location" && selectedLocation !== "all") {
+        if (selectedLocation === "Outros") {
+          // Mostrar veículos sem localização ou com localização não padrão
+          const isKnownLocation = uniqueLocations.includes(vehicle.physicalLocation || "");
+          if (isKnownLocation) return false;
+        } else {
+          if (vehicle.physicalLocation !== selectedLocation) return false;
+        }
+      }
+
+      // Filtrar por status
+      if (sortBy === "status") {
+        if (vehicle.status !== selectedStatus) return false;
+      }
+
+      // Filtrar por marca
+      if (sortBy === "brand" && selectedBrand !== "all") {
+        if (vehicle.brand !== selectedBrand) return false;
+      }
       
-      const matchesStatus = statusFilter === "all" || vehicle.status === statusFilter;
-      
-      return matchesSearch && matchesStatus;
+      return matchesSearch;
     })
     .sort((a: any, b: any) => {
       if (sortBy === "location") {
@@ -134,14 +179,6 @@ export default function Vehicles() {
         const statusOrderB = STATUS_ORDER[b.status as keyof typeof STATUS_ORDER] || 999;
         return statusOrderA - statusOrderB;
       } else if (sortBy === "status") {
-        // Se é o status prioritário, vai primeiro
-        const aIsPriority = a.status === priorityStatus;
-        const bIsPriority = b.status === priorityStatus;
-        
-        if (aIsPriority && !bIsPriority) return -1;
-        if (!aIsPriority && bIsPriority) return 1;
-        
-        // Se ambos são ou não são o status prioritário, usa ordem padrão
         const statusOrderA = STATUS_ORDER[a.status as keyof typeof STATUS_ORDER] || 999;
         const statusOrderB = STATUS_ORDER[b.status as keyof typeof STATUS_ORDER] || 999;
         return statusOrderA - statusOrderB;
@@ -182,21 +219,9 @@ export default function Vehicles() {
         
         {/* Linha de filtros */}
         <div className="flex gap-3 flex-wrap items-center">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Todos os Status" />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
+          {/* Select principal de ordenação */}
           <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-52">
+            <SelectTrigger className="w-60">
               <ArrowUpDown className="mr-2 h-4 w-4" />
               <SelectValue />
             </SelectTrigger>
@@ -209,15 +234,51 @@ export default function Vehicles() {
             </SelectContent>
           </Select>
           
+          {/* Dropdown de Localizações */}
+          {sortBy === "location" && (
+            <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+              <SelectTrigger className="w-52">
+                <SelectValue placeholder="Todas as Localizações" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as Localizações</SelectItem>
+                {uniqueLocations.map((location) => (
+                  <SelectItem key={location} value={location}>
+                    {location}
+                  </SelectItem>
+                ))}
+                <SelectItem value="Outros">Outros</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* Dropdown de Status */}
           {sortBy === "status" && (
-            <Select value={priorityStatus} onValueChange={setPriorityStatus}>
+            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
               <SelectTrigger className="w-52">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {PRIORITY_STATUS_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
+                {ALL_STATUS.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {status}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* Dropdown de Marcas */}
+          {sortBy === "brand" && (
+            <Select value={selectedBrand} onValueChange={setSelectedBrand}>
+              <SelectTrigger className="w-52">
+                <SelectValue placeholder="Todas as Marcas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as Marcas</SelectItem>
+                {uniqueBrands.map((brand) => (
+                  <SelectItem key={brand} value={brand}>
+                    {brand}
                   </SelectItem>
                 ))}
               </SelectContent>
