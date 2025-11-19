@@ -40,16 +40,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, Trash2, Star } from "lucide-react";
+import { Upload, Trash2, Star, TrendingUp } from "lucide-react";
 import { ImageUpload } from "./ImageUpload";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSettings } from "@/hooks/use-settings";
 import { usePermissions } from "@/hooks/use-permissions";
+import { useFipeVehicleVersions, useFipePriceByVersion } from "@/hooks/use-fipe";
+import type { FipeYear } from "@/hooks/use-fipe";
 
 const vehicleFormSchema = z.object({
   brand: z.string().min(1, "Marca é obrigatória"),
   model: z.string().min(1, "Modelo é obrigatório"),
   year: z.coerce.number().min(1900),
+  version: z.string().optional(),
   color: z.string().min(1, "Cor é obrigatória"),
   plate: z.string().min(7, "Placa inválida"),
   vehicleType: z.enum(["Carro", "Moto"]),
@@ -70,12 +73,14 @@ interface EditVehicleDialogProps {
     brand: string;
     model: string;
     year: number;
+    version?: string | null;
     color: string;
     plate: string;
     vehicleType?: "Carro" | "Moto";
     location: string;
     kmOdometer?: number | null;
     fuelType?: string | null;
+    fipeReferencePrice?: string | null;
     images?: Array<{ id: string; imageUrl: string; order: number }>;
   };
   open: boolean;
@@ -92,6 +97,8 @@ export function EditVehicleDialog({ vehicleId, vehicle, open, onOpenChange }: Ed
   const [newImages, setNewImages] = useState<File[]>([]);
   const [existingImages, setExistingImages] = useState<Array<{ id: string; imageUrl: string; order: number }>>(vehicle.images || []);
   const [coverImageIndex, setCoverImageIndex] = useState(0);
+  const [fipeVersions, setFipeVersions] = useState<FipeYear[]>([]);
+  const [fipeMetadata, setFipeMetadata] = useState<{brandId: string, modelId: string} | null>(null);
 
   const form = useForm<VehicleFormData>({
     resolver: zodResolver(vehicleFormSchema),
@@ -99,6 +106,7 @@ export function EditVehicleDialog({ vehicleId, vehicle, open, onOpenChange }: Ed
       brand: vehicle.brand,
       model: vehicle.model,
       year: vehicle.year,
+      version: vehicle.version || "",
       color: vehicle.color,
       plate: vehicle.plate,
       vehicleType: vehicle.vehicleType || "Carro",
@@ -108,11 +116,20 @@ export function EditVehicleDialog({ vehicleId, vehicle, open, onOpenChange }: Ed
     },
   });
 
+  const versionsMutation = useFipeVehicleVersions(
+    form.watch("brand"),
+    form.watch("model"),
+    form.watch("year")
+  );
+  
+  const priceMutation = useFipePriceByVersion();
+
   useEffect(() => {
     form.reset({
       brand: vehicle.brand,
       model: vehicle.model,
       year: vehicle.year,
+      version: vehicle.version || "",
       color: vehicle.color,
       plate: vehicle.plate,
       vehicleType: vehicle.vehicleType || "Carro",
@@ -122,6 +139,8 @@ export function EditVehicleDialog({ vehicleId, vehicle, open, onOpenChange }: Ed
     });
     setExistingImages(vehicle.images || []);
     setNewImages([]);
+    setFipeVersions([]);
+    setFipeMetadata(null);
   }, [vehicle, form]);
 
   const removeExistingImage = async (imageId: string) => {
@@ -168,6 +187,72 @@ export function EditVehicleDialog({ vehicleId, vehicle, open, onOpenChange }: Ed
       toast({
         title: "Erro ao excluir veículo",
         description: "Ocorreu um erro. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleLoadVersions = async () => {
+    const brand = form.getValues("brand");
+    const model = form.getValues("model");
+    const year = form.getValues("year");
+
+    if (!brand || !model || !year) {
+      toast({
+        title: "Campos incompletos",
+        description: "Preencha marca, modelo e ano primeiro.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (fipeVersions.length > 0) {
+      return;
+    }
+
+    try {
+      const result = await versionsMutation.mutateAsync();
+      setFipeVersions(result.versions);
+      setFipeMetadata({ brandId: result.brandId, modelId: result.modelId });
+      
+      if (result.versions.length === 0) {
+        toast({
+          title: "Nenhuma versão encontrada",
+          description: "Não foram encontradas versões FIPE para este veículo.",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro ao buscar versões",
+        description: error.message || "Não foi possível encontrar o veículo. Verifique os dados.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleVersionChange = async (versionCode: string) => {
+    form.setValue("version", versionCode);
+    
+    if (!fipeMetadata) return;
+
+    try {
+      const result = await priceMutation.mutateAsync({ 
+        brandId: fipeMetadata.brandId, 
+        modelId: fipeMetadata.modelId, 
+        versionCode 
+      });
+      
+      const priceValue = result.Valor.replace("R$", "").trim();
+      
+      toast({
+        title: "Preço FIPE atualizado!",
+        description: `${result.Marca} ${result.Modelo}: ${result.Valor}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao consultar preço",
+        description: error.message || "Não foi possível consultar o preço FIPE.",
         variant: "destructive",
       });
     }
@@ -301,6 +386,46 @@ export function EditVehicleDialog({ vehicleId, vehicle, open, onOpenChange }: Ed
                         onChange={(e) => field.onChange(parseInt(e.target.value))}
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="version"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Versão (FIPE)</FormLabel>
+                    <Select 
+                      onValueChange={handleVersionChange}
+                      value={field.value}
+                      onOpenChange={(open) => {
+                        if (open) handleLoadVersions();
+                      }}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={versionsMutation.isPending ? "Carregando versões..." : "Selecione a versão"} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {fipeVersions.length > 0 ? (
+                          fipeVersions.map((version) => (
+                            <SelectItem key={version.codigo} value={version.codigo}>
+                              {version.nome}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="loading" disabled>
+                            {versionsMutation.isPending ? "Carregando..." : "Preencha marca, modelo e ano"}
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Preencha marca, modelo e ano para carregar as versões disponíveis
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
