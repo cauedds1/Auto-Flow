@@ -1750,7 +1750,11 @@ Retorne APENAS um JSON válido no formato:
       if (!userInfo) {
         return res.status(403).json({ error: "Usuário não está vinculado a uma empresa" });
       }
-      const { empresaId, role } = userInfo;
+      const { empresaId, userId } = userInfo;
+      
+      // Buscar o usuário completo para obter a role
+      const user = await storage.getUser(userId);
+      const role = user?.role || "Vendedor";
       
       const companies = await storage.getAllCompanies();
       const company = companies.find(c => c.id === empresaId);
@@ -1841,7 +1845,7 @@ Retorne APENAS um JSON válido no formato:
       }
 
       // Alerta 4: Contas vencidas (APENAS para Proprietário e Gerente)
-      if (role === "Proprietário" || role === "Gerente") {
+      if (role === "proprietario" || role === "gerente") {
         const contasVencidas = await db
           .select()
           .from(billsPayable)
