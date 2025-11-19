@@ -14,6 +14,10 @@ import { createBackup, listBackups, getBackupPath } from "./backup";
 import { requireProprietario, requireProprietarioOrGerente, PERMISSIONS } from "./middleware/roleCheck";
 import bcrypt from "bcrypt";
 import financialRoutes from "./routes/financial";
+import leadsRoutes from "./routes/leads";
+import followupsRoutes from "./routes/followups";
+import activityLogRoutes from "./routes/activityLog";
+import costApprovalsRoutes from "./routes/costApprovals";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -1748,25 +1752,21 @@ Retorne APENAS um JSON válido no formato:
   // ============================================
   // LEADS E CRM
   // ============================================
-  const leadsRoutes = require("./routes/leads").default;
   app.use("/api/leads", isAuthenticated, leadsRoutes);
 
   // ============================================
   // FOLLOW-UPS
   // ============================================
-  const followupsRoutes = require("./routes/followups").default;
   app.use("/api/followups", isAuthenticated, followupsRoutes);
 
   // ============================================
   // ACTIVITY LOG (AUDITORIA)
   // ============================================
-  const activityLogRoutes = require("./routes/activityLog").default;
   app.use("/api/activity", isAuthenticated, activityLogRoutes);
 
   // ============================================
   // APROVAÇÕES DE CUSTOS
   // ============================================
-  const costApprovalsRoutes = require("./routes/costApprovals").default;
   app.use("/api/approvals", isAuthenticated, costApprovalsRoutes);
 
   // ============================================

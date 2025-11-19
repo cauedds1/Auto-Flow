@@ -21,7 +21,7 @@ export function requireCompanyUser(req: any, res: Response, next: NextFunction) 
   req.companyUser = {
     userId,
     empresaId: user.empresaId,
-    role: user.role || "Vendedor",
+    role: user.role || "vendedor",
     firstName: user.firstName,
     lastName: user.lastName,
     email: user.email,
@@ -61,7 +61,7 @@ export function canAccessUserData(
   targetUserId: string
 ): boolean {
   // Proprietário e Gerente podem ver dados de qualquer usuário da empresa
-  if (requesterRole === "Proprietário" || requesterRole === "Gerente") {
+  if (requesterRole === "proprietario" || requesterRole === "gerente") {
     return true;
   }
   

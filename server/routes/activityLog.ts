@@ -26,7 +26,7 @@ router.get("/", async (req: any, res) => {
     
     // Vendedor: vê apenas suas próprias ações
     // Gerente/Proprietário: vê todas as ações da empresa
-    if (role === "Vendedor" || role === "Motorista") {
+    if (role === "vendedor" || role === "motorista") {
       query = query.where(
         and(
           eq(activityLog.empresaId, empresaId),
@@ -54,7 +54,7 @@ router.get("/", async (req: any, res) => {
     
     // Sanitizar metadata para vendedores (remover informações sensíveis)
     const sanitized = activities.map(activity => {
-      if (role === "Vendedor" || role === "Motorista") {
+      if (role === "vendedor" || role === "motorista") {
         try {
           const metadata = activity.metadata ? JSON.parse(activity.metadata) : {};
           // Remover campos sensíveis

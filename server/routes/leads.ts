@@ -43,7 +43,7 @@ router.get("/", async (req: any, res) => {
       .leftJoin(users, eq(leads.vendedorResponsavel, users.id))
       .orderBy(desc(leads.createdAt));
     
-    if (role === "Vendedor" || role === "Motorista") {
+    if (role === "vendedor" || role === "motorista") {
       // Filtrar apenas leads do próprio vendedor
       query = query.where(
         and(
@@ -117,7 +117,7 @@ router.put("/:id", async (req: any, res) => {
     assertSameCompany(existingLead.empresaId, empresaId);
     
     // Vendedor só pode atualizar leads que criou ou é responsável
-    if (role === "Vendedor" || role === "Motorista") {
+    if (role === "vendedor" || role === "motorista") {
       if (existingLead.vendedorResponsavel !== userId && existingLead.criadoPor !== userId) {
         return res.status(403).json({ error: "Você não tem permissão para editar este lead" });
       }
@@ -199,7 +199,7 @@ router.delete("/:id", async (req: any, res) => {
     assertSameCompany(lead.empresaId, empresaId);
     
     // Apenas Gerente/Proprietário ou o criador pode deletar
-    if (role !== "Gerente" && role !== "Proprietário" && lead.criadoPor !== userId) {
+    if (role !== "gerente" && role !== "proprietario" && lead.criadoPor !== userId) {
       return res.status(403).json({ error: "Apenas gerentes ou o criador podem deletar leads" });
     }
     

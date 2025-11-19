@@ -479,7 +479,7 @@ export class DatabaseStorage implements IStorage {
   async getLeads(empresaId: string, userId?: string, role?: string) {
     let query = db.select().from(leads);
     
-    if (role === "Vendedor" || role === "Motorista") {
+    if (role === "vendedor" || role === "motorista") {
       query = query.where(and(
         eq(leads.empresaId, empresaId),
         or(
@@ -498,7 +498,7 @@ export class DatabaseStorage implements IStorage {
   async getFollowUps(empresaId: string, userId?: string, role?: string) {
     let query = db.select().from(followUps);
     
-    if (role === "Vendedor" || role === "Motorista") {
+    if (role === "vendedor" || role === "motorista") {
       query = query.where(and(
         eq(followUps.empresaId, empresaId),
         eq(followUps.assignedTo, userId!)

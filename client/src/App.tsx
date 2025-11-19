@@ -21,6 +21,7 @@ import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
 import NotFound from "@/pages/not-found";
+import Leads from "@/pages/Leads";
 import { useSettings } from "@/hooks/use-settings";
 import { useEffect } from "react";
 import { useCurrentCompany } from "@/hooks/use-company";
@@ -37,6 +38,7 @@ function MainAppRouter() {
       <Route path="/relatorios" component={Reports} />
       <Route path="/anotacoes" component={Notes} />
       <Route path="/checklists" component={Checklists} />
+      <Route path="/leads" component={Leads} />
       <Route path="/usuarios" component={Users} />
       <Route path="/configuracoes" component={Settings} />
       <Route component={NotFound} />

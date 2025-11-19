@@ -1,4 +1,4 @@
-import { LayoutDashboard, Car, Settings, BarChart3, StickyNote, CheckSquare, Users } from "lucide-react";
+import { LayoutDashboard, Car, Settings, BarChart3, StickyNote, CheckSquare, Users, UserPlus, Calendar, DollarSign } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -24,6 +24,11 @@ const menuItems = [
     title: "Veículos",
     url: "/veiculos",
     icon: Car,
+  },
+  {
+    title: "Leads",
+    url: "/leads",
+    icon: UserPlus,
   },
   {
     title: "Relatórios",

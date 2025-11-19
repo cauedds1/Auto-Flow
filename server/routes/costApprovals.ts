@@ -18,7 +18,7 @@ router.get("/settings", async (req: any, res) => {
     const { empresaId, role } = req.companyUser;
     
     // Apenas Proprietário/Gerente pode ver configurações
-    if (role !== "Proprietário" && role !== "Gerente") {
+    if (role !== "proprietario" && role !== "gerente") {
       return res.status(403).json({ error: "Apenas gerentes podem acessar configurações de aprovação" });
     }
     
@@ -49,7 +49,7 @@ router.put("/settings", async (req: any, res) => {
     const { empresaId, role, userId } = req.companyUser;
     
     // Apenas Proprietário pode alterar configurações
-    if (role !== "Proprietário") {
+    if (role !== "proprietario") {
       return res.status(403).json({ error: "Apenas proprietários podem alterar configurações de aprovação" });
     }
     
@@ -129,7 +129,7 @@ router.get("/", async (req: any, res) => {
     
     // Vendedor: vê apenas suas próprias solicitações
     // Gerente/Proprietário: vê todas
-    if (role === "Vendedor" || role === "Motorista") {
+    if (role === "vendedor" || role === "motorista") {
       query = query.where(
         and(
           eq(costApprovals.empresaId, empresaId),
@@ -194,7 +194,7 @@ router.put("/:id/review", async (req: any, res) => {
     const { status, motivoRejeicao } = req.body;
     
     // Apenas Gerente/Proprietário pode aprovar/rejeitar
-    if (role !== "Gerente" && role !== "Proprietário") {
+    if (role !== "gerente" && role !== "proprietario") {
       return res.status(403).json({ error: "Apenas gerentes podem aprovar custos" });
     }
     
@@ -249,7 +249,7 @@ router.get("/stats", async (req: any, res) => {
     const { empresaId, role } = req.companyUser;
     
     // Apenas Gerente/Proprietário
-    if (role !== "Gerente" && role !== "Proprietário") {
+    if (role !== "gerente" && role !== "proprietario") {
       return res.status(403).json({ error: "Acesso negado" });
     }
     

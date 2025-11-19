@@ -43,7 +43,7 @@ router.get("/", async (req: any, res) => {
     
     // Vendedor: vê apenas follow-ups atribuídos a ele
     // Gerente/Proprietário: vê todos da empresa
-    if (role === "Vendedor" || role === "Motorista") {
+    if (role === "vendedor" || role === "motorista") {
       query = query.where(
         and(
           eq(followUps.empresaId, empresaId),
@@ -89,7 +89,7 @@ router.get("/today", async (req: any, res) => {
       .leftJoin(vehicles, eq(followUps.vehicleId, vehicles.id))
       .orderBy(followUps.dataAgendada);
     
-    if (role === "Vendedor" || role === "Motorista") {
+    if (role === "vendedor" || role === "motorista") {
       query = query.where(
         and(
           eq(followUps.empresaId, empresaId),
@@ -133,7 +133,7 @@ router.post("/", async (req: any, res) => {
     
     // Gerente/Proprietário pode criar para qualquer vendedor
     // Vendedor só pode criar para si mesmo
-    const assignedTo = (role === "Gerente" || role === "Proprietário") 
+    const assignedTo = (role === "gerente" || role === "proprietario") 
       ? (followUpData.assignedTo || userId)
       : userId;
     
@@ -178,7 +178,7 @@ router.put("/:id", async (req: any, res) => {
     assertSameCompany(existing.empresaId, empresaId);
     
     // Vendedor só pode atualizar follow-ups atribuídos a ele
-    if (role === "Vendedor" || role === "Motorista") {
+    if (role === "vendedor" || role === "motorista") {
       if (existing.assignedTo !== userId) {
         return res.status(403).json({ error: "Você só pode atualizar seus próprios follow-ups" });
       }
@@ -219,7 +219,7 @@ router.delete("/:id", async (req: any, res) => {
     assertSameCompany(followUp.empresaId, empresaId);
     
     // Vendedor só pode deletar seus próprios follow-ups
-    if (role === "Vendedor" || role === "Motorista") {
+    if (role === "vendedor" || role === "motorista") {
       if (followUp.assignedTo !== userId && followUp.criadoPor !== userId) {
         return res.status(403).json({ error: "Você só pode deletar seus próprios follow-ups" });
       }
