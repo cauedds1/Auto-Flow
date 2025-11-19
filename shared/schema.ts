@@ -49,6 +49,18 @@ export const userRoleEnum = pgEnum("user_role", [
   "motorista"
 ]);
 
+export const billTypeEnum = pgEnum("bill_type", [
+  "a_pagar",
+  "a_receber"
+]);
+
+export const billStatusEnum = pgEnum("bill_status", [
+  "pendente",
+  "pago",
+  "vencido",
+  "parcial"
+]);
+
 // Session storage table - Replit Auth
 // (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
 export const sessions = pgTable(
@@ -738,3 +750,50 @@ export const insertAdvancedCompanySettingsSchema = createInsertSchema(advancedCo
 
 export type InsertAdvancedCompanySettings = z.infer<typeof insertAdvancedCompanySettingsSchema>;
 export type AdvancedCompanySettings = typeof advancedCompanySettings.$inferSelect;
+
+// ============================================
+// CONTAS A PAGAR E A RECEBER
+// ============================================
+
+export const billsPayable = pgTable("bills_payable", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  empresaId: varchar("empresa_id").notNull(),
+  
+  tipo: billTypeEnum("tipo").notNull(), // "a_pagar" ou "a_receber"
+  descricao: text("descricao").notNull(),
+  categoria: varchar("categoria").notNull(), // Aluguel, Salário, Fornecedor, Venda, etc.
+  valor: numeric("valor", { precision: 10, scale: 2 }).notNull(),
+  
+  dataVencimento: timestamp("data_vencimento").notNull(),
+  dataPagamento: timestamp("data_pagamento"), // Quando foi pago/recebido
+  status: billStatusEnum("status").notNull().default("pendente"),
+  
+  observacoes: text("observacoes"),
+  
+  // Para contas recorrentes (ex: aluguel mensal)
+  recorrente: integer("recorrente").default(0), // 0 = não, 1 = sim
+  
+  // Para parcelamentos
+  parcelado: integer("parcelado").default(0), // 0 = não, 1 = sim
+  numeroParcela: integer("numero_parcela"), // Ex: 1 de 12
+  totalParcelas: integer("total_parcelas"), // Ex: 12
+  grupoParcelamento: varchar("grupo_parcelamento"), // ID para agrupar parcelas da mesma conta
+  
+  // Relacionamento com veículos (opcional - se a conta for relacionada a venda)
+  vehicleId: varchar("vehicle_id"),
+  
+  // Quem criou/registrou
+  criadoPor: varchar("criado_por").notNull(),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertBillPayableSchema = createInsertSchema(billsPayable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertBillPayable = z.infer<typeof insertBillPayableSchema>;
+export type BillPayable = typeof billsPayable.$inferSelect;
