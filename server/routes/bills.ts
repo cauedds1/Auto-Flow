@@ -16,6 +16,19 @@ router.get("/", async (req: any, res) => {
     const { empresaId } = await getUserWithCompany(req);
     const { tipo, status, mes, ano } = req.query;
     
+    // Atualizar automaticamente contas vencidas
+    const hoje = new Date();
+    await db
+      .update(billsPayable)
+      .set({ status: "vencido" })
+      .where(
+        and(
+          eq(billsPayable.empresaId, empresaId),
+          eq(billsPayable.status, "pendente"),
+          lte(billsPayable.dataVencimento, hoje)
+        )
+      );
+    
     let query = db
       .select({
         id: billsPayable.id,
@@ -81,6 +94,19 @@ router.get("/dashboard", async (req: any, res) => {
   try {
     const { empresaId } = await getUserWithCompany(req);
     
+    // Atualizar automaticamente contas vencidas
+    const hoje = new Date();
+    await db
+      .update(billsPayable)
+      .set({ status: "vencido" })
+      .where(
+        and(
+          eq(billsPayable.empresaId, empresaId),
+          eq(billsPayable.status, "pendente"),
+          lte(billsPayable.dataVencimento, hoje)
+        )
+      );
+    
     // Total a pagar (pendente)
     const totalAPagarResult = await db
       .select({
@@ -135,7 +161,6 @@ router.get("/dashboard", async (req: any, res) => {
       );
     
     // Próximos vencimentos (próximos 7 dias)
-    const hoje = new Date();
     const proximos7dias = new Date();
     proximos7dias.setDate(hoje.getDate() + 7);
     

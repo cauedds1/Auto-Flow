@@ -1758,6 +1758,22 @@ Retorne APENAS um JSON válido no formato:
       const alerts: any[] = [];
       const now = new Date();
 
+      // Atualizar automaticamente contas vencidas antes de buscar alertas
+      const { billsPayable } = await import("@shared/schema");
+      const { db } = await import("./db");
+      const { eq, and, lte } = await import("drizzle-orm");
+      
+      await db
+        .update(billsPayable)
+        .set({ status: "vencido" })
+        .where(
+          and(
+            eq(billsPayable.empresaId, empresaId),
+            eq(billsPayable.status, "pendente"),
+            lte(billsPayable.dataVencimento, now)
+          )
+        );
+
       for (const vehicle of vehicles) {
         // Alerta 1: Veículos parados por X dias
         const allHistory = await storage.getAllVehicleHistory();
@@ -1816,6 +1832,32 @@ Retorne APENAS um JSON válido no formato:
             createdAt: new Date().toISOString(),
           });
         }
+      }
+
+      // Alerta 4: Contas vencidas (já atualizadas no início do handler)
+      const contasVencidas = await db
+        .select()
+        .from(billsPayable)
+        .where(
+          and(
+            eq(billsPayable.empresaId, empresaId),
+            eq(billsPayable.status, "vencido")
+          )
+        );
+
+      for (const conta of contasVencidas) {
+        const diasVencidos = Math.floor((now.getTime() - new Date(conta.dataVencimento).getTime()) / (1000 * 60 * 60 * 24));
+        const tipoConta = conta.tipo === "a_pagar" ? "a pagar" : "a receber";
+        
+        alerts.push({
+          id: `conta-vencida-${conta.id}`,
+          type: "error",
+          severity: "high",
+          title: `Conta ${tipoConta} vencida`,
+          message: `${conta.descricao} - R$ ${conta.valor} venceu há ${diasVencidos} dias`,
+          actionUrl: "/bills",
+          createdAt: new Date().toISOString(),
+        });
       }
 
       res.json({ 
