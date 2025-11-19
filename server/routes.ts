@@ -5,7 +5,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import multer from "multer";
 import { z } from "zod";
-import { insertVehicleSchema, insertVehicleCostSchema, insertStoreObservationSchema, updateVehicleHistorySchema } from "@shared/schema";
+import { insertVehicleSchema, insertVehicleCostSchema, insertStoreObservationSchema, updateVehicleHistorySchema, commissionsConfig, commissionPayments } from "@shared/schema";
 import OpenAI from "openai";
 import path from "path";
 import fs from "fs/promises";
@@ -19,6 +19,8 @@ import followupsRoutes from "./routes/followups";
 import activityLogRoutes from "./routes/activityLog";
 import costApprovalsRoutes from "./routes/costApprovals";
 import billsRoutes from "./routes/bills";
+import { db } from "./db";
+import { eq, and } from "drizzle-orm";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -324,6 +326,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedVehicle = await storage.updateVehicle(req.params.id, updates);
+
+      // Se veículo foi marcado como Vendido, criar comissão automática
+      if (statusChanged && updates.status === "Vendido" && updates.vendedorId) {
+        try {
+          // Buscar configuração de comissão do vendedor
+          const comissaoConfig = await db
+            .select()
+            .from(commissionsConfig)
+            .where(
+              and(
+                eq(commissionsConfig.empresaId, empresaId),
+                eq(commissionsConfig.vendedorId, updates.vendedorId),
+                eq(commissionsConfig.ativo, "true")
+              )
+            )
+            .limit(1);
+
+          if (comissaoConfig.length > 0 && updates.salePrice) {
+            const config = comissaoConfig[0];
+            const percentual = parseFloat(config.percentualComissao);
+            const valorBase = parseFloat(updates.salePrice);
+            const valorComissao = (valorBase * percentual) / 100;
+
+            // Criar registro de comissão a pagar
+            await db.insert(commissionPayments).values({
+              empresaId,
+              vendedorId: updates.vendedorId,
+              veiculoId: req.params.id,
+              percentualAplicado: config.percentualComissao,
+              valorBase: updates.salePrice,
+              valorComissao: valorComissao.toFixed(2),
+              status: "A Pagar",
+              criadoPor: userId,
+            });
+
+            console.log(`[COMISSÃO] Criada comissão de R$ ${valorComissao.toFixed(2)} para vendedor ${updates.vendedorId}`);
+          }
+        } catch (error) {
+          console.error("[COMISSÃO] Erro ao criar comissão automática:", error);
+          // Não bloqueia a venda se houver erro na comissão
+        }
+      }
 
       // Criar histórico apenas se status OU localização física BASE mudaram
       // (mudanças apenas em detail não geram histórico separado)
