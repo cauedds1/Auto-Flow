@@ -133,18 +133,19 @@ export function useFipeVehicleVersions(brand?: string, model?: string, year?: nu
           return true;
         }
         
-        // Match por aliases (bidirecional: input pode ser alias ou canonical)
+        // Match por aliases: verificar se input ou FIPE brand contém qualquer alias do mesmo grupo
         for (const [canonical, aliases] of Object.entries(BRAND_ALIASES)) {
-          // Se o nome da marca FIPE contém o canonical ou qualquer alias
           const allVariants = [canonical, ...aliases];
           
-          for (const variant of allVariants) {
-            // Se a marca FIPE contém variant e o input contém outro variant
-            if (normalizedBrandName.includes(variant)) {
-              if (allVariants.some(v => normalizedBrand.includes(v))) {
-                return true;
-              }
-            }
+          // Verificar se o input do usuário corresponde a algum variant
+          const inputMatchesGroup = allVariants.some(v => normalizedBrand.includes(v) || v.includes(normalizedBrand));
+          
+          // Verificar se a marca FIPE corresponde a algum variant do mesmo grupo
+          const fipeMatchesGroup = allVariants.some(v => normalizedBrandName.includes(v) || v.includes(normalizedBrandName));
+          
+          // Se ambos pertencem ao mesmo grupo de aliases, é um match!
+          if (inputMatchesGroup && fipeMatchesGroup) {
+            return true;
           }
         }
         

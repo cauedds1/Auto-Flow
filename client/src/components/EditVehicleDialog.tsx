@@ -126,12 +126,17 @@ export function EditVehicleDialog({ vehicleId, vehicle, open, onOpenChange }: Ed
   
   const priceMutation = useFipePriceByVersion();
 
+  // Watch para limpar cache quando marca/modelo/ano mudam
+  const watchedBrand = form.watch("brand");
+  const watchedModel = form.watch("model");
+  const watchedYear = form.watch("year");
+
   // Limpar cache de versões quando marca, modelo ou ano mudam
   useEffect(() => {
     setFipeVersions([]);
     setFipeMetadata(null);
     form.setValue("version", "");
-  }, [form.watch("brand"), form.watch("model"), form.watch("year")]);
+  }, [watchedBrand, watchedModel, watchedYear]);
 
   useEffect(() => {
     form.reset({
