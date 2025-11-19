@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,10 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Building2, Palette, MapPin, Phone, Mail } from "lucide-react";
+import { Building2, Palette, MapPin, Phone, Mail, Settings as SettingsIcon, Plus, X } from "lucide-react";
 import { useCurrentCompany, useUpdateCompany } from "@/hooks/use-company";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useQuery } from "@tanstack/react-query";
 
 const companySchema = z.object({
   nomeFantasia: z.string().min(1, "Nome fantasia é obrigatório"),
@@ -34,6 +35,22 @@ export default function Settings() {
   const updateCompany = useUpdateCompany(company?.id || "");
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { data: advancedSettings, refetch: refetchAdvanced } = useQuery({
+    queryKey: ["/api/settings/advanced"],
+  });
+
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const [customOrigins, setCustomOrigins] = useState<string[]>([]);
+  const [newCategory, setNewCategory] = useState("");
+  const [newOrigin, setNewOrigin] = useState("");
+
+  useEffect(() => {
+    if (advancedSettings) {
+      setCustomCategories((advancedSettings as any).customCategories || []);
+      setCustomOrigins((advancedSettings as any).customLeadOrigins || []);
+    }
+  }, [advancedSettings]);
 
   const form = useForm<CompanyFormData>({
     resolver: zodResolver(companySchema),
@@ -114,6 +131,7 @@ export default function Settings() {
           <TabsTrigger value="company">Informações da Empresa</TabsTrigger>
           <TabsTrigger value="appearance">Aparência</TabsTrigger>
           <TabsTrigger value="system">Sistema</TabsTrigger>
+          <TabsTrigger value="advanced">Configurações Avançadas</TabsTrigger>
         </TabsList>
 
         <TabsContent value="company" className="space-y-6">
@@ -457,6 +475,157 @@ export default function Settings() {
               </p>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="advanced" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                  <SettingsIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <CardTitle>Categorias de Custos Personalizadas</CardTitle>
+                  <CardDescription>Adicione categorias além das padrões (Mecânica, Estética, Documentação, Outros)</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <Input
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  placeholder="Nova categoria..."
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (newCategory.trim() && !customCategories.includes(newCategory.trim())) {
+                        setCustomCategories([...customCategories, newCategory.trim()]);
+                        setNewCategory("");
+                      }
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  onClick={() => {
+                    if (newCategory.trim() && !customCategories.includes(newCategory.trim())) {
+                      setCustomCategories([...customCategories, newCategory.trim()]);
+                      setNewCategory("");
+                    }
+                  }}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Adicionar
+                </Button>
+              </div>
+              
+              <div className="flex flex-wrap gap-2">
+                {customCategories.map((cat) => (
+                  <div key={cat} className="flex items-center gap-1 px-3 py-1 bg-muted rounded-md">
+                    <span className="text-sm">{cat}</span>
+                    <button
+                      type="button"
+                      onClick={() => setCustomCategories(customCategories.filter((c) => c !== cat))}
+                      className="ml-1 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+                {customCategories.length === 0 && (
+                  <p className="text-sm text-muted-foreground">Nenhuma categoria personalizada adicionada</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                  <SettingsIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <CardTitle>Origens de Leads Personalizadas</CardTitle>
+                  <CardDescription>Adicione origens além das padrões (WhatsApp, Telefone, Presencial, Site, Indicação)</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <Input
+                  value={newOrigin}
+                  onChange={(e) => setNewOrigin(e.target.value)}
+                  placeholder="Nova origem..."
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (newOrigin.trim() && !customOrigins.includes(newOrigin.trim())) {
+                        setCustomOrigins([...customOrigins, newOrigin.trim()]);
+                        setNewOrigin("");
+                      }
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  onClick={() => {
+                    if (newOrigin.trim() && !customOrigins.includes(newOrigin.trim())) {
+                      setCustomOrigins([...customOrigins, newOrigin.trim()]);
+                      setNewOrigin("");
+                    }
+                  }}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Adicionar
+                </Button>
+              </div>
+              
+              <div className="flex flex-wrap gap-2">
+                {customOrigins.map((origin) => (
+                  <div key={origin} className="flex items-center gap-1 px-3 py-1 bg-muted rounded-md">
+                    <span className="text-sm">{origin}</span>
+                    <button
+                      type="button"
+                      onClick={() => setCustomOrigins(customOrigins.filter((o) => o !== origin))}
+                      className="ml-1 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+                {customOrigins.length === 0 && (
+                  <p className="text-sm text-muted-foreground">Nenhuma origem personalizada adicionada</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-end">
+            <Button
+              onClick={async () => {
+                try {
+                  const res = await fetch("/api/settings/advanced", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({
+                      customCategories,
+                      customLeadOrigins: customOrigins,
+                    }),
+                  });
+                  if (!res.ok) throw new Error();
+                  await refetchAdvanced();
+                  toast({ title: "Configurações atualizadas!" });
+                } catch {
+                  toast({ title: "Erro ao salvar", variant: "destructive" });
+                }
+              }}
+            >
+              Salvar Configurações Avançadas
+            </Button>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
