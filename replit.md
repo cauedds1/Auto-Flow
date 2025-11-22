@@ -4,12 +4,28 @@
 
 **IMPORTANTE**: Este projeto possui um sistema completo de backup que preserva TODOS os dados (usuários, carros, observações, etc.) para migração entre contas Replit ou restauração.
 
-### Comandos Rápidos:
+### 🚀 Push Automático com Backup (RECOMENDADO)
+
+**Ao invés de `git push`, use:**
+```bash
+npm run push
+```
+
+Isso automaticamente:
+1. ✅ Cria backup atualizado do banco de dados
+2. ✅ Adiciona o backup ao Git
+3. ✅ Envia tudo junto pro GitHub
+
+**Resultado**: O dono da revenda pode clonar o projeto em qualquer plataforma e ter TODOS os dados (usuários, senhas, carros, observações) funcionando imediatamente!
+
+### Comandos Manuais (se preferir):
 - `npm run db:backup` - Cria backup completo do banco de dados
 - `npm run db:list-backups` - Lista todos os backups disponíveis  
 - `npm run db:restore <arquivo>` - Restaura um backup
 
-📖 **Documentação completa**: Veja `README_BACKUP.md` para instruções detalhadas sobre como versionar backups no GitHub e migrar entre contas Replit.
+📖 **Documentação completa**: 
+- `README_PUSH_AUTOMATICO.md` - Como usar o push automático
+- `README_BACKUP.md` - Instruções detalhadas de backup manual
 
 ---
 

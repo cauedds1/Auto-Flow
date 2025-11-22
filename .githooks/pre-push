@@ -1,0 +1,42 @@
+#!/bin/bash
+# Git Hook: Pre-Push
+# Este script é executado AUTOMATICAMENTE antes de cada 'git push'
+# Ele cria um backup do banco de dados e inclui no push
+
+echo ""
+echo "🔄 Criando backup automático do banco de dados..."
+echo ""
+
+# Executar o backup
+npm run db:backup --silent
+
+# Verificar se o backup foi criado
+LATEST_BACKUP=$(ls -t backups/velostock_backup_*.sql 2>/dev/null | head -n 1)
+
+if [ -n "$LATEST_BACKUP" ]; then
+    echo ""
+    echo "✅ Backup criado: $LATEST_BACKUP"
+    
+    # Adicionar o backup ao git
+    git add "$LATEST_BACKUP"
+    
+    # Verificar se há mudanças para commitar
+    if git diff --cached --quiet; then
+        echo "ℹ️  Backup já estava versionado"
+    else
+        # Fazer commit do backup
+        TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
+        git commit -m "🗄️ Backup automático do banco de dados - $TIMESTAMP" --no-verify
+        echo "✅ Backup commitado automaticamente"
+    fi
+    
+    echo ""
+    echo "📤 Continuando com o push..."
+    echo ""
+else
+    echo "⚠️  Não foi possível criar o backup, mas o push continuará"
+    echo ""
+fi
+
+# Permitir que o push continue
+exit 0

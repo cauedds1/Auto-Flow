@@ -11,7 +11,8 @@
     "db:push": "drizzle-kit push",
     "db:backup": "bash scripts/backup-database.sh",
     "db:restore": "bash scripts/restore-database.sh",
-    "db:list-backups": "bash scripts/list-backups.sh"
+    "db:list-backups": "bash scripts/list-backups.sh",
+    "push": "bash scripts/push-with-backup.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
