@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
+import { usePermissions } from "@/hooks/use-permissions";
 import { MapPin, CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -56,6 +57,7 @@ export function ChangeLocationDialog({
   const setOpen = onOpenChange || setInternalOpen;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const { can } = usePermissions();
   const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
@@ -119,7 +121,8 @@ export function ChangeLocationDialog({
     }
   }, [open, currentStatus, currentPhysicalLocation, currentPhysicalLocationDetail, vehicleData]);
 
-  const statusOptions = [
+  // Status disponíveis - motorista não pode marcar como "Vendido"
+  const allStatusOptions = [
     "Entrada",
     "Em Reparos",
     "Em Higienização",
@@ -127,6 +130,10 @@ export function ChangeLocationDialog({
     "Vendido",
     "Arquivado",
   ];
+  
+  const statusOptions = can.markAsSold 
+    ? allStatusOptions 
+    : allStatusOptions.filter(status => status !== "Vendido");
 
   // Opções fixas de localização (inspirado no usuário)
   const physicalLocationOptions = [

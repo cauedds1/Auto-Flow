@@ -3,11 +3,15 @@ import { db } from "../db";
 import { leads, followUps, activityLog, vehicles, users } from "@shared/schema";
 import { eq, and, or, desc, sql } from "drizzle-orm";
 import { requireCompanyUser, assertSameCompany } from "../middleware/dataIsolation";
+import { requireRole } from "../middleware/roleCheck";
 
 const router = Router();
 
 // Todas as rotas exigem autenticação e empresa
 router.use(requireCompanyUser);
+
+// Apenas proprietário, gerente e vendedor podem acessar leads (SEM motorista)
+router.use(requireRole(["proprietario", "gerente", "vendedor"]));
 
 // ============================================
 // LEADS - CRUD
@@ -43,7 +47,7 @@ router.get("/", async (req: any, res) => {
       .leftJoin(users, eq(leads.vendedorResponsavel, users.id))
       .orderBy(desc(leads.createdAt));
     
-    if (role === "vendedor" || role === "motorista") {
+    if (role === "vendedor") {
       // Filtrar apenas leads do próprio vendedor
       query = query.where(
         and(
@@ -139,7 +143,7 @@ router.put("/:id", async (req: any, res) => {
     assertSameCompany(existingLead.empresaId, empresaId);
     
     // Vendedor só pode atualizar leads que criou ou é responsável
-    if (role === "vendedor" || role === "motorista") {
+    if (role === "vendedor") {
       if (existingLead.vendedorResponsavel !== userId && existingLead.criadoPor !== userId) {
         return res.status(403).json({ error: "Você não tem permissão para editar este lead" });
       }

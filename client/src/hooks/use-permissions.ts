@@ -54,6 +54,23 @@ export function usePermissions() {
     
     // Contas a Pagar/Receber (apenas proprietário)
     viewBills: isProprietario,
+    
+    // Ver Leads (proprietário, gerente e vendedor - SEM motorista)
+    viewLeads: isProprietario || isGerente || isVendedor,
+    
+    // Ver abas de veículos
+    viewOverviewTab: true, // Todos podem ver visão geral
+    viewHistoryTab: isProprietario || isGerente || isVendedor, // Motorista NÃO vê
+    viewCostsTab: true, // Todos podem ver custos
+    viewNotesTab: true, // Todos podem ver observações
+    viewPriceTab: isProprietario || isGerente, // Apenas proprietário e gerente
+    viewAdTab: isProprietario || isGerente || isVendedor, // Motorista NÃO vê
+    viewMediaTab: isProprietario || isGerente || isVendedor, // Motorista NÃO vê
+    viewDocumentsTab: isProprietario || isGerente || isVendedor, // Motorista NÃO vê
+    viewChecklistTab: true, // Todos podem ver checklist
+    
+    // Marcar como vendido
+    markAsSold: isProprietario || isGerente || isVendedor, // Motorista NÃO pode
   };
 
   return {

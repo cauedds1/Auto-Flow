@@ -79,6 +79,7 @@ export function AppSidebar() {
     if (item.url === "/usuarios") return can.manageUsers;
     if (item.url === "/") return can.viewDashboard;
     if (item.url === "/contas") return can.viewBills;
+    if (item.url === "/leads") return can.viewLeads;
     return true;
   });
 

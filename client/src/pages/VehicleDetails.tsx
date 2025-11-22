@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { usePermissions } from "@/hooks/use-permissions";
 import { Save, Upload, Trash2, FileText, CheckSquare, MessageSquare, CheckCheck } from "lucide-react";
 import {
   AlertDialog,
@@ -38,6 +39,7 @@ export default function VehicleDetails() {
   const params = useParams();
   const vehicleId = params.id || "";
   const [, setLocation] = useLocation();
+  const { can } = usePermissions();
   
   // Ler parâmetro ?tab= da URL para abrir aba específica
   const getInitialTab = () => {
@@ -434,33 +436,51 @@ export default function VehicleDetails() {
       <div className="flex-1 overflow-y-auto p-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList ref={tabsListRef} className="mb-6" data-testid="tabs-vehicle-details">
-            <TabsTrigger value="visao-geral" data-testid="tab-visao-geral">
-              Visão Geral
-            </TabsTrigger>
-            <TabsTrigger value="historico" data-testid="tab-historico">
-              Histórico
-            </TabsTrigger>
-            <TabsTrigger value="custos" data-testid="tab-custos">
-              Custos
-            </TabsTrigger>
-            <TabsTrigger value="anotacoes" data-testid="tab-anotacoes">
-              Observações Gerais
-            </TabsTrigger>
-            <TabsTrigger value="preco" data-testid="tab-preco">
-              Sugestão de Preço
-            </TabsTrigger>
-            <TabsTrigger value="anuncio" data-testid="tab-anuncio">
-              Anúncio
-            </TabsTrigger>
-            <TabsTrigger value="midia" data-testid="tab-midia">
-              Mídia
-            </TabsTrigger>
-            <TabsTrigger value="documentos" data-testid="tab-documentos">
-              Documentos
-            </TabsTrigger>
-            <TabsTrigger value="checklist" data-testid="tab-checklist">
-              Checklist
-            </TabsTrigger>
+            {can.viewOverviewTab && (
+              <TabsTrigger value="visao-geral" data-testid="tab-visao-geral">
+                Visão Geral
+              </TabsTrigger>
+            )}
+            {can.viewHistoryTab && (
+              <TabsTrigger value="historico" data-testid="tab-historico">
+                Histórico
+              </TabsTrigger>
+            )}
+            {can.viewCostsTab && (
+              <TabsTrigger value="custos" data-testid="tab-custos">
+                Custos
+              </TabsTrigger>
+            )}
+            {can.viewNotesTab && (
+              <TabsTrigger value="anotacoes" data-testid="tab-anotacoes">
+                Observações Gerais
+              </TabsTrigger>
+            )}
+            {can.viewPriceTab && (
+              <TabsTrigger value="preco" data-testid="tab-preco">
+                Sugestão de Preço
+              </TabsTrigger>
+            )}
+            {can.viewAdTab && (
+              <TabsTrigger value="anuncio" data-testid="tab-anuncio">
+                Anúncio
+              </TabsTrigger>
+            )}
+            {can.viewMediaTab && (
+              <TabsTrigger value="midia" data-testid="tab-midia">
+                Mídia
+              </TabsTrigger>
+            )}
+            {can.viewDocumentsTab && (
+              <TabsTrigger value="documentos" data-testid="tab-documentos">
+                Documentos
+              </TabsTrigger>
+            )}
+            {can.viewChecklistTab && (
+              <TabsTrigger value="checklist" data-testid="tab-checklist">
+                Checklist
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="visao-geral">
