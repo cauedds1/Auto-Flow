@@ -226,7 +226,7 @@ export function ChangeLocationDialog({
         payload.vendedorNome = selectedUser ? `${selectedUser.firstName} ${selectedUser.lastName}` : null;
         payload.repassadoPara = formData.isRepassado ? formData.repassadoPara.trim() : null;
         payload.salePrice = formData.salePrice ? parseFloat(formData.salePrice) : null;
-        payload.dataVenda = new Date().toISOString(); // Data de venda
+        // dataVenda será gerada automaticamente pelo servidor
       }
 
       const response = await fetch(`/api/vehicles/${vehicleId}`, {

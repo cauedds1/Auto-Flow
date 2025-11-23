@@ -362,6 +362,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updates.locationChangedAt = new Date();
       }
 
+      // Gerar data de venda automaticamente quando status muda para Vendido
+      if (statusChanged && updates.status === "Vendido" && !updates.dataVenda) {
+        updates.dataVenda = new Date();
+      }
+
       const updatedVehicle = await storage.updateVehicle(req.params.id, updates);
 
       // Se veículo foi marcado como Vendido, criar comissão automática
