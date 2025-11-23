@@ -2,10 +2,12 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Search, ArrowUpDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Search, ArrowUpDown, ArrowLeft } from "lucide-react";
 import { AddVehicleDialog } from "@/components/AddVehicleDialog";
 import { FipeSearchDialog } from "@/components/FipeSearchDialog";
 import { Link } from "wouter";
+import { usePermissions } from "@/hooks/use-permissions";
 import {
   Select,
   SelectContent,
@@ -59,6 +61,7 @@ const SORT_OPTIONS = [
 ];
 
 export default function Vehicles() {
+  const { isMotorista } = usePermissions();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState(() => {
     return localStorage.getItem("vehicles-sort-by") || "location";
