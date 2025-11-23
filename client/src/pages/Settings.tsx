@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Building2, Palette, MapPin, Phone, Mail, Settings as SettingsIcon, Plus, X } from "lucide-react";
+import { Building2, Palette, MapPin, Phone, Mail, Settings as SettingsIcon, Plus, X, DollarSign } from "lucide-react";
 import { useCurrentCompany, useUpdateCompany } from "@/hooks/use-company";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -26,6 +26,11 @@ const companySchema = z.object({
   corSecundaria: z.string(),
   alertaDiasParado: z.number(),
   locaisComuns: z.string().optional(),
+  comissaoFixaGlobal: z.string().optional().refine((val) => {
+    if (!val || val === "") return true;
+    const num = parseFloat(val);
+    return !isNaN(num) && num >= 0;
+  }, { message: "Comissão deve ser um número válido maior ou igual a zero" }),
 });
 
 type CompanyFormData = z.infer<typeof companySchema>;
@@ -67,11 +72,13 @@ export default function Settings() {
       corSecundaria: company.corSecundaria,
       alertaDiasParado: company.alertaDiasParado,
       locaisComuns: company.locaisComuns.join(", "),
+      comissaoFixaGlobal: (company as any).comissaoFixaGlobal || "",
     } : {
       nomeFantasia: "",
       corPrimaria: "#8B5CF6",
       corSecundaria: "#10B981",
       alertaDiasParado: 7,
+      comissaoFixaGlobal: "",
     },
   });
 
@@ -82,10 +89,21 @@ export default function Settings() {
         ? data.locaisComuns.split(",").map((l) => l.trim()).filter(Boolean)
         : ["Matriz", "Filial", "Pátio Externo", "Oficina"];
 
-      await updateCompany.mutateAsync({
+      // Preparar dados com conversões de tipo apropriadas
+      const updateData: any = {
         ...data,
         locaisComuns: locaisArray,
-      });
+        alertaDiasParado: Number(data.alertaDiasParado),
+      };
+      
+      // Converter comissão fixa global para número ou null
+      if (data.comissaoFixaGlobal && data.comissaoFixaGlobal !== "") {
+        updateData.comissaoFixaGlobal = parseFloat(data.comissaoFixaGlobal);
+      } else {
+        updateData.comissaoFixaGlobal = null;
+      }
+
+      await updateCompany.mutateAsync(updateData);
       
       // Toast já é exibido pelo hook useUpdateCompany
       // Forçar reload da página para aplicar cores imediatamente
@@ -455,6 +473,65 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                    <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <CardTitle>Comissão Fixa Global</CardTitle>
+                    <CardDescription>Valor padrão de comissão para vendedores</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="comissao-global">Comissão Fixa Global (R$)</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
+                    <Input
+                      id="comissao-global"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      className="pl-10"
+                      {...form.register("comissaoFixaGlobal")}
+                      data-testid="input-comissao-global"
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Este valor será usado como padrão para todos os vendedores, a menos que uma comissão individual seja definida.
+                  </p>
+                </div>
+                
+                <div className="rounded-lg border p-4 bg-muted/50">
+                  <h4 className="font-medium mb-2 flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Como funciona
+                  </h4>
+                  <ul className="text-sm text-muted-foreground space-y-1 list-disc pl-5">
+                    <li>Vendedores com "Usar comissão global" ativado receberão este valor por venda</li>
+                    <li>Você pode definir comissões individuais diferentes na gestão de usuários</li>
+                    <li>O valor é fixo em Reais (R$), não é porcentagem</li>
+                  </ul>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="bg-gradient-to-r from-purple-600 to-green-600 hover:from-purple-700 hover:to-green-700"
+                  >
+                    {isSubmitting ? "Salvando..." : "Salvar Comissão"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </form>
 
           <Card>
             <CardHeader>

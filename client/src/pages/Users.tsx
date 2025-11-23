@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Users as UsersIcon, UserPlus, Edit, XCircle, CheckCircle } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Users as UsersIcon, UserPlus, Edit, XCircle, CheckCircle, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getRoleName, getRoleBadgeColor, type UserRole } from "@/hooks/use-permissions";
 import { formatDistanceToNow } from "date-fns";
@@ -22,6 +23,8 @@ interface User {
   isActive: string;
   createdAt: string;
   createdBy?: string;
+  comissaoFixa?: string | null;
+  usarComissaoFixaGlobal?: string;
 }
 
 export default function Users() {
@@ -345,12 +348,21 @@ function EditUserDialog({ open, onOpenChange, user, onSubmit, isLoading }: EditU
     firstName: user.firstName,
     lastName: user.lastName || "",
     role: user.role,
+    usarComissaoFixaGlobal: user.usarComissaoFixaGlobal !== "false",
+    comissaoFixa: user.comissaoFixa || "",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    const dataToSubmit = {
+      ...formData,
+      usarComissaoFixaGlobal: formData.usarComissaoFixaGlobal ? "true" : "false",
+      comissaoFixa: formData.usarComissaoFixaGlobal ? null : (formData.comissaoFixa || null),
+    };
+    onSubmit(dataToSubmit);
   };
+
+  const isVendedor = formData.role === "vendedor";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -393,6 +405,56 @@ function EditUserDialog({ open, onOpenChange, user, onSubmit, isLoading }: EditU
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Campos de comissão (apenas para vendedores) */}
+            {isVendedor && (
+              <div className="grid gap-4 pt-4 border-t">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-5 w-5 text-green-600" />
+                  <Label className="text-base font-semibold">Configuração de Comissão</Label>
+                </div>
+                
+                <div className="flex items-center justify-between gap-4 p-3 rounded-lg bg-muted/50">
+                  <div className="flex-1">
+                    <Label htmlFor="usar-comissao-global" className="text-sm font-medium">
+                      Usar comissão fixa global
+                    </Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Quando ativado, usa o valor de comissão configurado nas configurações da empresa
+                    </p>
+                  </div>
+                  <Switch
+                    id="usar-comissao-global"
+                    checked={formData.usarComissaoFixaGlobal}
+                    onCheckedChange={(checked) => setFormData({ ...formData, usarComissaoFixaGlobal: checked })}
+                    data-testid="switch-comissao-global"
+                  />
+                </div>
+
+                {!formData.usarComissaoFixaGlobal && (
+                  <div className="grid gap-2">
+                    <Label htmlFor="comissao-fixa">Comissão Fixa Individual (R$)</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
+                      <Input
+                        id="comissao-fixa"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        className="pl-10"
+                        value={formData.comissaoFixa}
+                        onChange={(e) => setFormData({ ...formData, comissaoFixa: e.target.value })}
+                        data-testid="input-comissao-fixa"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Este vendedor receberá este valor fixo por cada venda realizada
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

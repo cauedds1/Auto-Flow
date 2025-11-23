@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { ModeToggle } from "@/components/ModeToggle";
 import Dashboard from "@/pages/Dashboard";
+import DriverDashboard from "@/pages/DriverDashboard";
 import VehicleDetails from "@/pages/VehicleDetails";
 import Vehicles from "@/pages/Vehicles";
 import Reports from "@/pages/Reports";
@@ -28,11 +29,14 @@ import { useEffect } from "react";
 import { useCurrentCompany } from "@/hooks/use-company";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/use-permissions";
 
 function MainAppRouter() {
+  const { isMotorista } = usePermissions();
+  
   return (
     <Switch>
-      <Route path="/" component={Dashboard} />
+      <Route path="/" component={isMotorista ? DriverDashboard : Dashboard} />
       <Route path="/veiculos" component={Vehicles} />
       <Route path="/veiculo/:id" component={VehicleDetails} />
       <Route path="/vehicles/:id" component={VehicleDetails} />

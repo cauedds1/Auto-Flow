@@ -90,6 +90,9 @@ export const users = pgTable("users", {
   emailVerified: varchar("email_verified").default("false"), // "true" ou "false"
   verificationCode: varchar("verification_code"), // Código de 6 dígitos
   verificationCodeExpiry: timestamp("verification_code_expiry"), // Expiração do código
+  // Comissão por vendedor (valor fixo em R$)
+  comissaoFixa: numeric("comissao_fixa", { precision: 10, scale: 2 }), // Comissão fixa em R$ para este vendedor
+  usarComissaoFixaGlobal: varchar("usar_comissao_fixa_global").default("true"), // "true" ou "false" - se true, usa a comissão global
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -312,6 +315,8 @@ export const companies = pgTable("companies", {
   whatsappNumero: text("whatsapp_numero"),
   locaisComuns: json("locais_comuns").$type<string[]>().default([]),
   alertaDiasParado: integer("alerta_dias_parado").default(7),
+  // Comissão fixa global (valor em R$)
+  comissaoFixaGlobal: numeric("comissao_fixa_global", { precision: 10, scale: 2 }).default("0"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

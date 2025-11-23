@@ -5,7 +5,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import multer from "multer";
 import { z } from "zod";
-import { insertVehicleSchema, insertVehicleCostSchema, insertStoreObservationSchema, updateVehicleHistorySchema, commissionsConfig, commissionPayments } from "@shared/schema";
+import { insertVehicleSchema, insertVehicleCostSchema, insertStoreObservationSchema, updateVehicleHistorySchema, commissionsConfig, commissionPayments, users, companies } from "@shared/schema";
 import OpenAI from "openai";
 import path from "path";
 import fs from "fs/promises";
@@ -161,7 +161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
           
-          return {
+          const vehicleData = {
             id: vehicle.id,
             brand: vehicle.brand,
             model: vehicle.model,
@@ -184,6 +184,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             daysInStatus: days, // Campo numérico para cálculos
             hasNotes: !!vehicle.notes,
           };
+          
+          // Motoristas não devem ver informações de venda/financeiras
+          if (user.role === "motorista") {
+            delete (vehicleData as any).salePrice;
+            delete (vehicleData as any).fipeReferencePrice;
+            delete (vehicleData as any).vendedorId;
+            delete (vehicleData as any).vendedorNome;
+          }
+          
+          return vehicleData;
         })
       );
       
@@ -330,38 +340,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Se veículo foi marcado como Vendido, criar comissão automática
       if (statusChanged && updates.status === "Vendido" && updates.vendedorId) {
         try {
-          // Buscar configuração de comissão do vendedor
-          const comissaoConfig = await db
-            .select()
-            .from(commissionsConfig)
-            .where(
-              and(
-                eq(commissionsConfig.empresaId, empresaId),
-                eq(commissionsConfig.vendedorId, updates.vendedorId),
-                eq(commissionsConfig.ativo, "true")
-              )
-            )
+          // Buscar informações do vendedor e da empresa
+          const [vendedor] = await db
+            .select({
+              id: users.id,
+              comissaoFixa: users.comissaoFixa,
+              usarComissaoFixaGlobal: users.usarComissaoFixaGlobal,
+            })
+            .from(users)
+            .where(eq(users.id, updates.vendedorId))
             .limit(1);
 
-          if (comissaoConfig.length > 0 && updates.salePrice) {
-            const config = comissaoConfig[0];
-            const percentual = parseFloat(config.percentualComissao);
-            const valorBase = parseFloat(updates.salePrice);
-            const valorComissao = (valorBase * percentual) / 100;
+          const [empresa] = await db
+            .select({
+              comissaoFixaGlobal: companies.comissaoFixaGlobal,
+            })
+            .from(companies)
+            .where(eq(companies.id, empresaId))
+            .limit(1);
 
-            // Criar registro de comissão a pagar
-            await db.insert(commissionPayments).values({
-              empresaId,
-              vendedorId: updates.vendedorId,
-              veiculoId: req.params.id,
-              percentualAplicado: config.percentualComissao,
-              valorBase: updates.salePrice,
-              valorComissao: valorComissao.toFixed(2),
-              status: "A Pagar",
-              criadoPor: userId,
-            });
+          if (vendedor && updates.salePrice) {
+            let valorComissao: number | null = null;
 
-            console.log(`[COMISSÃO] Criada comissão de R$ ${valorComissao.toFixed(2)} para vendedor ${updates.vendedorId}`);
+            // Verificar se usa comissão global ou individual
+            if (vendedor.usarComissaoFixaGlobal === "true" || vendedor.usarComissaoFixaGlobal === null) {
+              // Usar comissão global da empresa
+              if (empresa?.comissaoFixaGlobal) {
+                valorComissao = parseFloat(empresa.comissaoFixaGlobal);
+              }
+            } else {
+              // Usar comissão individual do vendedor
+              if (vendedor.comissaoFixa) {
+                valorComissao = parseFloat(vendedor.comissaoFixa);
+              }
+            }
+
+            // Criar registro de comissão se houver valor definido
+            if (valorComissao !== null && valorComissao > 0) {
+              await db.insert(commissionPayments).values({
+                empresaId,
+                vendedorId: updates.vendedorId,
+                veiculoId: req.params.id,
+                percentualAplicado: "0.00", // Não é mais usado, mas mantém compatibilidade
+                valorBase: updates.salePrice,
+                valorComissao: valorComissao.toFixed(2),
+                status: "A Pagar",
+                criadoPor: userId,
+              });
+
+              console.log(`[COMISSÃO] Criada comissão fixa de R$ ${valorComissao.toFixed(2)} para vendedor ${updates.vendedorId}`);
+            } else {
+              console.log(`[COMISSÃO] Nenhuma comissão configurada para o vendedor ${updates.vendedorId}`);
+            }
           }
         } catch (error) {
           console.error("[COMISSÃO] Erro ao criar comissão automática:", error);
@@ -1343,7 +1373,21 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
         return res.status(403).json({ error: "Acesso negado. Você não pode editar outra empresa." });
       }
 
-      const company = await storage.updateCompany(req.params.id, req.body);
+      // Sanitizar e validar comissãoFixaGlobal
+      const updateData = { ...req.body };
+      if ('comissaoFixaGlobal' in updateData) {
+        if (updateData.comissaoFixaGlobal === null || updateData.comissaoFixaGlobal === '') {
+          updateData.comissaoFixaGlobal = null;
+        } else {
+          const valor = parseFloat(updateData.comissaoFixaGlobal);
+          if (isNaN(valor) || valor < 0) {
+            return res.status(400).json({ error: "Comissão fixa global deve ser um número válido maior ou igual a zero" });
+          }
+          updateData.comissaoFixaGlobal = valor.toString();
+        }
+      }
+
+      const company = await storage.updateCompany(req.params.id, updateData);
       if (!company) {
         return res.status(404).json({ error: "Empresa não encontrada" });
       }
@@ -1383,6 +1427,8 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
         lastName: user.lastName,
         role: user.role,
         isActive: user.isActive,
+        comissaoFixa: user.comissaoFixa,
+        usarComissaoFixaGlobal: user.usarComissaoFixaGlobal,
         createdAt: user.createdAt,
         createdBy: user.createdBy,
       }));
@@ -2066,7 +2112,7 @@ Retorne APENAS um JSON válido no formato:
   // ============================================
   // CONTAS A PAGAR E A RECEBER
   // ============================================
-  app.use("/api/bills", isAuthenticated, billsRoutes);
+  app.use("/api/bills", isAuthenticated, requireProprietario, billsRoutes);
 
   // ============================================
   // GERENCIAR ACESSOS (Permissões Customizadas - Proprietário apenas)

@@ -16,26 +16,26 @@ export function usePermissions() {
 
   // Funções de verificação de permissão
   const can = {
-    // Gestão de usuários
-    manageUsers: isProprietario,
+    // Gestão de usuários - Gerente pode gerenciar
+    manageUsers: isProprietario || isGerente,
     
-    // Configurações da empresa
-    companySettings: isProprietario,
+    // Configurações da empresa - Gerente pode alterar
+    companySettings: isProprietario || isGerente,
     
-    // Métricas financeiras completas
+    // Métricas financeiras de vendas (receita, vendas) - Gerente pode ver
     viewFinancialMetrics: isProprietario || isGerente,
     
-    // Ver custos e margens
+    // Ver custos de veículos e margens - Gerente pode ver
     viewCosts: isProprietario || isGerente,
     
     // Editar preços
     editPrices: isProprietario || isGerente,
     
-    // Adicionar custos
-    addCosts: isProprietario || isGerente,
+    // Adicionar custos de veículos (peças, abastecimento) - Motorista também pode
+    addCosts: isProprietario || isGerente || isMotorista,
     
-    // Editar veículos (TODOS podem editar)
-    editVehicles: true,
+    // Editar veículos
+    editVehicles: isProprietario || isGerente || isVendedor,
     
     // Excluir veículos (APENAS Gerente e Proprietário)
     deleteVehicles: isProprietario || isGerente,
@@ -52,8 +52,14 @@ export function usePermissions() {
     // Ver dashboard
     viewDashboard: isProprietario || isGerente || isVendedor,
     
-    // Contas a Pagar/Receber (apenas proprietário)
+    // Contas a Pagar/Receber/Comissões (APENAS proprietário - Gerente NÃO vê)
     viewBills: isProprietario,
+    
+    // Ver relatórios FINANCEIROS (contas, comissões) - Apenas proprietário
+    viewFinancialReports: isProprietario,
+    
+    // Ver relatórios OPERACIONAIS (gastos com peças, custos de veículos) - Gerente pode ver
+    viewOperationalReports: isProprietario || isGerente,
     
     // Ver Leads (proprietário, gerente e vendedor - SEM motorista)
     viewLeads: isProprietario || isGerente || isVendedor,

@@ -1,16 +1,24 @@
 import { Button } from "@/components/ui/button";
-import { Car, TrendingUp, BarChart, Sparkles } from "lucide-react";
+import { Car, TrendingUp, BarChart, Sparkles, Wrench, Gauge, Shield } from "lucide-react";
 
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-green-600 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-green-600 flex flex-col relative overflow-hidden">
+      {/* Automotive pattern background */}
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute top-10 left-10 w-32 h-32 border-4 border-white rounded-full animate-pulse" />
+        <div className="absolute bottom-20 right-20 w-24 h-24 border-4 border-white rounded-full animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/2 left-1/3 w-16 h-16 border-4 border-white rounded-full animate-pulse" style={{ animationDelay: '0.5s' }} />
+      </div>
+      
       {/* Header */}
-      <header className="p-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-            <Car className="w-6 h-6 text-purple-600" />
+      <header className="p-6 relative z-10">
+        <div className="flex items-center gap-3 group hover-elevate active-elevate-2 rounded-xl p-3 inline-flex transition-all duration-300">
+          <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
+            <Car className="w-7 h-7 text-purple-600" />
           </div>
-          <span className="text-2xl font-bold text-white">VeloStock</span>
+          <span className="text-3xl font-bold text-white tracking-tight">VeloStock</span>
+          <Gauge className="w-6 h-6 text-green-300 ml-2 group-hover:rotate-12 transition-transform" />
         </div>
       </header>
 
@@ -31,67 +39,79 @@ export default function Landing() {
           </div>
 
           {/* Features */}
-          <div className="grid md:grid-cols-3 gap-6 py-8">
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-              <TrendingUp className="w-12 h-12 text-green-300 mx-auto mb-4" />
+          <div className="grid md:grid-cols-3 gap-6 py-8 relative z-10">
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover-elevate active-elevate-2 cursor-default transition-all group">
+              <div className="bg-gradient-to-br from-green-400 to-green-600 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
+                <TrendingUp className="w-8 h-8 text-white" />
+              </div>
               <h3 className="text-white font-semibold text-lg mb-2">Pipeline Visual</h3>
               <p className="text-purple-100 text-sm">
                 Acompanhe cada veículo da entrada à venda em um kanban intuitivo
               </p>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-              <BarChart className="w-12 h-12 text-green-300 mx-auto mb-4" />
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover-elevate active-elevate-2 cursor-default transition-all group">
+              <div className="bg-gradient-to-br from-purple-400 to-purple-600 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
+                <BarChart className="w-8 h-8 text-white" />
+              </div>
               <h3 className="text-white font-semibold text-lg mb-2">Análise Completa</h3>
               <p className="text-purple-100 text-sm">
                 Dashboard com métricas em tempo real e controle de custos detalhado
               </p>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-              <Sparkles className="w-12 h-12 text-green-300 mx-auto mb-4" />
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover-elevate active-elevate-2 cursor-default transition-all group">
+              <div className="bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
+                <Sparkles className="w-8 h-8 text-white" />
+              </div>
               <h3 className="text-white font-semibold text-lg mb-2">IA Integrada</h3>
               <p className="text-purple-100 text-sm">
                 Sugestões de preço e geração de anúncios com inteligência artificial
               </p>
             </div>
           </div>
+          
+          {/* Automotive-specific features */}
+          <div className="grid md:grid-cols-3 gap-4 py-4 relative z-10">
+            <div className="flex items-center gap-3 bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+              <Wrench className="w-8 h-8 text-green-300" />
+              <div className="text-left">
+                <p className="text-white font-medium text-sm">Preparação</p>
+                <p className="text-purple-200 text-xs">Checklists completos</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+              <Car className="w-8 h-8 text-green-300" />
+              <div className="text-left">
+                <p className="text-white font-medium text-sm">Estoque</p>
+                <p className="text-purple-200 text-xs">Controle total</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+              <Shield className="w-8 h-8 text-green-300" />
+              <div className="text-left">
+                <p className="text-white font-medium text-sm">Seguro</p>
+                <p className="text-purple-200 text-xs">Multi-tenant</p>
+              </div>
+            </div>
+          </div>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col gap-6 justify-center items-center pt-4 max-w-md mx-auto w-full">
+          <div className="flex flex-col gap-6 justify-center items-center pt-4 max-w-md mx-auto w-full relative z-10">
             <Button 
               size="lg" 
-              className="bg-white text-purple-700 hover:bg-purple-50 font-semibold px-8 py-6 text-lg rounded-xl shadow-2xl w-full"
+              className="bg-white text-purple-700 hover:bg-purple-50 font-semibold px-8 py-6 text-lg rounded-xl shadow-2xl w-full hover-elevate transition-all"
               onClick={() => window.location.href = '/signup'}
+              data-testid="button-criar-conta"
             >
               Criar Conta Grátis
-            </Button>
-            
-            <div className="flex items-center gap-3 w-full">
-              <div className="h-px bg-white/30 flex-1" />
-              <span className="text-purple-200 text-sm">ou</span>
-              <div className="h-px bg-white/30 flex-1" />
-            </div>
-            
-            <Button 
-              size="lg" 
-              variant="outline" 
-              className="bg-white/10 backdrop-blur-sm text-white border-white/30 hover:bg-white/20 font-semibold px-8 py-6 text-lg rounded-xl w-full flex items-center justify-center gap-3"
-              onClick={() => window.location.href = '/api/auth/google'}
-            >
-              <svg className="w-6 h-6" viewBox="0 0 24 24">
-                <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-              </svg>
-              Continuar com Google
             </Button>
             
             <div className="text-center">
               <p className="text-purple-200 text-sm mb-2">Já tem uma conta?</p>
               <Button 
                 variant="link" 
-                className="text-white hover:text-purple-100 font-semibold underline"
+                className="text-white hover:text-purple-100 font-semibold underline text-lg"
                 onClick={() => window.location.href = '/login'}
+                data-testid="button-fazer-login"
               >
                 Fazer Login
               </Button>
@@ -99,9 +119,9 @@ export default function Landing() {
           </div>
 
           {/* Social Proof */}
-          <div className="pt-8">
+          <div className="pt-8 relative z-10">
             <p className="text-purple-200 text-sm">
-              Sistema multi-tenant • Seguro e escalável • Login nativo ou com Google
+              Sistema multi-tenant • Seguro e escalável • Controle completo para revendas automotivas
             </p>
           </div>
         </div>
