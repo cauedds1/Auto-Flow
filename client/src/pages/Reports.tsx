@@ -727,25 +727,59 @@ export default function Reports() {
             ) : (
               <div className="space-y-6 overflow-y-auto pb-8">
                 <div className="grid gap-6 md:grid-cols-4">
-                  <Card className="p-6">
-                    <p className="text-sm text-muted-foreground">Receita Total</p>
-                    <p className="text-2xl font-bold">R$ {financialMetrics?.vendas.receita.toLocaleString('pt-BR')}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{financialMetrics?.vendas.quantidade} vendas</p>
+                  <Card className="p-6 hover-elevate transition-all duration-300 cursor-default" data-testid="card-receita-total">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-green-500/10 transition-colors">
+                        <TrendingUp className="h-5 w-5 text-green-600" />
+                      </div>
+                      <p className="text-sm font-medium text-muted-foreground">Receita Total</p>
+                    </div>
+                    <p className="text-2xl font-bold text-green-600 transition-all">
+                      R$ {financialMetrics?.vendas.receita.toLocaleString('pt-BR')}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                      <Package className="h-3 w-3" />
+                      {financialMetrics?.vendas.quantidade} vendas
+                    </p>
                   </Card>
                   
-                  <Card className="p-6">
-                    <p className="text-sm text-muted-foreground">Lucro Líquido</p>
-                    <p className="text-2xl font-bold">R$ {financialMetrics?.resultados.lucroLiquido.toLocaleString('pt-BR')}</p>
+                  <Card className="p-6 hover-elevate transition-all duration-300 cursor-default" data-testid="card-lucro-liquido">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-blue-500/10 transition-colors">
+                        <DollarSign className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <p className="text-sm font-medium text-muted-foreground">Lucro Líquido</p>
+                    </div>
+                    <p className={`text-2xl font-bold transition-all ${(financialMetrics?.resultados.lucroLiquido ?? 0) >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                      R$ {financialMetrics?.resultados.lucroLiquido.toLocaleString('pt-BR')}
+                    </p>
                   </Card>
                   
-                  <Card className="p-6">
-                    <p className="text-sm text-muted-foreground">Margem de Lucro</p>
-                    <p className="text-2xl font-bold">{financialMetrics?.resultados.margemLucro.toFixed(1)}%</p>
+                  <Card className="p-6 hover-elevate transition-all duration-300 cursor-default" data-testid="card-margem-lucro">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-purple-500/10 transition-colors">
+                        <TrendingUp className="h-5 w-5 text-purple-600" />
+                      </div>
+                      <p className="text-sm font-medium text-muted-foreground">Margem de Lucro</p>
+                    </div>
+                    <p className={`text-2xl font-bold transition-all ${(financialMetrics?.resultados.margemLucro ?? 0) >= 0 ? 'text-purple-600' : 'text-red-600'}`}>
+                      {financialMetrics?.resultados.margemLucro.toFixed(1)}%
+                    </p>
                   </Card>
                   
-                  <Card className="p-6">
-                    <p className="text-sm text-muted-foreground">Comissões a Pagar</p>
-                    <p className="text-2xl font-bold text-orange-600">R$ {financialMetrics?.comissoes.aPagar.toLocaleString('pt-BR')}</p>
+                  <Card className="p-6 hover-elevate transition-all duration-300 cursor-default" data-testid="card-comissoes-pagar">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-orange-500/10 transition-colors">
+                        <DollarSign className="h-5 w-5 text-orange-600" />
+                      </div>
+                      <p className="text-sm font-medium text-muted-foreground">Comissões a Pagar</p>
+                    </div>
+                    <p className="text-2xl font-bold text-orange-600 transition-all">
+                      R$ {financialMetrics?.comissoes.aPagar.toLocaleString('pt-BR')}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Total: R$ {financialMetrics?.comissoes.total.toLocaleString('pt-BR')}
+                    </p>
                   </Card>
                 </div>
                 
