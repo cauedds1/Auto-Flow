@@ -52,6 +52,9 @@ export function usePermissions() {
     // Ver dashboard
     viewDashboard: isProprietario || isGerente || isVendedor,
     
+    // Ver dashboard do motorista
+    viewDriverDashboard: isMotorista,
+    
     // Contas a Pagar/Receber/Comissões (APENAS proprietário - Gerente NÃO vê)
     viewBills: isProprietario,
     

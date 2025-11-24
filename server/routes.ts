@@ -391,7 +391,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .where(eq(companies.id, empresaId))
             .limit(1);
 
-          if (vendedor && updates.salePrice) {
+          const valorVendaFinal = updates.valorVenda || updates.salePrice;
+          
+          if (vendedor && valorVendaFinal) {
             let valorComissao: number | null = null;
 
             // Verificar se usa comissão global ou individual
@@ -414,13 +416,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 vendedorId: updates.vendedorId,
                 veiculoId: req.params.id,
                 percentualAplicado: "0.00", // Não é mais usado, mas mantém compatibilidade
-                valorBase: updates.salePrice,
+                valorBase: typeof valorVendaFinal === 'string' ? valorVendaFinal : valorVendaFinal.toString(),
                 valorComissao: valorComissao.toFixed(2),
                 status: "A Pagar",
                 criadoPor: userId,
               });
 
-              console.log(`[COMISSÃO] Criada comissão fixa de R$ ${valorComissao.toFixed(2)} para vendedor ${updates.vendedorId}`);
+              console.log(`[COMISSÃO] Criada comissão fixa de R$ ${valorComissao.toFixed(2)} para vendedor ${updates.vendedorId} (valor base: R$ ${valorVendaFinal})`);
             } else {
               console.log(`[COMISSÃO] Nenhuma comissão configurada para o vendedor ${updates.vendedorId}`);
             }

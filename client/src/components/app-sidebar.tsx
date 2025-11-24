@@ -77,7 +77,7 @@ export function AppSidebar() {
   const visibleMenuItems = menuItems.filter((item) => {
     if (item.url === "/configuracoes") return can.companySettings;
     if (item.url === "/usuarios") return can.manageUsers;
-    if (item.url === "/") return can.viewDashboard;
+    if (item.url === "/") return can.viewDashboard || can.viewDriverDashboard;
     if (item.url === "/contas") return can.viewBills;
     if (item.url === "/leads") return can.viewLeads;
     return true;
