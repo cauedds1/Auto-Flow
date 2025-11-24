@@ -222,10 +222,12 @@ export function ChangeLocationDialog({
       // Campos de venda
       if (isVendido) {
         const selectedUser = users.find(u => u.id === formData.vendedorId);
+        const precoVenda = formData.salePrice ? parseFloat(formData.salePrice) : null;
         payload.vendedorId = formData.vendedorId || null;
         payload.vendedorNome = selectedUser ? `${selectedUser.firstName} ${selectedUser.lastName}` : null;
         payload.repassadoPara = formData.isRepassado ? formData.repassadoPara.trim() : null;
-        payload.salePrice = formData.salePrice ? parseFloat(formData.salePrice) : null;
+        payload.salePrice = precoVenda;
+        payload.valorVenda = precoVenda; // Valor real da venda usado nas métricas financeiras
         // dataVenda será gerada automaticamente pelo servidor
       }
 

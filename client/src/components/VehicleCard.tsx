@@ -15,6 +15,7 @@ export interface VehicleCardProps {
   hasNotes?: boolean;
   plate?: string;
   salePrice?: number; // in cents
+  status?: string; // status do veículo
 }
 
 export function VehicleCard({
@@ -29,6 +30,7 @@ export function VehicleCard({
   hasNotes = false,
   plate,
   salePrice,
+  status,
 }: VehicleCardProps) {
   const [, setLocation] = useLocation();
 
@@ -56,11 +58,13 @@ export function VehicleCard({
           alt={`${brand} ${model}`}
           className="h-full w-full object-cover"
         />
-        <Badge
-          className={`absolute left-2 top-2 ${locationColors[location] || "bg-gray-600"} text-white border-0`}
-        >
-          {location}
-        </Badge>
+        {status !== "Vendido" && status !== "Arquivado" && (
+          <Badge
+            className={`absolute left-2 top-2 ${locationColors[location] || "bg-gray-600"} text-white border-0`}
+          >
+            {location}
+          </Badge>
+        )}
         {hasNotes && (
           <div className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-destructive">
             <AlertTriangle className="h-4 w-4 text-destructive-foreground" />

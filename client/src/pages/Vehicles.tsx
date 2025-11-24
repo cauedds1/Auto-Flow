@@ -64,7 +64,7 @@ export default function Vehicles() {
   const { isMotorista } = usePermissions();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState(() => {
-    return localStorage.getItem("vehicles-sort-by") || "location";
+    return localStorage.getItem("vehicles-sort-by") || "status";
   });
   
   // Filtros específicos para cada tipo de ordenação
