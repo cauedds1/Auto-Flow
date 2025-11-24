@@ -152,57 +152,72 @@ router.delete("/commissions/config/:id", async (req, res) => {
 
 // Listar comissões (com filtros opcionais)
 router.get("/commissions/payments", async (req, res) => {
-  const { empresaId } = getUserWithCompany(req);
-  const { vendedorId, status, mesReferencia, anoReferencia } = req.query;
+  try {
+    const { empresaId } = getUserWithCompany(req);
+    const { vendedorId, status, mesReferencia, anoReferencia } = req.query;
 
-  let query = db
-    .select({
-      id: commissionPayments.id,
-      vendedorId: commissionPayments.vendedorId,
-      vendedorNome: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
-      veiculoId: commissionPayments.veiculoId,
-      veiculoInfo: sql<string>`${vehicles.brand} || ' ' || ${vehicles.model} || ' ' || ${vehicles.year}`,
-      percentualAplicado: commissionPayments.percentualAplicado,
-      valorBase: commissionPayments.valorBase,
-      valorComissao: commissionPayments.valorComissao,
-      status: commissionPayments.status,
-      dataPagamento: commissionPayments.dataPagamento,
-      formaPagamento: commissionPayments.formaPagamento,
-      observacoes: commissionPayments.observacoes,
-      createdAt: commissionPayments.createdAt,
-    })
-    .from(commissionPayments)
-    .leftJoin(users, eq(commissionPayments.vendedorId, users.id))
-    .leftJoin(vehicles, eq(commissionPayments.veiculoId, vehicles.id))
-    .where(eq(commissionPayments.empresaId, empresaId))
-    .$dynamic();
+    console.log("[COMMISSION ENDPOINT] Buscando comissões para empresaId:", empresaId);
 
-  if (vendedorId) {
-    query = query.where(eq(commissionPayments.vendedorId, vendedorId as string));
+    let query = db
+      .select({
+        id: commissionPayments.id,
+        vendedorId: commissionPayments.vendedorId,
+        vendedor: {
+          firstName: users.firstName,
+          lastName: users.lastName,
+        },
+        veiculoId: commissionPayments.veiculoId,
+        veiculo: {
+          brand: vehicles.brand,
+          model: vehicles.model,
+          year: vehicles.year,
+        },
+        percentualAplicado: commissionPayments.percentualAplicado,
+        valorBase: commissionPayments.valorBase,
+        valorComissao: commissionPayments.valorComissao,
+        status: commissionPayments.status,
+        dataPagamento: commissionPayments.dataPagamento,
+        formaPagamento: commissionPayments.formaPagamento,
+        observacoes: commissionPayments.observacoes,
+        createdAt: commissionPayments.createdAt,
+      })
+      .from(commissionPayments)
+      .leftJoin(users, eq(commissionPayments.vendedorId, users.id))
+      .leftJoin(vehicles, eq(commissionPayments.veiculoId, vehicles.id))
+      .where(eq(commissionPayments.empresaId, empresaId))
+      .$dynamic();
+
+    if (vendedorId) {
+      query = query.where(eq(commissionPayments.vendedorId, vendedorId as string));
+    }
+
+    if (status) {
+      query = query.where(eq(commissionPayments.status, status as any));
+    }
+
+    // Filtro de mês/ano por data de criação
+    if (mesReferencia && anoReferencia) {
+      const mes = parseInt(mesReferencia as string);
+      const ano = parseInt(anoReferencia as string);
+      const startDate = new Date(ano, mes - 1, 1);
+      const endDate = new Date(ano, mes, 0, 23, 59, 59);
+      
+      query = query.where(
+        and(
+          gte(commissionPayments.createdAt, startDate),
+          lte(commissionPayments.createdAt, endDate)
+        )
+      );
+    }
+
+    const payments = await query.orderBy(desc(commissionPayments.createdAt));
+    console.log("[COMMISSION ENDPOINT] Encontradas", payments.length, "comissões");
+
+    res.json(payments);
+  } catch (error) {
+    console.error("[COMMISSION ENDPOINT] Erro ao buscar comissões:", error);
+    res.status(500).json({ error: "Erro ao buscar comissões" });
   }
-
-  if (status) {
-    query = query.where(eq(commissionPayments.status, status as any));
-  }
-
-  // Filtro de mês/ano por data de criação
-  if (mesReferencia && anoReferencia) {
-    const mes = parseInt(mesReferencia as string);
-    const ano = parseInt(anoReferencia as string);
-    const startDate = new Date(ano, mes - 1, 1);
-    const endDate = new Date(ano, mes, 0, 23, 59, 59);
-    
-    query = query.where(
-      and(
-        gte(commissionPayments.createdAt, startDate),
-        lte(commissionPayments.createdAt, endDate)
-      )
-    );
-  }
-
-  const payments = await query.orderBy(desc(commissionPayments.createdAt));
-
-  res.json(payments);
 });
 
 // Marcar comissão como paga

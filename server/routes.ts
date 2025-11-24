@@ -354,11 +354,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const updates = req.body;
       
+      console.log("[PATCH VEHICLE] Recebido:", { vehicleId: req.params.id, newStatus: updates.status, existingStatus: existingVehicle.status, vendedorId: updates.vendedorId });
+      
       // Detectar mudanças significativas em status ou localização física base
       const statusChanged = Object.prototype.hasOwnProperty.call(updates, "status") && 
         updates.status !== existingVehicle.status;
       const physicalLocationChanged = Object.prototype.hasOwnProperty.call(updates, "physicalLocation") && 
         updates.physicalLocation !== existingVehicle.physicalLocation;
+
+      console.log("[PATCH VEHICLE] statusChanged:", statusChanged, "will create commission:", statusChanged && updates.status === "Vendido" && updates.vendedorId ? "SIM" : "NÃO");
 
       // Atualizar locationChangedAt apenas quando status muda
       if (statusChanged) {

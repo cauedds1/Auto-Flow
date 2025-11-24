@@ -192,10 +192,10 @@ export function CommissionDetailsDialog({ open, setOpen }: CommissionDetailsDial
                             : "Veículo Desconhecido"}
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
-                          R$ {(Number(comm.valorBase) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          R$ {(Number(comm.valorBase) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </TableCell>
-                        <TableCell className="text-right font-semibold">
-                          R$ {(Number(comm.valorComissao) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        <TableCell className="text-right font-semibold text-green-600">
+                          R$ {(Number(comm.valorComissao) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </TableCell>
                         <TableCell className="text-center">
                           <Badge 
@@ -206,7 +206,7 @@ export function CommissionDetailsDialog({ open, setOpen }: CommissionDetailsDial
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right text-xs text-muted-foreground">
-                          {new Date(comm.createdAt).toLocaleDateString('pt-BR')}
+                          {new Date(comm.createdAt).toLocaleDateString('pt-BR', { year: 'numeric', month: '2-digit', day: '2-digit' })}
                         </TableCell>
                       </TableRow>
                     ))}
