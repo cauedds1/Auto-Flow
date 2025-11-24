@@ -1,0 +1,31 @@
+You are an expert full-stack developer and Quality Assurance (QA) specialist. Your mission is to perform a comprehensive audit and stabilization of the AutoFlow system.
+
+**CRITICAL RULE: The system must be 100% stable and all financial data must be perfectly accurate before concluding the task.**
+
+---
+
+### CONTEXT & URGENCY
+
+1.  **System Integrity:** The user requires absolute certainty that every function, button, and route in the system is working as intended.
+2.  **Financial Accuracy:** The "Relatórios > Financeiro" (Reports > Financial) section is the most critical area and must be flawlessly synchronized with all vehicle costs and sales data.
+3.  **Expert Consultation:** If any complex architectural or data synchronization issue is encountered, **IMMEDIATELY consult the system architect** (simulated by a detailed internal thought process) before proceeding with a fix.
+
+---
+
+### TASK LIST (Execute in this exact order)
+
+#### 1. Comprehensive System Audit and Stabilization
+
+Perform a full, systematic sweep of the entire application.
+
+*   **1.1. Route Verification:** Systematically test every single route and endpoint to ensure they load correctly and handle data as expected.
+*   **1.2. Functionality Test:** Click and test every button, form submission, and interactive element to confirm 100% functionality.
+*   **1.3. Data Flow Integrity:** Trace the data flow for key operations (e.g., vehicle registration, status change, cost addition) to ensure data is correctly written and read from the database.
+
+#### 2. Financial Synchronization and Accuracy Fix (Highest Priority)
+
+The financial reports must be a single source of truth.
+
+*   **2.1. Cost Aggregation Audit:** Verify the logic that calculates the **Total Vehicle Cost** (purchase price + all preparation costs, including mechanics, documentation, etc.). This calculation must be flawless.
+*   **2.2. Financial Metrics Synchronization:** Ensure that all high-level metrics in "Relatórios > Financeiro" (e.g., **Margem de Lucro**, **Lucro Líquido**, **Comissões a Pagar**) are dynamically and correctly calculated based on the audited Total Vehicle Cost and the final Sale Price.
+*   **2.3. Real-Time Update:** Confirm that a vehicle sale or a cost addition immediately updates the financial reports without delay.

@@ -272,6 +272,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const empresaId = user.empresaId;
 
+      // IMPORTANTE: NÃO fazer conversões manuais (parseFloat, parseInt) para valores monetários!
+      // O insertVehicleSchema.parse() faz TODA a validação e conversão de forma segura,
+      // rejeitando NaN, Infinity, -Infinity, valores negativos e extremos
       const vehicleData = insertVehicleSchema.parse({
         empresaId,
         brand: req.body.brand,
@@ -284,8 +287,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: req.body.status || "Entrada",
         physicalLocation: req.body.physicalLocation || null,
         physicalLocationDetail: req.body.physicalLocationDetail || null,
-        purchasePrice: req.body.purchasePrice != null && req.body.purchasePrice !== "" ? parseFloat(req.body.purchasePrice) : null,
-        kmOdometer: req.body.kmOdometer != null && req.body.kmOdometer !== "" ? parseInt(req.body.kmOdometer) : null,
+        purchasePrice: req.body.purchasePrice != null && req.body.purchasePrice !== "" ? req.body.purchasePrice : null,
+        kmOdometer: req.body.kmOdometer != null && req.body.kmOdometer !== "" ? req.body.kmOdometer : null,
         fuelType: req.body.fuelType || null,
         fipeReferencePrice: req.body.fipeReferencePrice || null,
         features: req.body.features ? JSON.parse(req.body.features) : null,
@@ -404,27 +407,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (vendedor.usarComissaoFixaGlobal === "true" || vendedor.usarComissaoFixaGlobal === null) {
               // Usar comissão global da empresa
               if (empresa?.comissaoFixaGlobal) {
-                valorComissao = parseFloat(empresa.comissaoFixaGlobal);
+                // Validação robusta: rejeita NaN, Infinity, -Infinity
+                const parsed = Number(empresa.comissaoFixaGlobal);
+                if (Number.isFinite(parsed) && parsed > 0) {
+                  valorComissao = parsed;
+                }
               }
             } else {
               // Usar comissão individual do vendedor
               if (vendedor.comissaoFixa) {
-                valorComissao = parseFloat(vendedor.comissaoFixa);
+                // Validação robusta: rejeita NaN, Infinity, -Infinity
+                const parsed = Number(vendedor.comissaoFixa);
+                if (Number.isFinite(parsed) && parsed > 0) {
+                  valorComissao = parsed;
+                }
               }
             }
 
             // Criar registro de comissão se houver valor definido
+            // IMPORTANTE: Usa insertCommissionPaymentSchema para validação completa
             if (valorComissao !== null && valorComissao > 0) {
-              await db.insert(commissionPayments).values({
+              const commissionData = insertCommissionPaymentSchema.parse({
                 empresaId,
                 vendedorId: updates.vendedorId,
                 veiculoId: req.params.id,
-                percentualAplicado: "0.00", // Não é mais usado, mas mantém compatibilidade
-                valorBase: typeof valorVendaFinal === 'string' ? valorVendaFinal : valorVendaFinal.toString(),
-                valorComissao: valorComissao.toFixed(2),
+                percentualAplicado: 0,
+                valorBase: valorVendaFinal,
+                valorComissao: valorComissao,
                 status: "A Pagar",
                 criadoPor: userId,
               });
+
+              await db.insert(commissionPayments).values(commissionData);
 
               console.log(`[COMISSÃO] Criada comissão fixa de R$ ${valorComissao.toFixed(2)} para vendedor ${updates.vendedorId} (valor base: R$ ${valorVendaFinal})`);
             } else {
@@ -947,7 +961,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Pegar custos do veículo para contextualizar o valor
       const costs = await storage.getVehicleCosts(vehicle.id);
-      const totalCosts = costs.reduce((sum, cost) => sum + Number(cost.value), 0);
+      const operationalCosts = costs.reduce((sum, cost) => sum + Number(cost.value), 0);
+      const purchasePrice = Number(vehicle.purchasePrice) || 0;
+      const totalCosts = purchasePrice + operationalCosts;
       const hasPriceSet = vehicle.salePrice && Number(vehicle.salePrice) > 0;
 
       const prompt = `Você é um redator de publicidade EXPERT em vendas de carros para a "Capoeiras Automóveis", uma concessionária confiável e estabelecida. 
@@ -1431,9 +1447,10 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
         if (updateData.comissaoFixaGlobal === null || updateData.comissaoFixaGlobal === '') {
           updateData.comissaoFixaGlobal = null;
         } else {
-          const valor = parseFloat(updateData.comissaoFixaGlobal);
-          if (isNaN(valor) || valor < 0) {
-            return res.status(400).json({ error: "Comissão fixa global deve ser um número válido maior ou igual a zero" });
+          const valor = Number(updateData.comissaoFixaGlobal);
+          // Validação robusta: rejeita NaN, Infinity, -Infinity, negativos e valores extremos
+          if (!Number.isFinite(valor) || valor < 0 || valor > 999999.99) {
+            return res.status(400).json({ error: "Comissão fixa global deve ser um número válido entre 0 e R$ 999.999,99" });
           }
           // Armazenar como número, não string
           updateData.comissaoFixaGlobal = valor;

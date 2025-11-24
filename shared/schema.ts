@@ -142,22 +142,30 @@ export const vehicles = pgTable("vehicles", {
   locationChangedAt: timestamp("location_changed_at").defaultNow().notNull(),
 });
 
+// Helper para validar valores monetários (rejeita NaN, Infinity, negativos e valores extremos)
+const monetaryValueSchema = z.union([z.string(), z.number(), z.null()])
+  .transform((val) => {
+    if (val === null || val === undefined || val === "") return null;
+    const num = typeof val === 'string' ? Number(val) : val;
+    // Rejeitar valores inválidos
+    if (!Number.isFinite(num)) {
+      throw new Error("Valor monetário inválido: deve ser um número finito");
+    }
+    if (num < 0) {
+      throw new Error("Valor monetário não pode ser negativo");
+    }
+    if (num > 999999999.99) {
+      throw new Error("Valor monetário muito grande (máximo: R$ 999.999.999,99)");
+    }
+    return num;
+  })
+  .nullable()
+  .optional();
+
 export const insertVehicleSchema = createInsertSchema(vehicles, {
-  purchasePrice: z.union([z.string(), z.number(), z.null()]).transform((val) => {
-    if (val === null || val === undefined || val === "") return null;
-    const num = typeof val === 'string' ? parseFloat(val) : val;
-    return isNaN(num) ? null : num;
-  }).nullable().optional(),
-  salePrice: z.union([z.string(), z.number(), z.null()]).transform((val) => {
-    if (val === null || val === undefined || val === "") return null;
-    const num = typeof val === 'string' ? parseFloat(val) : val;
-    return isNaN(num) ? null : num;
-  }).nullable().optional(),
-  valorVenda: z.union([z.string(), z.number(), z.null()]).transform((val) => {
-    if (val === null || val === undefined || val === "") return null;
-    const num = typeof val === 'string' ? parseFloat(val) : val;
-    return isNaN(num) ? null : num;
-  }).nullable().optional(),
+  purchasePrice: monetaryValueSchema,
+  salePrice: monetaryValueSchema,
+  valorVenda: monetaryValueSchema,
 }).omit({
   id: true,
   createdAt: true,
@@ -250,7 +258,20 @@ export const vehicleCosts = pgTable("vehicle_costs", {
 });
 
 export const insertVehicleCostSchema = createInsertSchema(vehicleCosts, {
-  value: z.union([z.number(), z.string()]).transform(val => typeof val === 'string' ? val : val.toString()),
+  value: z.union([z.number(), z.string()]).transform(val => {
+    const num = typeof val === 'string' ? Number(val) : val;
+    // Validar que é um número válido
+    if (!Number.isFinite(num)) {
+      throw new Error("Custo inválido: deve ser um número finito");
+    }
+    if (num < 0) {
+      throw new Error("Custo não pode ser negativo");
+    }
+    if (num > 999999.99) {
+      throw new Error("Custo muito grande (máximo: R$ 999.999,99)");
+    }
+    return num.toString();
+  }),
 }).omit({
   id: true,
   createdAt: true,
@@ -410,7 +431,18 @@ export const commissionsConfig = pgTable("commissions_config", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const insertCommissionsConfigSchema = createInsertSchema(commissionsConfig).omit({
+export const insertCommissionsConfigSchema = createInsertSchema(commissionsConfig, {
+  percentualComissao: z.union([z.number(), z.string()]).transform(val => {
+    const num = typeof val === 'string' ? Number(val) : val;
+    if (!Number.isFinite(num)) {
+      throw new Error("Percentual de comissão inválido: deve ser um número finito");
+    }
+    if (num < 0 || num > 100) {
+      throw new Error("Percentual de comissão deve estar entre 0 e 100");
+    }
+    return num;
+  }),
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -436,7 +468,21 @@ export const operationalExpenses = pgTable("operational_expenses", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const insertOperationalExpenseSchema = createInsertSchema(operationalExpenses).omit({
+export const insertOperationalExpenseSchema = createInsertSchema(operationalExpenses, {
+  valor: z.union([z.number(), z.string()]).transform(val => {
+    const num = typeof val === 'string' ? Number(val) : val;
+    if (!Number.isFinite(num)) {
+      throw new Error("Valor da despesa inválido: deve ser um número finito");
+    }
+    if (num < 0) {
+      throw new Error("Valor da despesa não pode ser negativo");
+    }
+    if (num > 99999999.99) {
+      throw new Error("Valor da despesa muito grande (máximo: R$ 99.999.999,99)");
+    }
+    return num;
+  }),
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -463,7 +509,44 @@ export const commissionPayments = pgTable("commission_payments", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const insertCommissionPaymentSchema = createInsertSchema(commissionPayments).omit({
+export const insertCommissionPaymentSchema = createInsertSchema(commissionPayments, {
+  valorBase: z.union([z.number(), z.string()]).transform(val => {
+    const num = typeof val === 'string' ? Number(val) : val;
+    if (!Number.isFinite(num)) {
+      throw new Error("Valor base da comissão inválido: deve ser um número finito");
+    }
+    if (num < 0) {
+      throw new Error("Valor base da comissão não pode ser negativo");
+    }
+    if (num > 999999999.99) {
+      throw new Error("Valor base muito grande (máximo: R$ 999.999.999,99)");
+    }
+    return num;
+  }),
+  valorComissao: z.union([z.number(), z.string()]).transform(val => {
+    const num = typeof val === 'string' ? Number(val) : val;
+    if (!Number.isFinite(num)) {
+      throw new Error("Valor da comissão inválido: deve ser um número finito");
+    }
+    if (num < 0) {
+      throw new Error("Valor da comissão não pode ser negativo");
+    }
+    if (num > 99999999.99) {
+      throw new Error("Valor da comissão muito grande (máximo: R$ 99.999.999,99)");
+    }
+    return num;
+  }),
+  percentualAplicado: z.union([z.number(), z.string()]).transform(val => {
+    const num = typeof val === 'string' ? Number(val) : val;
+    if (!Number.isFinite(num)) {
+      throw new Error("Percentual de comissão inválido: deve ser um número finito");
+    }
+    if (num < 0 || num > 100) {
+      throw new Error("Percentual de comissão deve estar entre 0 e 100");
+    }
+    return num;
+  }),
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -813,7 +896,21 @@ export const billsPayable = pgTable("bills_payable", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const insertBillPayableSchema = createInsertSchema(billsPayable).omit({
+export const insertBillPayableSchema = createInsertSchema(billsPayable, {
+  valor: z.union([z.number(), z.string()]).transform(val => {
+    const num = typeof val === 'string' ? Number(val) : val;
+    if (!Number.isFinite(num)) {
+      throw new Error("Valor da conta inválido: deve ser um número finito");
+    }
+    if (num < 0) {
+      throw new Error("Valor da conta não pode ser negativo");
+    }
+    if (num > 99999999.99) {
+      throw new Error("Valor da conta muito grande (máximo: R$ 99.999.999,99)");
+    }
+    return num;
+  }),
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true,

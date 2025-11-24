@@ -7,7 +7,10 @@ import {
   salesTargets,
   vehicles,
   vehicleCosts,
-  users
+  users,
+  insertOperationalExpenseSchema,
+  insertCommissionPaymentSchema,
+  insertCommissionsConfigSchema
 } from "@shared/schema";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
 import { requireProprietarioOrGerente } from "../middleware/roleCheck";
@@ -67,48 +70,60 @@ router.get("/commissions/config", async (req, res) => {
 
 // Criar/atualizar configuração de comissão
 router.post("/commissions/config", async (req, res) => {
-  const { empresaId, userId } = getUserWithCompany(req);
-  const { vendedorId, percentualComissao, observacoes } = req.body;
+  try {
+    const { empresaId, userId } = getUserWithCompany(req);
 
-  // Verificar se já existe configuração para este vendedor
-  const existing = await db
-    .select()
-    .from(commissionsConfig)
-    .where(
-      and(
-        eq(commissionsConfig.empresaId, empresaId),
-        eq(commissionsConfig.vendedorId, vendedorId)
+    // Validar dados com schema Zod (rejeita NaN, Infinity, valores fora de 0-100, etc)
+    const validatedData = insertCommissionsConfigSchema.parse({
+      empresaId,
+      vendedorId: req.body.vendedorId,
+      percentualComissao: req.body.percentualComissao,
+      observacoes: req.body.observacoes,
+      ativo: "true",
+    });
+
+    // Verificar se já existe configuração para este vendedor
+    const existing = await db
+      .select()
+      .from(commissionsConfig)
+      .where(
+        and(
+          eq(commissionsConfig.empresaId, empresaId),
+          eq(commissionsConfig.vendedorId, validatedData.vendedorId)
+        )
       )
-    )
-    .limit(1);
+      .limit(1);
 
-  if (existing.length > 0) {
-    // Atualizar existente
-    const [updated] = await db
-      .update(commissionsConfig)
-      .set({ 
-        percentualComissao, 
-        observacoes,
-        ativo: "true",
-        updatedAt: new Date() 
-      })
-      .where(eq(commissionsConfig.id, existing[0].id))
-      .returning();
-    
-    res.json(updated);
-  } else {
-    // Criar novo
-    const [created] = await db
-      .insert(commissionsConfig)
-      .values({
-        empresaId,
-        vendedorId,
-        percentualComissao,
-        observacoes,
-      })
-      .returning();
-    
-    res.json(created);
+    if (existing.length > 0) {
+      // Atualizar existente
+      const [updated] = await db
+        .update(commissionsConfig)
+        .set({ 
+          ...validatedData,
+          updatedAt: new Date() 
+        })
+        .where(eq(commissionsConfig.id, existing[0].id))
+        .returning();
+      
+      res.json(updated);
+    } else {
+      // Criar novo
+      const [created] = await db
+        .insert(commissionsConfig)
+        .values(validatedData)
+        .returning();
+      
+      res.json(created);
+    }
+  } catch (error: any) {
+    console.error("Erro ao salvar configuração de comissão:", error);
+    if (error.name === 'ZodError') {
+      return res.status(400).json({ 
+        error: "Dados inválidos", 
+        details: error.errors?.map((e: any) => e.message).join(", ") 
+      });
+    }
+    res.status(500).json({ error: "Erro ao salvar configuração" });
   }
 });
 
@@ -192,28 +207,44 @@ router.get("/commissions/payments", async (req, res) => {
 
 // Marcar comissão como paga
 router.patch("/commissions/payments/:id/pay", async (req, res) => {
-  const { empresaId } = getUserWithCompany(req);
-  const { id } = req.params;
-  const { dataPagamento, formaPagamento, observacoes } = req.body;
+  try {
+    const { empresaId } = getUserWithCompany(req);
+    const { id } = req.params;
 
-  const [updated] = await db
-    .update(commissionPayments)
-    .set({
-      status: "Paga",
-      dataPagamento: new Date(dataPagamento),
-      formaPagamento,
-      observacoes,
+    // Whitelist de campos permitidos
+    const allowedFields = ['dataPagamento', 'formaPagamento', 'observacoes'];
+    const updates: any = {
+      status: "Paga", // Forçar status como "Paga"
       updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(commissionPayments.id, id),
-        eq(commissionPayments.empresaId, empresaId)
-      )
-    )
-    .returning();
+    };
 
-  res.json(updated);
+    // Adicionar apenas campos permitidos que foram enviados
+    if (req.body.dataPagamento) {
+      updates.dataPagamento = new Date(req.body.dataPagamento);
+    }
+    if (req.body.formaPagamento !== undefined) {
+      updates.formaPagamento = req.body.formaPagamento;
+    }
+    if (req.body.observacoes !== undefined) {
+      updates.observacoes = req.body.observacoes;
+    }
+
+    const [updated] = await db
+      .update(commissionPayments)
+      .set(updates)
+      .where(
+        and(
+          eq(commissionPayments.id, id),
+          eq(commissionPayments.empresaId, empresaId)
+        )
+      )
+      .returning();
+
+    res.json(updated);
+  } catch (error) {
+    console.error("Erro ao marcar comissão como paga:", error);
+    res.status(500).json({ error: "Erro ao atualizar comissão" });
+  }
 });
 
 // ============================================
@@ -260,43 +291,85 @@ router.get("/expenses", async (req, res) => {
 
 // Criar despesa
 router.post("/expenses", async (req, res) => {
-  const { empresaId, userId } = getUserWithCompany(req);
-  const { categoria, descricao, valor, dataVencimento, observacoes } = req.body;
-
-  const [expense] = await db
-    .insert(operationalExpenses)
-    .values({
+  try {
+    const { empresaId, userId } = getUserWithCompany(req);
+    
+    // Validar dados com schema Zod (rejeita NaN, Infinity, negativos, etc)
+    const validatedData = insertOperationalExpenseSchema.parse({
+      ...req.body,
       empresaId,
-      categoria,
-      descricao,
-      valor,
-      dataVencimento: dataVencimento ? new Date(dataVencimento) : null,
-      observacoes,
       criadoPor: userId,
-    })
-    .returning();
+      dataVencimento: req.body.dataVencimento ? new Date(req.body.dataVencimento) : null,
+    });
 
-  res.json(expense);
+    const [expense] = await db
+      .insert(operationalExpenses)
+      .values(validatedData)
+      .returning();
+
+    res.json(expense);
+  } catch (error: any) {
+    console.error("Erro ao criar despesa:", error);
+    if (error.name === 'ZodError') {
+      return res.status(400).json({ 
+        error: "Dados inválidos", 
+        details: error.errors?.map((e: any) => e.message).join(", ") 
+      });
+    }
+    res.status(500).json({ error: "Erro ao criar despesa" });
+  }
 });
 
 // Atualizar despesa
 router.patch("/expenses/:id", async (req, res) => {
-  const { empresaId } = getUserWithCompany(req);
-  const { id } = req.params;
-  const updates = req.body;
+  try {
+    const { empresaId } = getUserWithCompany(req);
+    const { id } = req.params;
+    
+    // Whitelist de campos permitidos para atualização
+    const allowedFields = [
+      'categoria', 'descricao', 'valor', 'dataVencimento', 
+      'dataPagamento', 'pago', 'formaPagamento', 'observacoes'
+    ];
+    
+    // Filtrar apenas campos permitidos
+    const updates: any = {};
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    }
+    
+    // Validar valor monetário se presente
+    if (updates.valor !== undefined) {
+      const validatedData = insertOperationalExpenseSchema.partial().parse({
+        valor: updates.valor
+      });
+      updates.valor = validatedData.valor;
+    }
 
-  const [updated] = await db
-    .update(operationalExpenses)
-    .set({ ...updates, updatedAt: new Date() })
-    .where(
-      and(
-        eq(operationalExpenses.id, id),
-        eq(operationalExpenses.empresaId, empresaId)
+    const [updated] = await db
+      .update(operationalExpenses)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(
+        and(
+          eq(operationalExpenses.id, id),
+          eq(operationalExpenses.empresaId, empresaId)
+        )
       )
-    )
-    .returning();
+      .returning();
 
-  res.json(updated);
+    res.json(updated);
+  } catch (error: any) {
+    console.error("Erro ao atualizar despesa:", error);
+    if (error.name === 'ZodError') {
+      return res.status(400).json({ 
+        error: "Dados inválidos", 
+        details: error.errors?.map((e: any) => e.message).join(", ") 
+      });
+    }
+    res.status(500).json({ error: "Erro ao atualizar despesa" });
+  }
 });
 
 // Marcar despesa como paga
@@ -452,11 +525,52 @@ router.get("/metrics", async (req, res) => {
   const despesas = despesasResult[0];
   const comissoes = comissoesResult[0];
 
-  const receitaTotal = parseFloat(vendas.receitaTotal);
-  const custoAquisicao = parseFloat(aquisicao.aquisicaoTotal);
-  const custoOperacional = parseFloat(custosOperacionais.custoOperacionalTotal);
-  const despesaTotal = parseFloat(despesas.despesaTotal);
-  const comissaoTotal = parseFloat(comissoes.comissaoTotal);
+  // Converter strings para números com validação ANTES do fallback
+  const receitaParsed = Number(vendas?.receitaTotal ?? 0);
+  const custoAquisicaoParsed = Number(aquisicao?.aquisicaoTotal ?? 0);
+  const custoOperacionalParsed = Number(custosOperacionais?.custoOperacionalTotal ?? 0);
+  const despesaParsed = Number(despesas?.despesaTotal ?? 0);
+  const comissaoParsed = Number(comissoes?.comissaoTotal ?? 0);
+  const comissoesPagasParsed = Number(comissoes?.comissoesPagas ?? 0);
+  const comissoesAPagarParsed = Number(comissoes?.comissoesAPagar ?? 0);
+  const ticketMedioParsed = Number(vendas?.ticketMedio ?? 0);
+
+  // Validar que todos os valores são finitos (rejeita NaN, Infinity, -Infinity)
+  // e não-negativos (custos/receitas não podem ser negativos)
+  if (!Number.isFinite(receitaParsed) || receitaParsed < 0 ||
+      !Number.isFinite(custoAquisicaoParsed) || custoAquisicaoParsed < 0 ||
+      !Number.isFinite(custoOperacionalParsed) || custoOperacionalParsed < 0 ||
+      !Number.isFinite(despesaParsed) || despesaParsed < 0 ||
+      !Number.isFinite(comissaoParsed) || comissaoParsed < 0 ||
+      !Number.isFinite(comissoesPagasParsed) || comissoesPagasParsed < 0 ||
+      !Number.isFinite(comissoesAPagarParsed) || comissoesAPagarParsed < 0 ||
+      !Number.isFinite(ticketMedioParsed) || ticketMedioParsed < 0) {
+    console.error("Erro: Valores financeiros inválidos (NaN, Infinity ou negativos)", {
+      vendas: vendas?.receitaTotal,
+      aquisicao: aquisicao?.aquisicaoTotal,
+      operacional: custosOperacionais?.custoOperacionalTotal,
+      despesas: despesas?.despesaTotal,
+      comissoes: comissoes?.comissaoTotal,
+      parsed: {
+        receita: receitaParsed,
+        aquisicao: custoAquisicaoParsed,
+        operacional: custoOperacionalParsed,
+        despesas: despesaParsed,
+        comissoes: comissaoParsed
+      }
+    });
+    return res.status(500).json({ error: "Erro ao calcular métricas financeiras - dados inválidos ou corrompidos" });
+  }
+
+  // Agora que validamos, podemos usar os valores com segurança
+  const receitaTotal = receitaParsed;
+  const custoAquisicao = custoAquisicaoParsed;
+  const custoOperacional = custoOperacionalParsed;
+  const despesaTotal = despesaParsed;
+  const comissaoTotal = comissaoParsed;
+  const comissoesPagas = comissoesPagasParsed;
+  const comissoesAPagar = comissoesAPagarParsed;
+  const ticketMedio = ticketMedioParsed;
 
   // Custo total = preço de aquisição + custos operacionais
   const custoTotalVeiculos = custoAquisicao + custoOperacional;
@@ -467,9 +581,9 @@ router.get("/metrics", async (req, res) => {
   res.json({
     periodo: { mes: mesNum, ano: anoNum },
     vendas: {
-      quantidade: vendas.totalVendas,
+      quantidade: vendas?.totalVendas || 0,
       receita: receitaTotal,
-      ticketMedio: parseFloat(vendas.ticketMedio),
+      ticketMedio: ticketMedio,
     },
     custos: {
       aquisicao: custoAquisicao, // Preço de aquisição dos veículos
@@ -484,9 +598,9 @@ router.get("/metrics", async (req, res) => {
       margemLucro,
     },
     comissoes: {
-      total: parseFloat(comissoes.comissaoTotal),
-      pagas: parseFloat(comissoes.comissoesPagas),
-      aPagar: parseFloat(comissoes.comissoesAPagar),
+      total: comissaoTotal,
+      pagas: comissoesPagas,
+      aPagar: comissoesAPagar,
     },
   });
 });
@@ -539,7 +653,52 @@ router.get("/sellers/ranking", async (req, res) => {
     .groupBy(vehicles.vendedorId, users.firstName, users.lastName, users.email)
     .orderBy(desc(sql`SUM(${vehicles.valorVenda})`));
 
-  res.json(ranking);
+  // Converter strings para números com validação robusta (validar ANTES do fallback)
+  const rankingComValoresNumericos = ranking.map(vendedor => {
+    const receitaParsed = Number(vendedor.receitaTotal ?? 0);
+    const ticketMedioParsed = Number(vendedor.ticketMedio ?? 0);
+    const comissaoParsed = Number(vendedor.comissaoTotal ?? 0);
+
+    // Validar se algum valor é inválido (NaN, Infinity, -Infinity ou negativo)
+    if (!Number.isFinite(receitaParsed) || receitaParsed < 0 ||
+        !Number.isFinite(ticketMedioParsed) || ticketMedioParsed < 0 ||
+        !Number.isFinite(comissaoParsed) || comissaoParsed < 0) {
+      console.error("Erro: Dados inválidos no ranking de vendedor", {
+        vendedorId: vendedor.vendedorId,
+        receita: vendedor.receitaTotal,
+        ticket: vendedor.ticketMedio,
+        comissao: vendedor.comissaoTotal,
+        parsed: {
+          receita: receitaParsed,
+          ticket: ticketMedioParsed,
+          comissao: comissaoParsed
+        }
+      });
+      // Retornar com zeros para não quebrar o ranking inteiro
+      return {
+        vendedorId: vendedor.vendedorId,
+        vendedorNome: vendedor.vendedorNome,
+        vendedorEmail: vendedor.vendedorEmail,
+        quantidadeVendas: vendedor.quantidadeVendas || 0,
+        receitaTotal: 0,
+        ticketMedio: 0,
+        comissaoTotal: 0,
+        _erro: true, // Flag para indicar erro
+      };
+    }
+
+    return {
+      vendedorId: vendedor.vendedorId,
+      vendedorNome: vendedor.vendedorNome,
+      vendedorEmail: vendedor.vendedorEmail,
+      quantidadeVendas: vendedor.quantidadeVendas || 0,
+      receitaTotal: receitaParsed,
+      ticketMedio: ticketMedioParsed,
+      comissaoTotal: comissaoParsed,
+    };
+  });
+
+  res.json(rankingComValoresNumericos);
 });
 
 export default router;
