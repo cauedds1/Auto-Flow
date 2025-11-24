@@ -391,7 +391,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .where(eq(companies.id, empresaId))
             .limit(1);
 
-          const valorVendaFinal = updates.valorVenda || updates.salePrice;
+          // Determinar valor base da comissão com fallbacks robustos
+          const valorVendaFinal = updates.valorVenda 
+            || updates.salePrice 
+            || existingVehicle.valorVenda 
+            || existingVehicle.salePrice;
           
           if (vendedor && valorVendaFinal) {
             let valorComissao: number | null = null;
