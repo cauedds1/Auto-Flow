@@ -1,0 +1,57 @@
+You are an expert full-stack developer working on the AutoFlow project (a car dealership management system). Your goal is to implement the following tasks, focusing on financial accuracy, UI/UX improvements, and navigation fixes.
+
+**CRITICAL RULE: DO NOT STOP until ALL tasks are 100% functional and verified.**
+
+---
+
+### CONTEXT & PRE-REQUISITES
+
+1.  **Project Understanding:** Read and fully understand all existing code and documentation to grasp the project's current state, especially the financial and commission logic.
+2.  **User Interface Language:** Ensure ALL new texts, labels, buttons, and notifications remain in **perfect Brazilian Portuguese**.
+
+---
+
+### IMPLEMENTATION TASKS (Execute in this exact order)
+
+#### 1. Financial Logic Fixes (High Priority)
+
+The current financial reporting is not updating correctly. Fix the following issues:
+
+*   **Commission Payouts:** Ensure that when a car is sold and the commission is configured, the "Comissões a Pagar" (Commissions to Pay) field in the "Relatórios > Financeiro" (Reports > Financial) section is **automatically and immediately updated**.
+*   **Header Metrics Synchronization:** Verify and fix all top-level financial metrics (e.g., "Margem de Lucro," "Lucro Líquido," "Comissões a Pagar") to ensure they are correctly calculated and synchronized with the vehicle's total cost (purchase price + all calculated preparation costs).
+*   **Data Integrity:** The financial data must reflect the real-time status of the vehicle sale and associated costs.
+
+#### 2. Driver Dashboard Navigation Fix
+
+The driver's dedicated dashboard lacks a return button.
+
+*   **Menu Fix:** Add a "Dashboard" button to the main menu visible to the **Driver user role only**. This button must allow the driver to return to their specific dashboard screen from any other page.
+
+#### 3. System Visual Enhancement (UI/UX)
+
+Improve the system's aesthetic appeal without radical changes.
+
+*   **Visual Refinement:** Enhance the visual design to make the system more appealing. Focus on subtle details, such as:
+    *   Improved color palette usage.
+    *   Refined typography and spacing.
+    *   Subtle hover effects or micro-interactions on buttons and cards.
+*   **Interaction Details:** Add minor, non-radical interactions to improve the user experience (e.g., smooth transitions, subtle animations on data loading).
+
+#### 4. General System Improvements (Proactive Enhancement)
+
+Proactively add any necessary functions or interactions that will facilitate system usage, even if not explicitly requested.
+
+*   **Usability Interactions:** Implement additional interactions that you deem necessary to simplify the user experience.
+*   **Necessary Functions:** Implement any small, missing features that an expert developer would identify as crucial for a complete management system. **You have full autonomy to implement these without a second order.**
+
+---
+
+### COMPLETION CRITERIA
+
+*   All four tasks must be implemented.
+*   All financial calculations must be 100% accurate and automatically updated upon sale.
+*   The Driver's dashboard must be accessible via the main menu.
+*   The system's visual appeal must be noticeably improved.
+*   The final system must be fully functional and stable.
+
+**Start with Task 1 (Financial Logic Fixes) immediately.**
