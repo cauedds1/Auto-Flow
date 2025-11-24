@@ -1689,7 +1689,11 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
       
       // Atualizar configurações de comissão
       if (usarComissaoFixaGlobal !== undefined) {
-        updates.usarComissaoFixaGlobal = usarComissaoFixaGlobal;
+        // Converter boolean para string se necessário
+        const value = typeof usarComissaoFixaGlobal === 'boolean' 
+          ? (usarComissaoFixaGlobal ? 'true' : 'false')
+          : String(usarComissaoFixaGlobal);
+        updates.usarComissaoFixaGlobal = value;
       }
       if (comissaoFixa !== undefined) {
         // Validar comissão individual
