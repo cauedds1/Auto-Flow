@@ -1,13 +1,11 @@
-import { useState } from "react";
+import { useState, Dispatch, SetStateAction } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -47,8 +45,12 @@ interface CommissionPayment {
   };
 }
 
-export function CommissionDetailsDialog() {
-  const [open, setOpen] = useState(false);
+interface CommissionDetailsDialogProps {
+  open: boolean;
+  setOpen: Dispatch<SetStateAction<boolean>>;
+}
+
+export function CommissionDetailsDialog({ open, setOpen }: CommissionDetailsDialogProps) {
   const [selectedVendedor, setSelectedVendedor] = useState<string>("all");
 
   const { data: commissions = [], isLoading } = useQuery<CommissionPayment[]>({
@@ -105,17 +107,6 @@ export function CommissionDetailsDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button 
-          variant="outline" 
-          size="sm"
-          data-testid="button-commission-details"
-          className="gap-2"
-        >
-          <DollarSign className="h-4 w-4" />
-          Ver Detalhes
-        </Button>
-      </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
