@@ -166,6 +166,28 @@ export const insertVehicleSchema = createInsertSchema(vehicles, {
   purchasePrice: monetaryValueSchema,
   salePrice: monetaryValueSchema,
   valorVenda: monetaryValueSchema,
+  kmOdometer: z.union([z.number(), z.string()]).transform(val => {
+    if (val === null || val === undefined || val === "") return null;
+    const num = typeof val === 'string' ? Number(val) : val;
+    if (!Number.isFinite(num)) {
+      throw new Error("Quilometragem inválida: deve ser um número válido");
+    }
+    if (num < 0) {
+      throw new Error("Quilometragem não pode ser negativa");
+    }
+    return Math.floor(num);
+  }).nullable().optional(),
+  year: z.union([z.number(), z.string()]).transform(val => {
+    if (val === null || val === undefined || val === "") return null;
+    const num = typeof val === 'string' ? Number(val) : val;
+    if (!Number.isFinite(num)) {
+      throw new Error("Ano inválido: deve ser um número válido");
+    }
+    if (num < 1900 || num > new Date().getFullYear() + 1) {
+      throw new Error(`Ano deve estar entre 1900 e ${new Date().getFullYear() + 1}`);
+    }
+    return Math.floor(num);
+  }).nullable().optional(),
 }).omit({
   id: true,
   createdAt: true,
