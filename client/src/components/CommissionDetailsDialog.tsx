@@ -1,4 +1,4 @@
-import { useState, Dispatch, SetStateAction } from "react";
+import { useState, useEffect, Dispatch, SetStateAction } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Dialog,
@@ -53,10 +53,19 @@ interface CommissionDetailsDialogProps {
 export function CommissionDetailsDialog({ open, setOpen }: CommissionDetailsDialogProps) {
   const [selectedVendedor, setSelectedVendedor] = useState<string>("all");
 
-  const { data: commissions = [], isLoading } = useQuery<CommissionPayment[]>({
+  const { data: commissions = [], isLoading, refetch } = useQuery<CommissionPayment[]>({
     queryKey: ["/api/commissions/payments"],
     enabled: open,
+    staleTime: 0,
+    gcTime: 0,
   });
+
+  // Refetch quando o diálogo abre
+  useEffect(() => {
+    if (open) {
+      refetch();
+    }
+  }, [open, refetch]);
 
   const { data: users = [] } = useQuery<any[]>({
     queryKey: ["/api/users"],

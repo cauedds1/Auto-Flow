@@ -264,6 +264,7 @@ export function ChangeLocationDialog({
         queryClient.invalidateQueries({ queryKey: ["/api/financial/metrics"] });
         queryClient.invalidateQueries({ queryKey: ["/api/financial/sellers/ranking"] });
         queryClient.invalidateQueries({ queryKey: ["/api/costs/all"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/commissions/payments"] });
       }
 
       setOpen(false);
