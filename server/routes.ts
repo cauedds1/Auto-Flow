@@ -5,7 +5,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import multer from "multer";
 import { z } from "zod";
-import { insertVehicleSchema, insertVehicleCostSchema, insertStoreObservationSchema, updateVehicleHistorySchema, commissionsConfig, commissionPayments, users, companies } from "@shared/schema";
+import { insertVehicleSchema, insertVehicleCostSchema, insertStoreObservationSchema, updateVehicleHistorySchema, insertCommissionPaymentSchema, commissionsConfig, commissionPayments, users, companies } from "@shared/schema";
 import OpenAI from "openai";
 import path from "path";
 import fs from "fs/promises";
