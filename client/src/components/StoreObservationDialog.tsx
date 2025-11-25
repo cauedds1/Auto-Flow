@@ -82,15 +82,25 @@ export function StoreObservationDialog({
         setCustomCategory("");
       }
       setStatus(observation.status);
+      
+      // Se houver expenseCost, significa que um gasto foi registrado
+      if (observation.expenseCost) {
+        setRegisterExpense(true);
+        setExpenseValue(parseFloat(observation.expenseCost as any).toString());
+      } else {
+        setRegisterExpense(false);
+        setExpenseValue("");
+      }
     } else {
       setDescription("");
       setCategory(undefined);
       setCustomCategory("");
       setStatus("Pendente");
+      setRegisterExpense(false);
+      setExpenseValue("");
     }
-    // Resetar campos de gasto quando o dialog abre
-    setRegisterExpense(false);
-    setExpenseValue("");
+    
+    // Resetar outros campos de gasto
     setExpenseDescription("");
     setExpensePaymentMethod("Cartão Loja");
     setExpensePaymentMethodCustom("");

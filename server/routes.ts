@@ -664,9 +664,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json([]); // Lista de custos vazia para motoristas
       }
 
-      // Buscar custos com informações do veículo
-      const costs = await storage.getAllCostsWithVehicleInfo(userCompany.empresaId);
-      res.json(costs);
+      // Buscar custos de veículos com informações do veículo
+      const vehicleCosts = await storage.getAllCostsWithVehicleInfo(userCompany.empresaId);
+      
+      // Buscar despesas operacionais (custos de observações)
+      const operExpenses = await db.select().from(operationalExpenses)
+        .where(eq(operationalExpenses.empresaId, userCompany.empresaId));
+      
+      // Combinar os dois tipos de custos
+      const allCosts = [
+        ...vehicleCosts.map(cost => ({
+          ...cost,
+          source: 'vehicle'
+        })),
+        ...operExpenses.map((expense: any) => ({
+          id: expense.id,
+          vehicleId: null,
+          category: expense.categoria,
+          description: expense.descricao,
+          value: parseFloat(expense.valor),
+          date: expense.dataPagamento,
+          paymentMethod: expense.formaPagamento,
+          paidBy: expense.observacoes,
+          vehicleBrand: null,
+          vehicleModel: null,
+          vehiclePlate: null,
+          source: 'operational'
+        }))
+      ];
+      
+      res.json(allCosts);
     } catch (error) {
       console.error("Erro ao buscar todos os custos:", error);
       res.status(500).json({ error: "Erro ao buscar todos os custos" });
