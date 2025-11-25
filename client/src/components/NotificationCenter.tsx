@@ -78,8 +78,8 @@ export function NotificationCenter() {
   }> = [];
 
   vehicles.forEach((vehicle: any) => {
-    // Só notificar checklist para veículos "Pronto para Venda"
-    if (vehicle.status !== "Pronto para Venda") {
+    // Não notificar checklist para veículos vendidos ou arquivados
+    if (vehicle.status === "Vendido" || vehicle.status === "Arquivado") {
       return;
     }
 
