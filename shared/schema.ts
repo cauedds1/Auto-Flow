@@ -355,6 +355,20 @@ export const insertStoreObservationSchema = createInsertSchema(storeObservations
   resolvedAt: true,
 }).extend({
   empresaId: z.string().optional(),
+  expenseCost: z.union([z.number(), z.string()]).optional().transform(val => {
+    if (!val) return undefined;
+    const num = typeof val === 'string' ? Number(val) : val;
+    if (!Number.isFinite(num)) {
+      throw new Error("Custo da despesa inválido: deve ser um número finito");
+    }
+    if (num < 0) {
+      throw new Error("Custo da despesa não pode ser negativo");
+    }
+    if (num > 99999999.99) {
+      throw new Error("Custo da despesa muito grande (máximo: R$ 99.999.999,99)");
+    }
+    return num;
+  }),
 });
 
 export type InsertStoreObservation = z.infer<typeof insertStoreObservationSchema>;

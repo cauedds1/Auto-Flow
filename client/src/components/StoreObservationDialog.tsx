@@ -53,7 +53,8 @@ export function StoreObservationDialog({
   const [registerExpense, setRegisterExpense] = useState(false);
   const [expenseValue, setExpenseValue] = useState("");
   const [expenseDescription, setExpenseDescription] = useState("");
-  const [expensePaymentMethod, setExpensePaymentMethod] = useState("Dinheiro");
+  const [expensePaymentMethod, setExpensePaymentMethod] = useState("Cartão Loja");
+  const [expensePaymentMethodCustom, setExpensePaymentMethodCustom] = useState("");
   const [expensePaidBy, setExpensePaidBy] = useState("");
   const [expensePaidByCustom, setExpensePaidByCustom] = useState("");
   
@@ -91,7 +92,8 @@ export function StoreObservationDialog({
     setRegisterExpense(false);
     setExpenseValue("");
     setExpenseDescription("");
-    setExpensePaymentMethod("Dinheiro");
+    setExpensePaymentMethod("Cartão Loja");
+    setExpensePaymentMethodCustom("");
     setExpensePaidBy("");
     setExpensePaidByCustom("");
   }, [observation, open]);
@@ -303,11 +305,15 @@ export function StoreObservationDialog({
     // Adicionar dados de gasto se habilitado
     if (status === "Resolvido" && registerExpense) {
       const expenseValueNum = parseFloat(expenseValue);
+      let finalPaymentMethod = expensePaymentMethod;
+      if (expensePaymentMethod === "Outro" && expensePaymentMethodCustom.trim()) {
+        finalPaymentMethod = expensePaymentMethodCustom.trim();
+      }
       data.expenseCost = expenseValueNum; // Adicionar custo à observação
       data.expense = {
         value: expenseValueNum,
         description: expenseDescription.trim(),
-        paymentMethod: expensePaymentMethod,
+        paymentMethod: finalPaymentMethod,
         paidBy: finalPaidBy,
       };
     }
@@ -429,20 +435,37 @@ export function StoreObservationDialog({
                       <Label htmlFor="expensePaymentMethod">Forma de Pagamento</Label>
                       <Select
                         value={expensePaymentMethod}
-                        onValueChange={setExpensePaymentMethod}
+                        onValueChange={(value) => {
+                          setExpensePaymentMethod(value);
+                          if (value !== "Outro") setExpensePaymentMethodCustom("");
+                        }}
                       >
                         <SelectTrigger id="expensePaymentMethod" data-testid="select-expense-payment">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="Cartão Loja">Cartão Loja</SelectItem>
                           <SelectItem value="Dinheiro">Dinheiro</SelectItem>
                           <SelectItem value="PIX">PIX</SelectItem>
-                          <SelectItem value="Cartão Loja">Cartão Loja</SelectItem>
                           <SelectItem value="Cartão Crédito">Cartão Crédito</SelectItem>
                           <SelectItem value="Cartão Débito">Cartão Débito</SelectItem>
+                          <SelectItem value="Outro">Outro...</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
+                    
+                    {expensePaymentMethod === "Outro" && (
+                      <div className="space-y-2">
+                        <Label htmlFor="expensePaymentMethodCustom">Especifique a forma de pagamento</Label>
+                        <Input
+                          id="expensePaymentMethodCustom"
+                          placeholder="Ex: Transferência Bancária, Cheque, etc..."
+                          value={expensePaymentMethodCustom}
+                          onChange={(e) => setExpensePaymentMethodCustom(e.target.value)}
+                          data-testid="input-expense-payment-custom"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2">
