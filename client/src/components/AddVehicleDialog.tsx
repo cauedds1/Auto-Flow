@@ -168,21 +168,43 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
       // Salvar JSON completo no form (será parseado no submit)
       form.setValue("version", versionJson);
 
+      // Mapear tipo de veículo para FIPE
+      const vehicleTypeMap: Record<string, string> = {
+        "Carro": "carros",
+        "Moto": "motos"
+      };
+      const fipeVehicleType = vehicleTypeMap[vehicleType] || "carros";
+
       // Buscar preço com brandId + modelId + yearCode específicos
       const result = await priceMutation.mutateAsync({ 
         brandId: fipeMetadata.brandId, 
         modelId: String(version.modelId), 
-        versionCode: version.yearCode 
+        versionCode: version.yearCode,
+        vehicleType: fipeVehicleType
       });
       
-      const priceValue = result.Valor.replace("R$", "").trim();
+      // Extrair valor de forma defensiva - FIPE pode retornar "Valor" ou "valor"
+      const resultAny = result as any;
+      const valorField = result.Valor || resultAny.valor || '';
+      const priceValue = (valorField || '').toString().replace("R$", "").replace("R$ ", "").trim();
+      
+      if (!priceValue) {
+        throw new Error("Não foi possível extrair o valor FIPE da resposta");
+      }
+      
       form.setValue("fipeReferencePrice", priceValue);
+      
+      // Usar Marca/marca, Modelo/modelo com fallback
+      const marca = result.Marca || resultAny.marca || 'Veículo';
+      const modelo = result.Modelo || resultAny.modelo || '';
+      const valor = result.Valor || resultAny.valor || valorField;
       
       toast({
         title: "Preço FIPE atualizado!",
-        description: `${result.Marca} ${result.Modelo}: ${result.Valor}`,
+        description: `${marca} ${modelo}: ${valor}`,
       });
     } catch (error: any) {
+      console.error("Erro ao buscar preço FIPE:", error);
       toast({
         title: "Erro ao consultar preço",
         description: error.message || "Não foi possível consultar o preço FIPE.",
