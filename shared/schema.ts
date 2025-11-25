@@ -519,15 +519,17 @@ export const insertOperationalExpenseSchema = createInsertSchema(operationalExpe
     }
     return num;
   }),
-  dataPagamento: z.union([z.date(), z.string()]).optional().transform(val => {
+  dataPagamento: z.union([z.date(), z.string()]).nullable().optional().transform(val => {
     if (!val) return undefined;
     if (val instanceof Date) return val;
-    return new Date(val);
+    if (typeof val === 'string') return new Date(val);
+    return undefined;
   }),
-  dataVencimento: z.union([z.date(), z.string()]).optional().transform(val => {
+  dataVencimento: z.union([z.date(), z.string()]).nullable().optional().transform(val => {
     if (!val) return undefined;
     if (val instanceof Date) return val;
-    return new Date(val);
+    if (typeof val === 'string') return new Date(val);
+    return undefined;
   }),
 }).omit({
   id: true,
