@@ -62,7 +62,7 @@ export function CommissionDetailsDialog({ open, setOpen }: CommissionDetailsDial
 
   // Refetch quando o diálogo abre
   useEffect(() => {
-    if (open) {
+    if (open && refetch) {
       refetch();
     }
   }, [open, refetch]);
