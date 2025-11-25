@@ -650,23 +650,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/costs/all - Buscar todos os custos (para análise geral) - DESATIVADA POR SEGURANÇA
-  // Esta rota deve filtrar por empresaId se for reativada
-  /* app.get("/api/costs/all", isAuthenticated, async (req: any, res) => {
+  // GET /api/costs/all - Buscar todos os custos (para análise geral)
+  app.get("/api/costs/all", isAuthenticated, async (req: any, res) => {
     try {
       const userCompany = await getUserWithCompany(req);
       if (!userCompany) {
         return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
       }
 
-      // TODO: Implementar storage.getAllCosts com filtro por empresaId
-      const costs = await storage.getAllCosts();
+      // Verificar se o usuário é dono ou gerente (motoristas não podem ver custos)
+      const user = await storage.getUser(userCompany.userId);
+      if (user?.role === "motorista") {
+        return res.json([]); // Lista de custos vazia para motoristas
+      }
+
+      // Buscar custos com informações do veículo
+      const costs = await storage.getAllCostsWithVehicleInfo(userCompany.empresaId);
       res.json(costs);
     } catch (error) {
       console.error("Erro ao buscar todos os custos:", error);
       res.status(500).json({ error: "Erro ao buscar todos os custos" });
     }
-  }); */
+  });
 
   // GET /api/vehicles/:id/costs - Buscar custos do veículo
   app.get("/api/vehicles/:id/costs", isAuthenticated, async (req: any, res) => {

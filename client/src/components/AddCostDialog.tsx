@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +20,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus } from "lucide-react";
+import { Plus, User } from "lucide-react";
+
+type User = {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  role?: string;
+};
 
 interface AddCostDialogProps {
   vehicleId: string;
@@ -33,6 +41,12 @@ export function AddCostDialog({ vehicleId, trigger }: AddCostDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Buscar lista de usuários da empresa
+  const { data: users = [] } = useQuery<User[]>({
+    queryKey: ["/api/users"],
+    enabled: open, // Só busca quando o dialog está aberto
+  });
+
   const [formData, setFormData] = useState({
     category: "Mecânica",
     customCategory: "",
@@ -41,6 +55,7 @@ export function AddCostDialog({ vehicleId, trigger }: AddCostDialogProps) {
     date: new Date().toISOString().split("T")[0],
     paymentMethod: "Cartão Loja",
     paidBy: "",
+    paidByCustom: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -65,14 +80,27 @@ export function AddCostDialog({ vehicleId, trigger }: AddCostDialogProps) {
         return;
       }
 
-      if (formData.paymentMethod === "Outra Pessoa" && !formData.paidBy.trim()) {
-        toast({
-          title: "Informação incompleta",
-          description: "Por favor, especifique quem pagou.",
-          variant: "destructive",
-        });
-        setIsSubmitting(false);
-        return;
+      // Determinar o valor final de paidBy
+      let finalPaidBy = null;
+      if (formData.paidBy && formData.paidBy !== "none") {
+        if (formData.paidBy === "other") {
+          if (!formData.paidByCustom.trim()) {
+            toast({
+              title: "Informação incompleta",
+              description: "Por favor, especifique quem pagou.",
+              variant: "destructive",
+            });
+            setIsSubmitting(false);
+            return;
+          }
+          finalPaidBy = formData.paidByCustom.trim();
+        } else {
+          // Buscar o nome do usuário selecionado
+          const selectedUser = users.find(u => u.id === formData.paidBy);
+          if (selectedUser) {
+            finalPaidBy = `${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() || selectedUser.email;
+          }
+        }
       }
 
       const response = await fetch(`/api/vehicles/${vehicleId}/costs`, {
@@ -84,7 +112,7 @@ export function AddCostDialog({ vehicleId, trigger }: AddCostDialogProps) {
           value: valueInReais,
           date: dateObj.toISOString(),
           paymentMethod: formData.paymentMethod,
-          paidBy: formData.paymentMethod === "Outra Pessoa" ? formData.paidBy : null,
+          paidBy: finalPaidBy,
         }),
       });
 
@@ -108,6 +136,7 @@ export function AddCostDialog({ vehicleId, trigger }: AddCostDialogProps) {
         date: new Date().toISOString().split("T")[0],
         paymentMethod: "Cartão Loja",
         paidBy: "",
+        paidByCustom: "",
       });
 
       setOpen(false);
@@ -237,15 +266,41 @@ export function AddCostDialog({ vehicleId, trigger }: AddCostDialogProps) {
             </Select>
           </div>
 
-          {formData.paymentMethod === "Outra Pessoa" && (
+          <div className="space-y-2">
+            <Label htmlFor="paidBy">Quem Pagou (opcional)</Label>
+            <Select
+              value={formData.paidBy}
+              onValueChange={(value) => setFormData({ ...formData, paidBy: value, paidByCustom: "" })}
+            >
+              <SelectTrigger id="paidBy" data-testid="select-paid-by">
+                <SelectValue placeholder="Selecione quem pagou..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Não informar</SelectItem>
+                {users.map((user) => (
+                  <SelectItem key={user.id} value={user.id}>
+                    <div className="flex items-center gap-2">
+                      <User className="h-3 w-3" />
+                      {`${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email}
+                      {user.role && <span className="text-xs text-muted-foreground">({user.role})</span>}
+                    </div>
+                  </SelectItem>
+                ))}
+                <SelectItem value="other">Outra pessoa...</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {formData.paidBy === "other" && (
             <div className="space-y-2">
-              <Label htmlFor="paidBy">Quem pagou?</Label>
+              <Label htmlFor="paidByCustom">Nome de quem pagou</Label>
               <Input
-                id="paidBy"
-                placeholder="Ex: João Silva"
-                value={formData.paidBy}
-                onChange={(e) => setFormData({ ...formData, paidBy: e.target.value })}
+                id="paidByCustom"
+                placeholder="Ex: João Silva (fornecedor)"
+                value={formData.paidByCustom}
+                onChange={(e) => setFormData({ ...formData, paidByCustom: e.target.value })}
                 required
+                data-testid="input-paid-by-custom"
               />
             </div>
           )}

@@ -6,9 +6,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
-import { TrendingUp, Clock, DollarSign, Package, CheckCircle2, AlertCircle, TrendingDown, Calendar } from "lucide-react";
-import { subMonths, startOfMonth } from "date-fns";
+import { TrendingUp, Clock, DollarSign, Package, CheckCircle2, AlertCircle, TrendingDown, Calendar, Search, Car, Wallet, CreditCard, User } from "lucide-react";
+import { subMonths, startOfMonth, format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { checklistItems, getChecklistStats, normalizeChecklistData, hasChecklistStarted } from "@shared/checklistUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
@@ -49,6 +51,11 @@ export default function Reports() {
   const [checklistDialogType, setChecklistDialogType] = useState<"completed" | "missing">("missing");
   const [observationsDialogOpen, setObservationsDialogOpen] = useState(false);
   const [observationsDialogType, setObservationsDialogType] = useState<"pending" | "resolved">("pending");
+  
+  // Estados para filtros da aba Custos
+  const [costSearchTerm, setCostSearchTerm] = useState("");
+  const [costCategoryFilter, setCostCategoryFilter] = useState<string>("all");
+  const [costPaymentMethodFilter, setCostPaymentMethodFilter] = useState<string>("all");
 
   const { user } = useAuth();
   const isOwner = user?.role === "proprietario";
@@ -753,6 +760,7 @@ export default function Reports() {
           <TabsList className="mb-6">
             <TabsTrigger value="estoque">Estoque</TabsTrigger>
             <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
+            <TabsTrigger value="custos">Custos</TabsTrigger>
           </TabsList>
           
           <TabsContent value="estoque" className="mt-0">
@@ -943,6 +951,270 @@ export default function Reports() {
                     </table>
                   ) : (
                     <p className="text-center text-muted-foreground py-8">Nenhuma venda no período</p>
+                  )}
+                </Card>
+              </div>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="custos" className="mt-0">
+            {isLoadingCosts ? (
+              <div className="grid gap-6">
+                <Skeleton className="h-32 w-full" />
+                <Skeleton className="h-96 w-full" />
+              </div>
+            ) : (
+              <div className="space-y-6 overflow-y-auto pb-8">
+                {/* Resumo de custos */}
+                <motion.div 
+                  className="grid gap-6 md:grid-cols-4"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.1, duration: 0.4 }}
+                  >
+                    <Card className="p-6 hover-elevate transition-all duration-300 cursor-default" data-testid="card-total-custos">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-red-500/10 transition-colors">
+                          <Wallet className="h-5 w-5 text-red-600" />
+                        </div>
+                        <p className="text-sm font-medium text-muted-foreground">Total de Custos</p>
+                      </div>
+                      <p className="text-2xl font-bold text-red-600 transition-all">
+                        R$ {filteredCosts.reduce((sum, c) => sum + Number(c.value), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                        <Package className="h-3 w-3" />
+                        {filteredCosts.length} custos registrados
+                      </p>
+                    </Card>
+                  </motion.div>
+                  
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.2, duration: 0.4 }}
+                  >
+                    <Card className="p-6 hover-elevate transition-all duration-300 cursor-default" data-testid="card-veiculos-com-custos">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-blue-500/10 transition-colors">
+                          <Car className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <p className="text-sm font-medium text-muted-foreground">Veículos com Custos</p>
+                      </div>
+                      <p className="text-2xl font-bold text-blue-600 transition-all">
+                        {new Set(filteredCosts.map(c => c.vehicleId)).size}
+                      </p>
+                    </Card>
+                  </motion.div>
+                  
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.3, duration: 0.4 }}
+                  >
+                    <Card className="p-6 hover-elevate transition-all duration-300 cursor-default" data-testid="card-custo-medio">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-purple-500/10 transition-colors">
+                          <DollarSign className="h-5 w-5 text-purple-600" />
+                        </div>
+                        <p className="text-sm font-medium text-muted-foreground">Custo Médio</p>
+                      </div>
+                      <p className="text-2xl font-bold text-purple-600 transition-all">
+                        R$ {filteredCosts.length > 0 
+                          ? (filteredCosts.reduce((sum, c) => sum + Number(c.value), 0) / filteredCosts.length).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+                          : '0,00'
+                        }
+                      </p>
+                    </Card>
+                  </motion.div>
+                  
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.4, duration: 0.4 }}
+                  >
+                    <Card className="p-6 hover-elevate transition-all duration-300 cursor-default" data-testid="card-categorias">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-green-500/10 transition-colors">
+                          <Package className="h-5 w-5 text-green-600" />
+                        </div>
+                        <p className="text-sm font-medium text-muted-foreground">Categorias</p>
+                      </div>
+                      <p className="text-2xl font-bold text-green-600 transition-all">
+                        {new Set(filteredCosts.map(c => c.category)).size}
+                      </p>
+                    </Card>
+                  </motion.div>
+                </motion.div>
+                
+                {/* Gráfico de custos por categoria */}
+                <Card className="p-6">
+                  <h3 className="mb-6 text-lg font-semibold flex items-center gap-2">
+                    <Wallet className="h-5 w-5" />
+                    Custos por Categoria
+                  </h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={getCostsByCategoryData()}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip formatter={(value: any) => `R$ ${value.toLocaleString('pt-BR')}`} />
+                      <Bar dataKey="value" fill="#ef4444" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Card>
+                
+                {/* Filtros e lista de custos */}
+                <Card className="p-6">
+                  <h3 className="mb-4 text-lg font-semibold flex items-center gap-2">
+                    <Search className="h-5 w-5" />
+                    Custos Recentes
+                  </h3>
+                  
+                  {/* Filtros */}
+                  <div className="flex flex-wrap gap-4 mb-6">
+                    <div className="relative flex-1 min-w-[200px]">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar por descrição, veículo..."
+                        value={costSearchTerm}
+                        onChange={(e) => setCostSearchTerm(e.target.value)}
+                        className="pl-10"
+                        data-testid="input-cost-search"
+                      />
+                    </div>
+                    
+                    <Select value={costCategoryFilter} onValueChange={setCostCategoryFilter}>
+                      <SelectTrigger className="w-48" data-testid="select-cost-category">
+                        <SelectValue placeholder="Categoria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas Categorias</SelectItem>
+                        {Array.from(new Set(allCosts.map((c: any) => c.category))).map((cat: any) => (
+                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    
+                    <Select value={costPaymentMethodFilter} onValueChange={setCostPaymentMethodFilter}>
+                      <SelectTrigger className="w-48" data-testid="select-cost-payment">
+                        <SelectValue placeholder="Forma de Pagamento" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas Formas</SelectItem>
+                        {Array.from(new Set(allCosts.map((c: any) => c.paymentMethod))).filter(Boolean).map((pm: any) => (
+                          <SelectItem key={pm} value={pm}>{pm}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {/* Tabela de custos */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full" data-testid="table-costs">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-3">Data</th>
+                          <th className="text-left p-3">Veículo</th>
+                          <th className="text-left p-3">Categoria</th>
+                          <th className="text-left p-3">Descrição</th>
+                          <th className="text-left p-3">Forma Pgto</th>
+                          <th className="text-left p-3">Quem Pagou</th>
+                          <th className="text-right p-3">Valor</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredCosts
+                          .filter((cost: any) => {
+                            // Filtro de busca
+                            if (costSearchTerm) {
+                              const searchLower = costSearchTerm.toLowerCase();
+                              const matchesDesc = cost.description?.toLowerCase().includes(searchLower);
+                              const matchesVehicle = `${cost.vehicleBrand} ${cost.vehicleModel} ${cost.vehiclePlate}`.toLowerCase().includes(searchLower);
+                              const matchesPaidBy = cost.paidBy?.toLowerCase().includes(searchLower);
+                              if (!matchesDesc && !matchesVehicle && !matchesPaidBy) return false;
+                            }
+                            // Filtro de categoria
+                            if (costCategoryFilter !== "all" && cost.category !== costCategoryFilter) return false;
+                            // Filtro de forma de pagamento
+                            if (costPaymentMethodFilter !== "all" && cost.paymentMethod !== costPaymentMethodFilter) return false;
+                            return true;
+                          })
+                          .slice(0, 50) // Limitar a 50 itens
+                          .map((cost: any) => (
+                            <tr key={cost.id} className="border-b hover:bg-muted/50" data-testid={`row-cost-${cost.id}`}>
+                              <td className="p-3 text-sm">
+                                {format(new Date(cost.date), "dd/MM/yyyy", { locale: ptBR })}
+                              </td>
+                              <td className="p-3">
+                                <div className="flex items-center gap-2">
+                                  <Car className="h-4 w-4 text-muted-foreground" />
+                                  <div>
+                                    <p className="font-medium text-sm">{cost.vehicleBrand} {cost.vehicleModel}</p>
+                                    <p className="text-xs text-muted-foreground">{cost.vehiclePlate}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                <span className="text-xs px-2 py-1 rounded bg-muted">{cost.category}</span>
+                              </td>
+                              <td className="p-3 text-sm max-w-[200px] truncate" title={cost.description}>
+                                {cost.description}
+                              </td>
+                              <td className="p-3">
+                                <div className="flex items-center gap-1">
+                                  <CreditCard className="h-3 w-3 text-muted-foreground" />
+                                  <span className="text-xs">{cost.paymentMethod || '-'}</span>
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                {cost.paidBy ? (
+                                  <div className="flex items-center gap-1">
+                                    <User className="h-3 w-3 text-muted-foreground" />
+                                    <span className="text-xs">{cost.paidBy}</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">-</span>
+                                )}
+                              </td>
+                              <td className="p-3 text-right font-medium text-red-600">
+                                R$ {Number(cost.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-t-2 font-semibold">
+                          <td colSpan={6} className="p-3 text-right">Total Filtrado:</td>
+                          <td className="p-3 text-right text-red-600">
+                            R$ {filteredCosts
+                              .filter((cost: any) => {
+                                if (costSearchTerm) {
+                                  const searchLower = costSearchTerm.toLowerCase();
+                                  const matchesDesc = cost.description?.toLowerCase().includes(searchLower);
+                                  const matchesVehicle = `${cost.vehicleBrand} ${cost.vehicleModel} ${cost.vehiclePlate}`.toLowerCase().includes(searchLower);
+                                  const matchesPaidBy = cost.paidBy?.toLowerCase().includes(searchLower);
+                                  if (!matchesDesc && !matchesVehicle && !matchesPaidBy) return false;
+                                }
+                                if (costCategoryFilter !== "all" && cost.category !== costCategoryFilter) return false;
+                                if (costPaymentMethodFilter !== "all" && cost.paymentMethod !== costPaymentMethodFilter) return false;
+                                return true;
+                              })
+                              .reduce((sum: number, c: any) => sum + Number(c.value), 0)
+                              .toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                  
+                  {filteredCosts.length === 0 && (
+                    <p className="text-center text-muted-foreground py-8">Nenhum custo registrado no período</p>
                   )}
                 </Card>
               </div>

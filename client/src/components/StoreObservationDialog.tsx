@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -20,8 +20,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { DollarSign, User } from "lucide-react";
 import type { StoreObservation } from "@shared/schema";
+
+type UserType = {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  role?: string;
+};
 
 interface StoreObservationDialogProps {
   open: boolean;
@@ -38,8 +48,23 @@ export function StoreObservationDialog({
   const [category, setCategory] = useState<string | undefined>(undefined);
   const [customCategory, setCustomCategory] = useState("");
   const [status, setStatus] = useState<"Pendente" | "Resolvido">("Pendente");
+  
+  // Estados para controle de gastos
+  const [registerExpense, setRegisterExpense] = useState(false);
+  const [expenseValue, setExpenseValue] = useState("");
+  const [expenseDescription, setExpenseDescription] = useState("");
+  const [expensePaymentMethod, setExpensePaymentMethod] = useState("Dinheiro");
+  const [expensePaidBy, setExpensePaidBy] = useState("");
+  const [expensePaidByCustom, setExpensePaidByCustom] = useState("");
+  
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Buscar lista de usuários da empresa para o campo "Quem Pagou"
+  const { data: users = [] } = useQuery<UserType[]>({
+    queryKey: ["/api/users"],
+    enabled: open && registerExpense,
+  });
 
   useEffect(() => {
     if (observation) {
@@ -62,6 +87,13 @@ export function StoreObservationDialog({
       setCustomCategory("");
       setStatus("Pendente");
     }
+    // Resetar campos de gasto quando o dialog abre
+    setRegisterExpense(false);
+    setExpenseValue("");
+    setExpenseDescription("");
+    setExpensePaymentMethod("Dinheiro");
+    setExpensePaidBy("");
+    setExpensePaidByCustom("");
   }, [observation, open]);
 
   const createMutation = useMutation({
@@ -91,6 +123,29 @@ export function StoreObservationDialog({
     },
   });
 
+  // Mutation para criar despesa operacional
+  const createExpenseMutation = useMutation({
+    mutationFn: async (expenseData: {
+      categoria: string;
+      descricao: string;
+      valor: number;
+      formaPagamento: string;
+      pago: string;
+      dataPagamento: string;
+      observacoes?: string;
+    }) => {
+      const res = await fetch("/api/financial/expenses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(expenseData),
+      });
+      if (!res.ok) throw new Error("Falha ao criar despesa");
+      return res.json();
+    },
+  });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
       const res = await fetch(`/api/store-observations/${observation!.id}`, {
@@ -101,22 +156,78 @@ export function StoreObservationDialog({
       if (!res.ok) throw new Error("Erro ao atualizar observação");
       return res.json();
     },
-    onSuccess: () => {
+  });
+
+  // Função para processar a submissão completa (observação + gasto)
+  const processUpdate = async (data: any) => {
+    setIsSubmitting(true);
+    
+    try {
+      // Primeiro, atualizar a observação
+      await updateMutation.mutateAsync(data);
+      
+      // Se registrar gasto estiver habilitado, criar a despesa
+      if (data.expense) {
+        try {
+          // Mapear categoria da observação para categoria de despesa
+          const obsCategory = category === "Outro" ? customCategory.trim() : category;
+          let expenseCategory = "Outros"; // Default
+          
+          // Mapear categorias conhecidas
+          if (obsCategory === "Manutenção") {
+            expenseCategory = "Manutenção";
+          } else if (obsCategory === "Estoque") {
+            expenseCategory = "Outros"; // Estoque vai para Outros pois não existe no enum de despesas
+          }
+          
+          await createExpenseMutation.mutateAsync({
+            categoria: expenseCategory,
+            descricao: `[Obs. Loja] ${data.expense.description}`,
+            valor: data.expense.value,
+            formaPagamento: data.expense.paymentMethod,
+            pago: "true",
+            dataPagamento: new Date().toISOString(),
+            observacoes: data.expense.paidBy 
+              ? `Quem pagou: ${data.expense.paidBy}\nObservação original: ${description.substring(0, 200)}`
+              : `Observação original: ${description.substring(0, 200)}`,
+          });
+          
+          toast({
+            title: "Observação resolvida com gasto registrado",
+            description: `Despesa de R$ ${data.expense.value.toFixed(2)} registrada com sucesso.`,
+          });
+        } catch (expenseError) {
+          // Observação foi atualizada mas gasto falhou - informar usuário
+          toast({
+            variant: "destructive",
+            title: "Erro ao registrar gasto",
+            description: "A observação foi atualizada, mas não foi possível registrar o gasto. Por favor, registre manualmente na área financeira.",
+          });
+          // Não fechar dialog para que usuário possa ver o erro
+          setIsSubmitting(false);
+          queryClient.invalidateQueries({ queryKey: ["/api/store-observations"] });
+          return;
+        }
+      } else {
+        toast({
+          title: "Observação atualizada",
+          description: "A observação foi atualizada com sucesso.",
+        });
+      }
+      
       queryClient.invalidateQueries({ queryKey: ["/api/store-observations"] });
-      toast({
-        title: "Observação atualizada",
-        description: "A observação foi atualizada com sucesso.",
-      });
+      queryClient.invalidateQueries({ queryKey: ["/api/financial/expenses"] });
       onOpenChange(false);
-    },
-    onError: () => {
+    } catch {
       toast({
         variant: "destructive",
         title: "Erro",
         description: "Não foi possível atualizar a observação.",
       });
-    },
-  });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleSubmit = () => {
     if (!description.trim()) {
@@ -137,16 +248,70 @@ export function StoreObservationDialog({
       return;
     }
 
+    // Validar campos de gasto se habilitado
+    if (status === "Resolvido" && registerExpense) {
+      const expenseVal = parseFloat(expenseValue);
+      if (isNaN(expenseVal) || expenseVal <= 0) {
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: "Informe um valor válido para o gasto.",
+        });
+        return;
+      }
+      
+      if (!expenseDescription.trim()) {
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: "Informe a descrição do gasto.",
+        });
+        return;
+      }
+      
+      if (expensePaidBy === "other" && !expensePaidByCustom.trim()) {
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: "Por favor, especifique quem pagou.",
+        });
+        return;
+      }
+    }
+
     const finalCategory = category === "Outro" ? customCategory.trim() : category;
 
-    const data = {
+    // Determinar quem pagou
+    let finalPaidBy = null;
+    if (status === "Resolvido" && registerExpense && expensePaidBy && expensePaidBy !== "none") {
+      if (expensePaidBy === "other") {
+        finalPaidBy = expensePaidByCustom.trim();
+      } else {
+        const selectedUser = users.find(u => u.id === expensePaidBy);
+        if (selectedUser) {
+          finalPaidBy = `${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() || selectedUser.email;
+        }
+      }
+    }
+
+    const data: any = {
       description: description.trim(),
       category: finalCategory || null,
       status,
     };
 
+    // Adicionar dados de gasto se habilitado
+    if (status === "Resolvido" && registerExpense) {
+      data.expense = {
+        value: parseFloat(expenseValue),
+        description: expenseDescription.trim(),
+        paymentMethod: expensePaymentMethod,
+        paidBy: finalPaidBy,
+      };
+    }
+
     if (observation) {
-      updateMutation.mutate(data);
+      processUpdate(data);
     } else {
       createMutation.mutate(data);
     }
@@ -224,17 +389,125 @@ export function StoreObservationDialog({
               <span className="text-sm text-muted-foreground">Resolvido</span>
             </div>
           </div>
+
+          {/* Seção de registro de gasto - aparece quando status é Resolvido */}
+          {status === "Resolvido" && (
+            <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+              <div className="flex items-center gap-3">
+                <Checkbox
+                  id="registerExpense"
+                  checked={registerExpense}
+                  onCheckedChange={(checked) => setRegisterExpense(checked === true)}
+                  data-testid="checkbox-register-expense"
+                />
+                <Label htmlFor="registerExpense" className="flex items-center gap-2 cursor-pointer">
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  Registrar gasto para resolver esta observação
+                </Label>
+              </div>
+
+              {registerExpense && (
+                <div className="space-y-4 pt-2">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="expenseValue">Valor (R$) *</Label>
+                      <Input
+                        id="expenseValue"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0,00"
+                        value={expenseValue}
+                        onChange={(e) => setExpenseValue(e.target.value)}
+                        data-testid="input-expense-value"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="expensePaymentMethod">Forma de Pagamento</Label>
+                      <Select
+                        value={expensePaymentMethod}
+                        onValueChange={setExpensePaymentMethod}
+                      >
+                        <SelectTrigger id="expensePaymentMethod" data-testid="select-expense-payment">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                          <SelectItem value="PIX">PIX</SelectItem>
+                          <SelectItem value="Cartão Loja">Cartão Loja</SelectItem>
+                          <SelectItem value="Cartão Crédito">Cartão Crédito</SelectItem>
+                          <SelectItem value="Cartão Débito">Cartão Débito</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="expenseDescription">Descrição do Gasto *</Label>
+                    <Input
+                      id="expenseDescription"
+                      placeholder="Ex: Compra de material de limpeza"
+                      value={expenseDescription}
+                      onChange={(e) => setExpenseDescription(e.target.value)}
+                      data-testid="input-expense-description"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="expensePaidBy">Quem Pagou (opcional)</Label>
+                    <Select
+                      value={expensePaidBy}
+                      onValueChange={(value) => {
+                        setExpensePaidBy(value);
+                        if (value !== "other") setExpensePaidByCustom("");
+                      }}
+                    >
+                      <SelectTrigger id="expensePaidBy" data-testid="select-expense-paid-by">
+                        <SelectValue placeholder="Selecione quem pagou..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Não informar</SelectItem>
+                        {users.map((user) => (
+                          <SelectItem key={user.id} value={user.id}>
+                            <div className="flex items-center gap-2">
+                              <User className="h-3 w-3" />
+                              {`${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email}
+                            </div>
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="other">Outra pessoa...</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {expensePaidBy === "other" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="expensePaidByCustom">Nome de quem pagou</Label>
+                      <Input
+                        id="expensePaidByCustom"
+                        placeholder="Ex: João Silva (fornecedor)"
+                        value={expensePaidByCustom}
+                        onChange={(e) => setExpensePaidByCustom(e.target.value)}
+                        data-testid="input-expense-paid-by-custom"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             Cancelar
           </Button>
           <Button 
             onClick={handleSubmit}
-            disabled={createMutation.isPending || updateMutation.isPending}
+            disabled={createMutation.isPending || isSubmitting}
           >
-            {createMutation.isPending || updateMutation.isPending
+            {createMutation.isPending || isSubmitting
               ? "Salvando..."
               : observation
               ? "Atualizar"

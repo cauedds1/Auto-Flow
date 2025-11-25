@@ -1,5 +1,5 @@
 import { useState, useEffect, Dispatch, SetStateAction } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -22,8 +23,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { DollarSign, User, Filter } from "lucide-react";
+import { DollarSign, User, Filter, Check, CheckCheck, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
 
 interface CommissionPayment {
   id: string;
@@ -52,6 +54,10 @@ interface CommissionDetailsDialogProps {
 
 export function CommissionDetailsDialog({ open, setOpen }: CommissionDetailsDialogProps) {
   const [selectedVendedor, setSelectedVendedor] = useState<string>("all");
+  const [payingCommissionId, setPayingCommissionId] = useState<string | null>(null);
+  const [payingAllForVendedor, setPayingAllForVendedor] = useState<string | null>(null);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: commissions = [], isLoading, refetch } = useQuery<CommissionPayment[]>({
     queryKey: ["/api/financial/commissions/payments"],
@@ -64,6 +70,91 @@ export function CommissionDetailsDialog({ open, setOpen }: CommissionDetailsDial
     staleTime: 0,
     gcTime: 0,
   });
+
+  // Mutation para marcar comissão como paga
+  const payCommissionMutation = useMutation({
+    mutationFn: async (commissionId: string) => {
+      const response = await fetch(`/api/financial/commissions/payments/${commissionId}/pay`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dataPagamento: new Date().toISOString(),
+          formaPagamento: "Transferência",
+        }),
+      });
+      if (!response.ok) throw new Error("Erro ao marcar comissão como paga");
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Comissão paga!",
+        description: "A comissão foi marcada como paga com sucesso.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/financial/commissions/payments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/financial/metrics"] });
+      refetch();
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível marcar a comissão como paga.",
+      });
+    },
+    onSettled: () => {
+      setPayingCommissionId(null);
+    },
+  });
+
+  // Função para marcar uma comissão como paga
+  const handlePayCommission = async (commissionId: string) => {
+    setPayingCommissionId(commissionId);
+    payCommissionMutation.mutate(commissionId);
+  };
+
+  // Função para marcar todas as comissões pendentes de um vendedor como pagas
+  const handlePayAllForVendedor = async (vendedorId: string, pendingCommissions: CommissionPayment[]) => {
+    setPayingAllForVendedor(vendedorId);
+    
+    const commissionsToPay = pendingCommissions.filter(c => c.status === "A Pagar");
+    
+    try {
+      // Usar Promise.all para processar todas as comissões em paralelo
+      const paymentPromises = commissionsToPay.map(async (comm) => {
+        const response = await fetch(`/api/financial/commissions/payments/${comm.id}/pay`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            dataPagamento: new Date().toISOString(),
+            formaPagamento: "Transferência",
+          }),
+        });
+        if (!response.ok) throw new Error(`Erro ao pagar comissão ${comm.id}`);
+        return response.json();
+      });
+      
+      await Promise.all(paymentPromises);
+      
+      toast({
+        title: "Todas comissões pagas!",
+        description: `${commissionsToPay.length} comissões foram marcadas como pagas.`,
+      });
+      
+      // Invalidar queries e refetch
+      queryClient.invalidateQueries({ queryKey: ["/api/financial/commissions/payments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/financial/metrics"] });
+      refetch();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível pagar todas as comissões. Algumas podem ter sido pagas.",
+      });
+      refetch(); // Refetch para atualizar status
+    } finally {
+      setPayingAllForVendedor(null);
+    }
+  };
 
   // Refetch quando o diálogo abre
   useEffect(() => {
@@ -171,30 +262,58 @@ export function CommissionDetailsDialog({ open, setOpen }: CommissionDetailsDial
                       </p>
                     </div>
                   </div>
-                  <div className="text-right space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">A Pagar:</span>
-                      <span className="text-lg font-bold text-orange-600 dark:text-orange-400">
-                        R$ {vendedorData.totalAPagar.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </span>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">A Pagar:</span>
+                        <span className="text-lg font-bold text-orange-600 dark:text-orange-400">
+                          R$ {vendedorData.totalAPagar.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Pagas:</span>
+                        <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                          R$ {vendedorData.totalPagas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Pagas:</span>
-                      <span className="text-sm font-medium text-green-600 dark:text-green-400">
-                        R$ {vendedorData.totalPagas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </span>
-                    </div>
+                    {/* Botão para pagar todas as comissões pendentes do vendedor */}
+                    {vendedorData.commissions.some((c: CommissionPayment) => c.status === "A Pagar") && (
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={() => handlePayAllForVendedor(
+                          vendedorData.vendedorId, 
+                          vendedorData.commissions.filter((c: CommissionPayment) => c.status === "A Pagar")
+                        )}
+                        disabled={payingAllForVendedor === vendedorData.vendedorId}
+                        data-testid={`button-pay-all-${vendedorData.vendedorId}`}
+                      >
+                        {payingAllForVendedor === vendedorData.vendedorId ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Pagando...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCheck className="mr-2 h-4 w-4" />
+                            Pagar Todas
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </div>
 
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[40%]">Veículo</TableHead>
+                      <TableHead className="w-[35%]">Veículo</TableHead>
                       <TableHead className="text-right">Valor Venda</TableHead>
                       <TableHead className="text-right">Comissão</TableHead>
                       <TableHead className="text-center">Status</TableHead>
                       <TableHead className="text-right">Data</TableHead>
+                      <TableHead className="text-center w-[100px]">Ação</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -221,6 +340,28 @@ export function CommissionDetailsDialog({ open, setOpen }: CommissionDetailsDial
                         </TableCell>
                         <TableCell className="text-right text-xs text-muted-foreground">
                           {new Date(comm.createdAt).toLocaleDateString('pt-BR', { year: 'numeric', month: '2-digit', day: '2-digit' })}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {comm.status === "A Pagar" ? (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handlePayCommission(comm.id)}
+                              disabled={payingCommissionId === comm.id || payingAllForVendedor === vendedorData.vendedorId}
+                              data-testid={`button-pay-${comm.id}`}
+                            >
+                              {payingCommissionId === comm.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <Check className="h-4 w-4 mr-1" />
+                                  Pagar
+                                </>
+                              )}
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-green-600">Paga</span>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}

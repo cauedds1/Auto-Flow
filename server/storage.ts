@@ -70,7 +70,8 @@ export interface IStorage {
   getVehicleHistory(vehicleId: string): Promise<VehicleHistory[]>;
   addVehicleHistory(history: InsertVehicleHistory): Promise<VehicleHistory>;
   
-  getAllCosts(): Promise<VehicleCost[]>;
+  getAllCosts(empresaId?: string): Promise<VehicleCost[]>;
+  getAllCostsWithVehicleInfo(empresaId: string): Promise<(VehicleCost & { vehicleBrand: string; vehicleModel: string; vehiclePlate: string })[]>;
   getVehicleCosts(vehicleId: string): Promise<VehicleCost[]>;
   addVehicleCost(cost: InsertVehicleCost): Promise<VehicleCost>;
   updateVehicleCost(id: string, updates: Partial<InsertVehicleCost>): Promise<VehicleCost | undefined>;
@@ -304,9 +305,54 @@ export class DatabaseStorage implements IStorage {
     return result[0] || null;
   }
 
-  async getAllCosts(): Promise<VehicleCost[]> {
+  async getAllCosts(empresaId?: string): Promise<VehicleCost[]> {
+    if (empresaId) {
+      // Get vehicles that belong to the company first, then get their costs
+      const companyVehicles = await db.select({ id: vehicles.id }).from(vehicles)
+        .where(eq(vehicles.empresaId, empresaId));
+      
+      const vehicleIds = companyVehicles.map(v => v.id);
+      
+      if (vehicleIds.length === 0) {
+        return [];
+      }
+      
+      return await db.select().from(vehicleCosts)
+        .where(or(...vehicleIds.map(id => eq(vehicleCosts.vehicleId, id))))
+        .orderBy(desc(vehicleCosts.date));
+    }
+    
     return await db.select().from(vehicleCosts)
       .orderBy(desc(vehicleCosts.date));
+  }
+
+  async getAllCostsWithVehicleInfo(empresaId: string): Promise<(VehicleCost & { vehicleBrand: string; vehicleModel: string; vehiclePlate: string })[]> {
+    // Get vehicles that belong to the company first
+    const companyVehicles = await db.select().from(vehicles)
+      .where(eq(vehicles.empresaId, empresaId));
+    
+    const vehicleIds = companyVehicles.map(v => v.id);
+    
+    if (vehicleIds.length === 0) {
+      return [];
+    }
+    
+    const costs = await db.select().from(vehicleCosts)
+      .where(or(...vehicleIds.map(id => eq(vehicleCosts.vehicleId, id))))
+      .orderBy(desc(vehicleCosts.date));
+    
+    // Map vehicle info to costs
+    const vehicleMap = new Map(companyVehicles.map(v => [v.id, v]));
+    
+    return costs.map(cost => {
+      const vehicle = vehicleMap.get(cost.vehicleId);
+      return {
+        ...cost,
+        vehicleBrand: vehicle?.brand || 'Desconhecido',
+        vehicleModel: vehicle?.model || 'Desconhecido',
+        vehiclePlate: vehicle?.plate || 'N/A',
+      };
+    });
   }
 
   async getVehicleCosts(vehicleId: string): Promise<VehicleCost[]> {
