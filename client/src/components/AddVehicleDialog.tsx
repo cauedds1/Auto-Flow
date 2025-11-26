@@ -49,6 +49,11 @@ const vehicleFormSchema = z.object({
     const num = Number(val);
     return isNaN(num) ? null : num;
   }, z.number().nullable().optional()),
+  salePrice: z.preprocess((val) => {
+    if (val === "" || val === null || val === undefined) return null;
+    const num = Number(val);
+    return isNaN(num) ? null : num;
+  }, z.number().nullable().optional()),
   kmOdometer: z.preprocess((val) => {
     if (val === "" || val === null || val === undefined) return null;
     const num = Number(val);
@@ -84,6 +89,8 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
       plate: "",
       vehicleType: "Carro",
       status: "Entrada",
+      purchasePrice: null,
+      salePrice: null,
       kmOdometer: null,
       fuelType: null,
       fipeReferencePrice: "",
@@ -228,6 +235,9 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
       
       if (data.purchasePrice != null) {
         formData.append("purchasePrice", String(data.purchasePrice));
+      }
+      if (data.salePrice != null) {
+        formData.append("salePrice", String(data.salePrice));
       }
       if (data.kmOdometer != null) {
         formData.append("kmOdometer", String(data.kmOdometer));
@@ -465,6 +475,54 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
                 )}
               />
 
+              <FormField
+                control={form.control}
+                name="fuelType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Combustível</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value ?? undefined}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-fuel">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Gasolina">Gasolina</SelectItem>
+                        <SelectItem value="Etanol">Etanol</SelectItem>
+                        <SelectItem value="Flex">Flex</SelectItem>
+                        <SelectItem value="Diesel">Diesel</SelectItem>
+                        <SelectItem value="Elétrico">Elétrico</SelectItem>
+                        <SelectItem value="Híbrido">Híbrido</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="kmOdometer"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Quilometragem</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Ex: 45000"
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
+                        data-testid="input-km"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               {can.viewCosts && (
                 <FormField
                   control={form.control}
@@ -494,53 +552,34 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
                 />
               )}
 
-              <FormField
-                control={form.control}
-                name="kmOdometer"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Quilometragem</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Ex: 45000"
-                        value={field.value ?? ""}
-                        onChange={field.onChange}
-                        onBlur={field.onBlur}
-                        name={field.name}
-                        ref={field.ref}
-                        data-testid="input-km"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="fuelType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Combustível</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value ?? undefined}>
+              {can.viewCosts && (
+                <FormField
+                  control={form.control}
+                  name="salePrice"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Preço de Venda (R$)</FormLabel>
                       <FormControl>
-                        <SelectTrigger data-testid="select-fuel">
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="Preço de venda desejado"
+                          value={field.value ?? ""}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                          data-testid="input-sale-price"
+                        />
                       </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Gasolina">Gasolina</SelectItem>
-                        <SelectItem value="Etanol">Etanol</SelectItem>
-                        <SelectItem value="Flex">Flex</SelectItem>
-                        <SelectItem value="Diesel">Diesel</SelectItem>
-                        <SelectItem value="Elétrico">Elétrico</SelectItem>
-                        <SelectItem value="Híbrido">Híbrido</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <p className="text-xs text-muted-foreground">
+                        Valor de venda que deseja anunciar
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
 
             <div className="border-t border-border pt-4">

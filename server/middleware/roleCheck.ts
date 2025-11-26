@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { storage } from "../storage";
 
-export type UserRole = "proprietario" | "gerente" | "vendedor" | "motorista";
+export type UserRole = "proprietario" | "gerente" | "financeiro" | "vendedor" | "motorista";
 
 /**
  * Middleware para verificar se o usuário tem o papel necessário
@@ -61,6 +61,16 @@ export const requireProprietario = requireRole(["proprietario"]);
 export const requireProprietarioOrGerente = requireRole(["proprietario", "gerente"]);
 
 /**
+ * Middleware para verificar se o usuário tem acesso financeiro
+ */
+export const requireFinancialAccess = requireRole(["proprietario", "financeiro"]);
+
+/**
+ * Middleware para verificar se o usuário tem acesso financeiro ou gerencial
+ */
+export const requireFinancialOrManagerAccess = requireRole(["proprietario", "gerente", "financeiro"]);
+
+/**
  * Verifica permissões no código (não middleware)
  */
 export function hasPermission(userRole: UserRole | null | undefined, allowedRoles: UserRole[]): boolean {
@@ -79,10 +89,10 @@ export const PERMISSIONS = {
   companySettings: ["proprietario"],
   
   // Métricas financeiras completas
-  viewFinancialMetrics: ["proprietario", "gerente"],
+  viewFinancialMetrics: ["proprietario", "gerente", "financeiro"],
   
   // Ver custos e margens
-  viewCosts: ["proprietario", "gerente"],
+  viewCosts: ["proprietario", "gerente", "financeiro"],
   
   // Editar preços
   editPrices: ["proprietario", "gerente"],
@@ -101,4 +111,13 @@ export const PERMISSIONS = {
   
   // Ver veículos
   viewVehicles: ["proprietario", "gerente", "vendedor", "motorista"],
+  
+  // Ver contas a pagar/receber
+  viewBills: ["proprietario", "financeiro"],
+  
+  // Ver relatórios financeiros
+  viewFinancialReports: ["proprietario", "financeiro"],
+  
+  // Ver relatórios operacionais
+  viewOperationalReports: ["proprietario", "gerente", "financeiro"],
 } as const;

@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Building2, Palette, MapPin, Phone, Mail, Settings as SettingsIcon, Plus, X, DollarSign, Clock, Bell, Database, Lock, AlertCircle, Edit2, Check, Download, Trash2, Key, Monitor } from "lucide-react";
+import { Building2, Palette, MapPin, Phone, Mail, Settings as SettingsIcon, Plus, X, DollarSign, Clock, Bell, Database, Lock, AlertCircle, Edit2, Check, Download, Trash2, Key, Monitor, RotateCcw } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
@@ -469,12 +469,30 @@ export default function Settings() {
                 <Separator />
 
                 <div className="rounded-lg border p-4 bg-muted/50">
-                  <h4 className="font-medium mb-3">💡 Dica de Cores</h4>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Use o modo claro/escuro no canto superior direito para ver como as cores ficam em cada tema.
+                  <h4 className="font-medium mb-3 flex items-center gap-2">
+                    <RotateCcw className="h-4 w-4" />
+                    Cores Padrão do VeloStock
+                  </h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Restaure as cores originais do VeloStock (violeta e verde).
                   </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      form.setValue("corPrimaria", "#8B5CF6");
+                      form.setValue("corSecundaria", "#10B981");
+                    }}
+                    data-testid="button-reset-colors"
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Voltar ao Padrão
+                  </Button>
+                </div>
+
+                <div className="rounded-lg border p-4 bg-muted/30">
                   <p className="text-sm text-muted-foreground">
-                    As cores serão aplicadas em todo o sistema: botões, links, destaques e sidebar.
+                    As cores serão aplicadas em todo o sistema: botões, links, destaques, sidebar e gráficos.
                   </p>
                 </div>
               </CardContent>

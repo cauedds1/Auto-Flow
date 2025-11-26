@@ -45,6 +45,7 @@ export const storeObservationStatusEnum = pgEnum("store_observation_status", [
 export const userRoleEnum = pgEnum("user_role", [
   "proprietario",
   "gerente",
+  "financeiro",
   "vendedor",
   "motorista"
 ]);
@@ -75,6 +76,29 @@ export const sessions = pgTable(
 
 // Users table - Replit Auth with multi-tenant support
 // (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
+// Schema para permissões personalizadas por usuário
+export const customPermissionsSchema = z.object({
+  viewFinancialMetrics: z.boolean().optional(),
+  viewCosts: z.boolean().optional(),
+  editPrices: z.boolean().optional(),
+  addCosts: z.boolean().optional(),
+  editVehicles: z.boolean().optional(),
+  deleteVehicles: z.boolean().optional(),
+  viewBills: z.boolean().optional(),
+  viewFinancialReports: z.boolean().optional(),
+  viewOperationalReports: z.boolean().optional(),
+  viewLeads: z.boolean().optional(),
+  manageUsers: z.boolean().optional(),
+  companySettings: z.boolean().optional(),
+  viewPriceTab: z.boolean().optional(),
+  viewAdTab: z.boolean().optional(),
+  viewMediaTab: z.boolean().optional(),
+  viewDocumentsTab: z.boolean().optional(),
+  markAsSold: z.boolean().optional(),
+});
+
+export type CustomPermissions = z.infer<typeof customPermissionsSchema>;
+
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   empresaId: varchar("empresa_id"), // Multi-tenant: user belongs to one company
@@ -93,6 +117,8 @@ export const users = pgTable("users", {
   // Comissão por vendedor (valor fixo em R$)
   comissaoFixa: numeric("comissao_fixa", { precision: 10, scale: 2 }), // Comissão fixa em R$ para este vendedor
   usarComissaoFixaGlobal: varchar("usar_comissao_fixa_global").default("true"), // "true" ou "false" - se true, usa a comissão global
+  // Permissões personalizadas (JSON) - override das permissões padrão do role
+  customPermissions: json("custom_permissions").$type<CustomPermissions>().default({}),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

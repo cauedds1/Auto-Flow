@@ -8,11 +8,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Users as UsersIcon, UserPlus, Edit, XCircle, CheckCircle, DollarSign } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Users as UsersIcon, UserPlus, Edit, XCircle, CheckCircle, DollarSign, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getRoleName, getRoleBadgeColor, type UserRole } from "@/hooks/use-permissions";
+import { getRoleName, getRoleBadgeColor, AVAILABLE_PERMISSIONS, type UserRole } from "@/hooks/use-permissions";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import type { CustomPermissions } from "@shared/schema";
 
 interface User {
   id: string;
@@ -25,6 +27,7 @@ interface User {
   createdBy?: string;
   comissaoFixa?: string | null;
   usarComissaoFixaGlobal?: string;
+  customPermissions?: CustomPermissions;
 }
 
 export default function Users() {
@@ -315,10 +318,18 @@ function AddUserDialog({ open, onOpenChange, onSubmit, isLoading }: AddUserDialo
                 <SelectContent>
                   <SelectItem value="proprietario">Proprietário</SelectItem>
                   <SelectItem value="gerente">Gerente</SelectItem>
+                  <SelectItem value="financeiro">Financeiro</SelectItem>
                   <SelectItem value="vendedor">Vendedor</SelectItem>
                   <SelectItem value="motorista">Motorista</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                {formData.role === "financeiro" && "Acesso a relatórios, contas e custos. Sem acesso a leads e detalhes dos veículos."}
+                {formData.role === "proprietario" && "Acesso total ao sistema."}
+                {formData.role === "gerente" && "Acesso gerencial completo, exceto contas financeiras."}
+                {formData.role === "vendedor" && "Acesso a veículos, leads e vendas."}
+                {formData.role === "motorista" && "Acesso limitado para registro de custos e movimentações."}
+              </p>
             </div>
           </div>
           <DialogFooter>
@@ -352,21 +363,39 @@ function EditUserDialog({ open, onOpenChange, user, onSubmit, isLoading }: EditU
     comissaoFixa: user.comissaoFixa || "",
   });
 
+  const [customPermissions, setCustomPermissions] = useState<CustomPermissions>(
+    user.customPermissions || {}
+  );
+
+  const [activeTab, setActiveTab] = useState("info");
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const dataToSubmit = {
       ...formData,
       usarComissaoFixaGlobal: formData.usarComissaoFixaGlobal ? "true" : "false",
       comissaoFixa: formData.usarComissaoFixaGlobal ? null : (formData.comissaoFixa || null),
+      customPermissions: customPermissions,
     };
     onSubmit(dataToSubmit);
   };
 
   const isVendedor = formData.role === "vendedor";
 
+  const togglePermission = (key: keyof CustomPermissions) => {
+    setCustomPermissions((prev) => ({
+      ...prev,
+      [key]: prev[key] === undefined ? true : !prev[key],
+    }));
+  };
+
+  const resetPermissions = () => {
+    setCustomPermissions({});
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Editar Usuário</DialogTitle>
           <DialogDescription>
@@ -374,89 +403,157 @@ function EditUserDialog({ open, onOpenChange, user, onSubmit, isLoading }: EditU
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="edit-firstName">Nome</Label>
-              <Input
-                id="edit-firstName"
-                value={formData.firstName}
-                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-lastName">Sobrenome</Label>
-              <Input
-                id="edit-lastName"
-                value={formData.lastName}
-                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-role">Papel no Sistema</Label>
-              <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value as UserRole })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="proprietario">Proprietário</SelectItem>
-                  <SelectItem value="gerente">Gerente</SelectItem>
-                  <SelectItem value="vendedor">Vendedor</SelectItem>
-                  <SelectItem value="motorista">Motorista</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="info">Informações</TabsTrigger>
+              <TabsTrigger value="permissions" className="flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Gerenciar Acessos
+              </TabsTrigger>
+            </TabsList>
 
-            {/* Campos de comissão (apenas para vendedores) */}
-            {isVendedor && (
-              <div className="grid gap-4 pt-4 border-t">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5 text-green-600" />
-                  <Label className="text-base font-semibold">Configuração de Comissão</Label>
-                </div>
-                
-                <div className="flex items-center justify-between gap-4 p-3 rounded-lg bg-muted/50">
-                  <div className="flex-1">
-                    <Label htmlFor="usar-comissao-global" className="text-sm font-medium">
-                      Usar comissão fixa global
-                    </Label>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Quando ativado, usa o valor de comissão configurado nas configurações da empresa
-                    </p>
-                  </div>
-                  <Switch
-                    id="usar-comissao-global"
-                    checked={formData.usarComissaoFixaGlobal}
-                    onCheckedChange={(checked) => setFormData({ ...formData, usarComissaoFixaGlobal: checked })}
-                    data-testid="switch-comissao-global"
+            <TabsContent value="info" className="space-y-4 mt-4">
+              <div className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-firstName">Nome</Label>
+                  <Input
+                    id="edit-firstName"
+                    value={formData.firstName}
+                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                   />
                 </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-lastName">Sobrenome</Label>
+                  <Input
+                    id="edit-lastName"
+                    value={formData.lastName}
+                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-role">Papel no Sistema</Label>
+                  <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value as UserRole })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="proprietario">Proprietário</SelectItem>
+                      <SelectItem value="gerente">Gerente</SelectItem>
+                      <SelectItem value="financeiro">Financeiro</SelectItem>
+                      <SelectItem value="vendedor">Vendedor</SelectItem>
+                      <SelectItem value="motorista">Motorista</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {formData.role === "financeiro" && "Acesso a relatórios, contas e custos. Sem acesso a leads e detalhes dos veículos."}
+                    {formData.role === "proprietario" && "Acesso total ao sistema."}
+                    {formData.role === "gerente" && "Acesso gerencial completo, exceto contas financeiras."}
+                    {formData.role === "vendedor" && "Acesso a veículos, leads e vendas."}
+                    {formData.role === "motorista" && "Acesso limitado para registro de custos e movimentações."}
+                  </p>
+                </div>
 
-                {!formData.usarComissaoFixaGlobal && (
-                  <div className="grid gap-2">
-                    <Label htmlFor="comissao-fixa">Comissão Fixa Individual (R$)</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
-                      <Input
-                        id="comissao-fixa"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                        className="pl-10"
-                        value={formData.comissaoFixa}
-                        onChange={(e) => setFormData({ ...formData, comissaoFixa: e.target.value })}
-                        data-testid="input-comissao-fixa"
+                {/* Campos de comissão (apenas para vendedores) */}
+                {isVendedor && (
+                  <div className="grid gap-4 pt-4 border-t">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-5 w-5 text-green-600" />
+                      <Label className="text-base font-semibold">Configuração de Comissão</Label>
+                    </div>
+                    
+                    <div className="flex items-center justify-between gap-4 p-3 rounded-lg bg-muted/50">
+                      <div className="flex-1">
+                        <Label htmlFor="usar-comissao-global" className="text-sm font-medium">
+                          Usar comissão fixa global
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Quando ativado, usa o valor de comissão configurado nas configurações da empresa
+                        </p>
+                      </div>
+                      <Switch
+                        id="usar-comissao-global"
+                        checked={formData.usarComissaoFixaGlobal}
+                        onCheckedChange={(checked) => setFormData({ ...formData, usarComissaoFixaGlobal: checked })}
+                        data-testid="switch-comissao-global"
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Este vendedor receberá este valor fixo por cada venda realizada
-                    </p>
+
+                    {!formData.usarComissaoFixaGlobal && (
+                      <div className="grid gap-2">
+                        <Label htmlFor="comissao-fixa">Comissão Fixa Individual (R$)</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
+                          <Input
+                            id="comissao-fixa"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="0.00"
+                            className="pl-10"
+                            value={formData.comissaoFixa}
+                            onChange={(e) => setFormData({ ...formData, comissaoFixa: e.target.value })}
+                            data-testid="input-comissao-fixa"
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Este vendedor receberá este valor fixo por cada venda realizada
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
-          </div>
-          <DialogFooter>
+            </TabsContent>
+
+            <TabsContent value="permissions" className="space-y-4 mt-4">
+              <div className="rounded-lg border p-4 bg-muted/30">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h4 className="font-medium flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-purple-600" />
+                      Permissões Personalizadas
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Por padrão, as permissões seguem o papel do usuário. Ative permissões extras aqui.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={resetPermissions}
+                  >
+                    Resetar
+                  </Button>
+                </div>
+
+                <div className="space-y-3">
+                  {AVAILABLE_PERMISSIONS.map((permission) => {
+                    const isEnabled = customPermissions[permission.key as keyof CustomPermissions];
+                    
+                    return (
+                      <div
+                        key={permission.key}
+                        className="flex items-center justify-between p-3 rounded-lg bg-background border"
+                      >
+                        <div className="flex-1">
+                          <Label className="text-sm font-medium">{permission.label}</Label>
+                          <p className="text-xs text-muted-foreground">{permission.description}</p>
+                        </div>
+                        <Switch
+                          checked={isEnabled === true}
+                          onCheckedChange={() => togglePermission(permission.key as keyof CustomPermissions)}
+                          data-testid={`switch-${permission.key}`}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          <DialogFooter className="mt-6">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
