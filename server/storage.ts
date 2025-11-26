@@ -466,6 +466,13 @@ export class DatabaseStorage implements IStorage {
       
       if (settings.categoriasCustos !== undefined) updates.categoriasCustos = settings.categoriasCustos;
       if (settings.origensLeads !== undefined) updates.origensLeads = settings.origensLeads;
+      if (settings.localizacoes !== undefined) updates.localizacoes = settings.localizacoes;
+      if (settings.prazoPreparacaoVeiculo !== undefined) updates.prazoPreparacaoVeiculo = settings.prazoPreparacaoVeiculo;
+      if (settings.prazoValidadeOrcamento !== undefined) updates.prazoValidadeOrcamento = settings.prazoValidadeOrcamento;
+      if (settings.prazoAlertaVeiculoParado !== undefined) updates.prazoAlertaVeiculoParado = settings.prazoAlertaVeiculoParado;
+      if (settings.notificacoesVeiculosParados !== undefined) updates.notificacoesVeiculosParados = settings.notificacoesVeiculosParados;
+      if (settings.notificacoesPrazos !== undefined) updates.notificacoesPrazos = settings.notificacoesPrazos;
+      if (settings.avisosCustosAltos !== undefined) updates.avisosCustosAltos = settings.avisosCustosAltos;
       
       const result = await db.update(advancedCompanySettings)
         .set(updates)

@@ -897,6 +897,24 @@ export const advancedCompanySettings = pgTable("advanced_company_settings", {
     "Telefone"
   ]),
   
+  // Localizações customizadas para veículos
+  localizacoes: text("localizacoes").array().default([
+    "Matriz",
+    "Filial",
+    "Pátio Externo",
+    "Oficina"
+  ]),
+  
+  // Prazos customizáveis (em dias)
+  prazoPreparacaoVeiculo: integer("prazo_preparacao_veiculo").default(7),
+  prazoValidadeOrcamento: integer("prazo_validade_orcamento").default(30),
+  prazoAlertaVeiculoParado: integer("prazo_alerta_veiculo_parado").default(7),
+  
+  // Configurações de notificações (ativas/inativas)
+  notificacoesVeiculosParados: integer("notificacoes_veiculos_parados").default(1), // 1 = ativo, 0 = inativo
+  notificacoesPrazos: integer("notificacoes_prazos").default(1),
+  avisosCustosAltos: integer("avisos_custos_altos").default(1),
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
