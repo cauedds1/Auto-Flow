@@ -1,5 +1,21 @@
 import { getChecklistCategories, getChecklistItems, ChecklistData } from "@shared/checklistUtils";
 
+// Logo VeloStock em SVG para facilitar a impressão
+const VELOSTOCK_LOGO = `
+<svg viewBox="0 0 120 40" width="100" height="33" xmlns="http://www.w3.org/2000/svg">
+  <!-- Círculos coloridos -->
+  <circle cx="15" cy="12" r="6" fill="#667eea"/>
+  <circle cx="28" cy="8" r="6" fill="#52c41a"/>
+  <circle cx="38" cy="15" r="6" fill="#ff7875"/>
+  <circle cx="32" cy="26" r="6" fill="#faad14"/>
+  
+  <!-- Texto VeloStock -->
+  <text x="50" y="25" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#333">
+    <tspan fill="#667eea">Velo</tspan><tspan fill="#52c41a">Stock</tspan>
+  </text>
+</svg>
+`;
+
 export function generateChecklistPDF(vehicle: any, checklist: ChecklistData) {
   const vehicleType = (vehicle?.vehicleType || "Carro") as "Carro" | "Moto";
   const categories = getChecklistCategories(vehicleType);
@@ -12,36 +28,47 @@ export function generateChecklistPDF(vehicle: any, checklist: ChecklistData) {
       <meta charset="utf-8">
       <title>Checklist - ${vehicle.brand} ${vehicle.model}</title>
       <style>
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
         body {
           font-family: Arial, sans-serif;
-          margin: 0;
-          padding: 20px;
           background: white;
           color: #000;
         }
-        .container {
-          max-width: 210mm;
+        .page {
+          width: 210mm;
           height: 297mm;
           margin: 0 auto;
-          padding: 20px;
+          padding: 15mm;
           background: white;
+          page-break-after: always;
+        }
+        .page:last-child {
+          page-break-after: avoid;
         }
         .header {
-          text-align: center;
+          display: flex;
+          align-items: center;
+          gap: 15px;
           margin-bottom: 20px;
           padding-bottom: 15px;
           border-bottom: 3px solid #000;
         }
         .logo {
-          font-size: 24px;
-          font-weight: bold;
-          margin-bottom: 5px;
-          color: #667eea;
+          flex-shrink: 0;
         }
-        .title {
+        .header-text h1 {
           font-size: 18px;
           font-weight: bold;
-          margin-bottom: 15px;
+          color: #333;
+          margin-bottom: 3px;
+        }
+        .header-text p {
+          font-size: 14px;
+          color: #666;
         }
         .vehicle-info {
           display: grid;
@@ -57,59 +84,99 @@ export function generateChecklistPDF(vehicle: any, checklist: ChecklistData) {
         }
         .info-label {
           font-weight: bold;
-          font-size: 12px;
-          margin-bottom: 3px;
+          font-size: 11px;
+          margin-bottom: 2px;
         }
         .info-value {
           border-bottom: 1px solid #000;
+          padding-bottom: 4px;
+          min-height: 18px;
+          font-size: 12px;
+        }
+        .section-header {
+          font-weight: bold;
+          font-size: 12px;
+          margin-bottom: 8px;
+          margin-top: 12px;
           padding-bottom: 5px;
-          min-height: 20px;
-          font-size: 13px;
+          border-bottom: 2px solid #000;
         }
         .checklist-section {
-          margin-bottom: 12px;
+          margin-bottom: 10px;
           page-break-inside: avoid;
         }
-        .section-title {
-          font-size: 12px;
+        .category-title {
+          font-size: 11px;
           font-weight: bold;
           background: #f0f0f0;
-          padding: 5px;
-          margin-bottom: 8px;
-          border-bottom: 2px solid #000;
+          padding: 4px;
+          margin-bottom: 6px;
+          border: 1px solid #999;
         }
         .items-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 8px;
-          margin-bottom: 10px;
+          gap: 6px;
         }
         .checkbox-item {
           display: flex;
           align-items: center;
-          font-size: 12px;
+          font-size: 11px;
         }
         .checkbox {
-          width: 16px;
-          height: 16px;
-          border: 2px solid #000;
-          margin-right: 8px;
+          width: 14px;
+          height: 14px;
+          border: 1.5px solid #000;
+          margin-right: 6px;
           flex-shrink: 0;
         }
         .item-label {
-          flex: 1;
+          min-width: 80px;
         }
         .item-line {
           border-bottom: 1px solid #999;
           flex: 1;
-          margin-left: 5px;
+          margin-left: 4px;
         }
+        
+        /* Tabela de Histórico */
+        .table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 12px;
+          font-size: 11px;
+        }
+        .table th {
+          border: 1px solid #000;
+          padding: 6px;
+          background: #f0f0f0;
+          font-weight: bold;
+          text-align: left;
+        }
+        .table td {
+          border: 1px solid #000;
+          padding: 8px 6px;
+          min-height: 30px;
+        }
+        .table-row {
+          page-break-inside: avoid;
+        }
+        
+        /* Caixa de observações */
+        .obs-box {
+          border: 2px solid #000;
+          padding: 10px;
+          min-height: 80px;
+          margin-bottom: 12px;
+        }
+        
+        /* Footer */
         .footer {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 20px;
-          margin-top: 30px;
-          font-size: 12px;
+          margin-top: 20px;
+          font-size: 11px;
         }
         .footer-field {
           display: flex;
@@ -117,24 +184,30 @@ export function generateChecklistPDF(vehicle: any, checklist: ChecklistData) {
         }
         .footer-line {
           border-bottom: 1px solid #000;
-          margin-bottom: 5px;
-          min-height: 30px;
+          margin-bottom: 3px;
+          min-height: 25px;
         }
         .footer-label {
-          font-size: 11px;
-          margin-top: 3px;
+          font-size: 10px;
+          margin-top: 2px;
         }
+        
         @media print {
-          body { margin: 0; padding: 0; }
-          .container { max-width: 100%; height: auto; }
+          body { margin: 0; padding: 0; background: white; }
+          .page { margin: 0; padding: 15mm; }
         }
       </style>
     </head>
     <body>
-      <div class="container">
+      <!-- PÁGINA 1: CHECKLIST DE INSPEÇÃO -->
+      <div class="page">
         <div class="header">
-          <div class="logo">VeloStock</div>
-          <div class="title">Checklist de Inspeção de Veículos</div>
+          <div class="logo">
+            ${VELOSTOCK_LOGO}
+          </div>
+          <div class="header-text">
+            <h1>Checklist de Inspeção de Veículos</h1>
+          </div>
         </div>
 
         <div class="vehicle-info">
@@ -164,14 +237,14 @@ export function generateChecklistPDF(vehicle: any, checklist: ChecklistData) {
           </div>
         </div>
 
-        <div style="font-weight: bold; font-size: 13px; margin-bottom: 10px;">CHECKLIST DE INSPEÇÃO</div>
+        <div class="section-header">CHECKLIST DE INSPEÇÃO</div>
 
         ${(Object.keys(categories) as Array<keyof typeof categories>)
           .map((category) => {
             const categoryItems = items[category] || [];
             return `
               <div class="checklist-section">
-                <div class="section-title">${categories[category]}</div>
+                <div class="category-title">${categories[category]}</div>
                 <div class="items-grid">
                   ${categoryItems
                     .map(
@@ -202,6 +275,59 @@ export function generateChecklistPDF(vehicle: any, checklist: ChecklistData) {
         </div>
       </div>
 
+      <!-- PÁGINA 2: HISTÓRICO E OBSERVAÇÕES -->
+      <div class="page">
+        <div class="header">
+          <div class="logo">
+            ${VELOSTOCK_LOGO}
+          </div>
+          <div class="header-text">
+            <h1>Histórico e Observações</h1>
+          </div>
+        </div>
+
+        <div class="section-header">HISTÓRICO DE SERVIÇOS</div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th style="width: 25%">Tipo de Serviço</th>
+              <th style="width: 15%">Data</th>
+              <th style="width: 20%">Local</th>
+              <th style="width: 40%">Observações</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${Array(4)
+              .fill(null)
+              .map(
+                () => `
+              <tr class="table-row">
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+              </tr>
+            `
+              )
+              .join('')}
+          </tbody>
+        </table>
+
+        <div class="section-header">OBSERVAÇÕES GERAIS</div>
+        <div class="obs-box"></div>
+
+        <div class="footer">
+          <div class="footer-field">
+            <div>Responsável pela Inspeção:</div>
+            <div class="footer-line"></div>
+          </div>
+          <div class="footer-field">
+            <div>Data: ___/___/_____</div>
+            <div class="footer-line"></div>
+          </div>
+        </div>
+      </div>
+
       <script>
         window.onload = function() {
           const opt = {
@@ -211,7 +337,7 @@ export function generateChecklistPDF(vehicle: any, checklist: ChecklistData) {
             html2canvas: { scale: 2 },
             jsPDF: { format: 'a4', orientation: 'portrait' }
           };
-          html2pdf().set(opt).from(document.querySelector('.container')).save();
+          html2pdf().set(opt).from(document.body).save();
           setTimeout(() => window.close(), 1000);
         };
       </script>
