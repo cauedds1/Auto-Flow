@@ -16,6 +16,7 @@ import { SalePriceEditor } from "@/components/SalePriceEditor";
 import { ChecklistObservationDialog } from "@/components/ChecklistObservationDialog";
 import { ChecklistItemStatus } from "@/components/ChecklistItemStatus";
 import { PhotoViewer } from "@/components/PhotoViewer";
+import { downloadChecklistPDF } from "@/components/ChecklistPDF";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -837,6 +838,29 @@ export default function VehicleDetails() {
           </TabsContent>
 
           <TabsContent value="checklist">
+            <div className="space-y-4">
+              <Card className="p-6 border-primary/20 bg-primary/5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-card-foreground">
+                      Checklist de Inspeção
+                    </h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Acompanhe e baixe o checklist pronto para imprimir
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={() => downloadChecklistPDF(vehicle, checklist)}
+                    className="gap-2"
+                    data-testid="button-download-checklist"
+                  >
+                    <FileText className="h-4 w-4" />
+                    Baixar PDF
+                  </Button>
+                </div>
+              </Card>
+            </div>
+
             <div className="grid gap-6 md:grid-cols-2">
               {(() => {
                 const vehicleType = (vehicle?.vehicleType || "Carro") as VehicleType;
