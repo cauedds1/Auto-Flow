@@ -258,19 +258,28 @@ export function generateChecklistHTML(vehicle: any, checklist: ChecklistData) {
         .checkbox-item {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
+          width: 100%;
         }
         
         .checkbox {
-          width: 14px;
-          height: 14px;
+          width: 12px;
+          height: 12px;
           border: 1.5px solid #374151;
           flex-shrink: 0;
         }
         
         .item-text {
-          font-size: 11px;
+          font-size: 10px;
           color: #1f2937;
+          white-space: nowrap;
+        }
+        
+        .item-obs-line {
+          flex: 1;
+          border-bottom: 1px solid #d1d5db;
+          margin-left: 4px;
+          min-width: 30px;
         }
         
         /* SERVICE HISTORY TABLE */
@@ -479,6 +488,7 @@ export function generateChecklistHTML(vehicle: any, checklist: ChecklistData) {
                     <div class="checkbox-item">
                       <div class="checkbox"></div>
                       <div class="item-text">${item}</div>
+                      <div class="item-obs-line"></div>
                     </div>
                   `).join('')}
                 </div>
@@ -492,6 +502,7 @@ export function generateChecklistHTML(vehicle: any, checklist: ChecklistData) {
                     <div class="checkbox-item">
                       <div class="checkbox"></div>
                       <div class="item-text">${item}</div>
+                      <div class="item-obs-line"></div>
                     </div>
                   `).join('')}
                 </div>
@@ -505,6 +516,7 @@ export function generateChecklistHTML(vehicle: any, checklist: ChecklistData) {
                     <div class="checkbox-item">
                       <div class="checkbox"></div>
                       <div class="item-text">${item}</div>
+                      <div class="item-obs-line"></div>
                     </div>
                   `).join('')}
                 </div>
@@ -521,6 +533,7 @@ export function generateChecklistHTML(vehicle: any, checklist: ChecklistData) {
                     <div class="checkbox-item">
                       <div class="checkbox"></div>
                       <div class="item-text">${item}</div>
+                      <div class="item-obs-line"></div>
                     </div>
                   `).join('')}
                 </div>
@@ -534,6 +547,7 @@ export function generateChecklistHTML(vehicle: any, checklist: ChecklistData) {
                     <div class="checkbox-item">
                       <div class="checkbox"></div>
                       <div class="item-text">${item}</div>
+                      <div class="item-obs-line"></div>
                     </div>
                   `).join('')}
                 </div>
@@ -547,6 +561,7 @@ export function generateChecklistHTML(vehicle: any, checklist: ChecklistData) {
                     <div class="checkbox-item">
                       <div class="checkbox"></div>
                       <div class="item-text">${item}</div>
+                      <div class="item-obs-line"></div>
                     </div>
                   `).join('')}
                 </div>
