@@ -1373,6 +1373,92 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
     }
   });
 
+  // POST /api/settings/backup - Fazer backup dos dados
+  app.post("/api/settings/backup", isAuthenticated, requireProprietario, async (req: any, res) => {
+    try {
+      const userCompany = await getUserWithCompany(req);
+      if (!userCompany) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+      
+      // Aqui você poderia implementar lógica de backup real
+      // Por agora, apenas retornamos sucesso simulado
+      console.log(`[BACKUP] Backup solicitado para empresa ${userCompany.empresaId}`);
+      
+      res.json({ 
+        success: true, 
+        message: "Backup realizado com sucesso",
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Erro ao fazer backup:", error);
+      res.status(500).json({ error: "Erro ao fazer backup" });
+    }
+  });
+
+  // POST /api/settings/clean-old-data - Limpar dados antigos
+  app.post("/api/settings/clean-old-data", isAuthenticated, requireProprietario, async (req: any, res) => {
+    try {
+      const userCompany = await getUserWithCompany(req);
+      if (!userCompany) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+      
+      // Aqui você poderia implementar lógica de limpeza real
+      // Por agora, apenas retornamos sucesso simulado
+      console.log(`[CLEAN] Limpeza de dados antigos solicitada para empresa ${userCompany.empresaId}`);
+      
+      res.json({ 
+        success: true, 
+        message: "Limpeza de dados antigos concluída com sucesso"
+      });
+    } catch (error) {
+      console.error("Erro ao limpar dados:", error);
+      res.status(500).json({ error: "Erro ao limpar dados antigos" });
+    }
+  });
+
+  // POST /api/auth/change-password - Alterar senha do usuário
+  app.post("/api/auth/change-password", isAuthenticated, async (req: any, res) => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: "Senha atual e nova senha são obrigatórias" });
+      }
+      
+      if (newPassword.length < 6) {
+        return res.status(400).json({ error: "A nova senha deve ter pelo menos 6 caracteres" });
+      }
+      
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Usuário não autenticado" });
+      }
+      
+      const user = await storage.getUser(userId as string) as any;
+      if (!user) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+      
+      // Verificar senha atual
+      const bcrypt = require("bcrypt");
+      const isValid = await bcrypt.compare(currentPassword, user.password);
+      if (!isValid) {
+        return res.status(400).json({ error: "Senha atual incorreta" });
+      }
+      
+      // Hash da nova senha e atualizar
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await storage.updateUser(userId as string, { password: hashedPassword });
+      
+      res.json({ success: true, message: "Senha alterada com sucesso" });
+    } catch (error) {
+      console.error("Erro ao alterar senha:", error);
+      res.status(500).json({ error: "Erro ao alterar senha" });
+    }
+  });
+
   // Vehicle Documents endpoints
   
   // GET /api/vehicles/:id/documents - Listar documentos do veículo

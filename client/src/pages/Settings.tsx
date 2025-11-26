@@ -7,7 +7,27 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Building2, Palette, MapPin, Phone, Mail, Settings as SettingsIcon, Plus, X, DollarSign, Clock, Bell, Database, Lock, AlertCircle } from "lucide-react";
+import { Building2, Palette, MapPin, Phone, Mail, Settings as SettingsIcon, Plus, X, DollarSign, Clock, Bell, Database, Lock, AlertCircle, Edit2, Check, Download, Trash2, Key, Monitor } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useCurrentCompany, useUpdateCompany } from "@/hooks/use-company";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -47,13 +67,47 @@ export default function Settings() {
 
   const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [customOrigins, setCustomOrigins] = useState<string[]>([]);
+  const [customLocations, setCustomLocations] = useState<string[]>([]);
   const [newCategory, setNewCategory] = useState("");
   const [newOrigin, setNewOrigin] = useState("");
+  const [newLocation, setNewLocation] = useState("");
+  
+  // Prazos editáveis
+  const [prazoPreparacao, setPrazoPreparacao] = useState(7);
+  const [prazoOrcamento, setPrazoOrcamento] = useState(30);
+  const [prazoAlerta, setPrazoAlerta] = useState(7);
+  const [editingPrazo, setEditingPrazo] = useState<string | null>(null);
+  const [tempPrazoValue, setTempPrazoValue] = useState("");
+  
+  // Configurações de notificações
+  const [notifVeiculosParados, setNotifVeiculosParados] = useState(true);
+  const [notifPrazos, setNotifPrazos] = useState(true);
+  const [avisosCustosAltos, setAvisosCustosAltos] = useState(true);
+  
+  // Dialogs
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [sessionsOpen, setSessionsOpen] = useState(false);
+  const [cleanDataOpen, setCleanDataOpen] = useState(false);
+  const [backupInProgress, setBackupInProgress] = useState(false);
+  const [lastBackupDate, setLastBackupDate] = useState<string | null>(null);
+  
+  // Password change form
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   useEffect(() => {
     if (advancedSettings) {
-      setCustomCategories((advancedSettings as any).customCategories || []);
-      setCustomOrigins((advancedSettings as any).customLeadOrigins || []);
+      const settings = advancedSettings as any;
+      setCustomCategories(settings.categoriasCustos || []);
+      setCustomOrigins(settings.origensLeads || []);
+      setCustomLocations(settings.localizacoes || ["Matriz", "Filial", "Pátio Externo", "Oficina"]);
+      setPrazoPreparacao(settings.prazoPreparacaoVeiculo || 7);
+      setPrazoOrcamento(settings.prazoValidadeOrcamento || 30);
+      setPrazoAlerta(settings.prazoAlertaVeiculoParado || 7);
+      setNotifVeiculosParados(settings.notificacoesVeiculosParados === 1);
+      setNotifPrazos(settings.notificacoesPrazos === 1);
+      setAvisosCustosAltos(settings.avisosCustosAltos === 1);
     }
   }, [advancedSettings]);
 
@@ -686,7 +740,74 @@ export default function Settings() {
             </Card>
           </div>
 
-          {/* Linha 2: Configurações de Notificações e Prazos */}
+          {/* Linha 2: Localizações */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                  <MapPin className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Localizações</CardTitle>
+                  <CardDescription className="text-xs">Locais onde os veículos podem ser enviados</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-2">
+                <Input
+                  value={newLocation}
+                  onChange={(e) => setNewLocation(e.target.value)}
+                  placeholder="Nova localização..."
+                  className="text-sm"
+                  data-testid="input-new-location"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (newLocation.trim() && !customLocations.includes(newLocation.trim())) {
+                        setCustomLocations([...customLocations, newLocation.trim()]);
+                        setNewLocation("");
+                      }
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  data-testid="button-add-location"
+                  onClick={() => {
+                    if (newLocation.trim() && !customLocations.includes(newLocation.trim())) {
+                      setCustomLocations([...customLocations, newLocation.trim()]);
+                      setNewLocation("");
+                    }
+                  }}
+                >
+                  <Plus className="w-3 h-3" />
+                </Button>
+              </div>
+              
+              <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                {customLocations.map((loc) => (
+                  <div key={loc} className="flex items-center gap-1 px-2 py-1 bg-orange-50 dark:bg-orange-950/30 rounded text-xs border border-orange-200 dark:border-orange-800">
+                    <span>{loc}</span>
+                    <button
+                      type="button"
+                      data-testid={`button-remove-location-${loc}`}
+                      onClick={() => setCustomLocations(customLocations.filter((l) => l !== loc))}
+                      className="ml-1 text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-200"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+                {customLocations.length === 0 && (
+                  <p className="text-xs text-muted-foreground">Nenhuma adicionada</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Linha 3: Configurações de Notificações e Prazos */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
@@ -702,17 +823,29 @@ export default function Settings() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between p-2 rounded bg-muted/50">
+                  <div className="flex items-center justify-between gap-4 p-2 rounded bg-muted/50">
                     <span>Alertas de veículos parados</span>
-                    <div className="flex h-2 w-2 rounded-full bg-green-500" />
+                    <Switch
+                      checked={notifVeiculosParados}
+                      onCheckedChange={setNotifVeiculosParados}
+                      data-testid="switch-notif-veiculos-parados"
+                    />
                   </div>
-                  <div className="flex items-center justify-between p-2 rounded bg-muted/50">
+                  <div className="flex items-center justify-between gap-4 p-2 rounded bg-muted/50">
                     <span>Notificação de prazos</span>
-                    <div className="flex h-2 w-2 rounded-full bg-green-500" />
+                    <Switch
+                      checked={notifPrazos}
+                      onCheckedChange={setNotifPrazos}
+                      data-testid="switch-notif-prazos"
+                    />
                   </div>
-                  <div className="flex items-center justify-between p-2 rounded bg-muted/50">
+                  <div className="flex items-center justify-between gap-4 p-2 rounded bg-muted/50">
                     <span>Avisos de custos altos</span>
-                    <div className="flex h-2 w-2 rounded-full bg-amber-500" />
+                    <Switch
+                      checked={avisosCustosAltos}
+                      onCheckedChange={setAvisosCustosAltos}
+                      data-testid="switch-avisos-custos"
+                    />
                   </div>
                 </div>
               </CardContent>
@@ -726,30 +859,189 @@ export default function Settings() {
                   </div>
                   <div>
                     <CardTitle className="text-lg">Prazos Padrão</CardTitle>
-                    <CardDescription className="text-xs">Períodos do sistema</CardDescription>
+                    <CardDescription className="text-xs">Clique para editar os períodos</CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between p-2 rounded bg-muted/50">
+                  <div className="flex items-center justify-between gap-4 p-2 rounded bg-muted/50">
                     <span>Preparação de veículo</span>
-                    <span className="font-medium">7 dias</span>
+                    {editingPrazo === "preparacao" ? (
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="number"
+                          min="1"
+                          max="365"
+                          value={tempPrazoValue}
+                          onChange={(e) => setTempPrazoValue(e.target.value)}
+                          className="w-16 h-7 text-xs"
+                          data-testid="input-prazo-preparacao"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              const val = parseInt(tempPrazoValue);
+                              if (val > 0) {
+                                setPrazoPreparacao(val);
+                              }
+                              setEditingPrazo(null);
+                            } else if (e.key === "Escape") {
+                              setEditingPrazo(null);
+                            }
+                          }}
+                        />
+                        <span className="text-xs">dias</span>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          data-testid="button-save-prazo-preparacao"
+                          onClick={() => {
+                            const val = parseInt(tempPrazoValue);
+                            if (val > 0) {
+                              setPrazoPreparacao(val);
+                            }
+                            setEditingPrazo(null);
+                          }}
+                        >
+                          <Check className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 font-medium text-purple-600 dark:text-purple-400"
+                        data-testid="button-edit-prazo-preparacao"
+                        onClick={() => {
+                          setEditingPrazo("preparacao");
+                          setTempPrazoValue(prazoPreparacao.toString());
+                        }}
+                      >
+                        {prazoPreparacao} dias
+                        <Edit2 className="h-3 w-3" />
+                      </button>
+                    )}
                   </div>
-                  <div className="flex items-center justify-between p-2 rounded bg-muted/50">
+                  <div className="flex items-center justify-between gap-4 p-2 rounded bg-muted/50">
                     <span>Validade de orçamento</span>
-                    <span className="font-medium">30 dias</span>
+                    {editingPrazo === "orcamento" ? (
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="number"
+                          min="1"
+                          max="365"
+                          value={tempPrazoValue}
+                          onChange={(e) => setTempPrazoValue(e.target.value)}
+                          className="w-16 h-7 text-xs"
+                          data-testid="input-prazo-orcamento"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              const val = parseInt(tempPrazoValue);
+                              if (val > 0) {
+                                setPrazoOrcamento(val);
+                              }
+                              setEditingPrazo(null);
+                            } else if (e.key === "Escape") {
+                              setEditingPrazo(null);
+                            }
+                          }}
+                        />
+                        <span className="text-xs">dias</span>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          data-testid="button-save-prazo-orcamento"
+                          onClick={() => {
+                            const val = parseInt(tempPrazoValue);
+                            if (val > 0) {
+                              setPrazoOrcamento(val);
+                            }
+                            setEditingPrazo(null);
+                          }}
+                        >
+                          <Check className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 font-medium text-purple-600 dark:text-purple-400"
+                        data-testid="button-edit-prazo-orcamento"
+                        onClick={() => {
+                          setEditingPrazo("orcamento");
+                          setTempPrazoValue(prazoOrcamento.toString());
+                        }}
+                      >
+                        {prazoOrcamento} dias
+                        <Edit2 className="h-3 w-3" />
+                      </button>
+                    )}
                   </div>
-                  <div className="flex items-center justify-between p-2 rounded bg-muted/50">
+                  <div className="flex items-center justify-between gap-4 p-2 rounded bg-muted/50">
                     <span>Alerta veículo parado</span>
-                    <span className="font-medium">7 dias</span>
+                    {editingPrazo === "alerta" ? (
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="number"
+                          min="1"
+                          max="365"
+                          value={tempPrazoValue}
+                          onChange={(e) => setTempPrazoValue(e.target.value)}
+                          className="w-16 h-7 text-xs"
+                          data-testid="input-prazo-alerta"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              const val = parseInt(tempPrazoValue);
+                              if (val > 0) {
+                                setPrazoAlerta(val);
+                              }
+                              setEditingPrazo(null);
+                            } else if (e.key === "Escape") {
+                              setEditingPrazo(null);
+                            }
+                          }}
+                        />
+                        <span className="text-xs">dias</span>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          data-testid="button-save-prazo-alerta"
+                          onClick={() => {
+                            const val = parseInt(tempPrazoValue);
+                            if (val > 0) {
+                              setPrazoAlerta(val);
+                            }
+                            setEditingPrazo(null);
+                          }}
+                        >
+                          <Check className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 font-medium text-purple-600 dark:text-purple-400"
+                        data-testid="button-edit-prazo-alerta"
+                        onClick={() => {
+                          setEditingPrazo("alerta");
+                          setTempPrazoValue(prazoAlerta.toString());
+                        }}
+                      >
+                        {prazoAlerta} dias
+                        <Edit2 className="h-3 w-3" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Linha 3: Dados e Segurança */}
+          {/* Linha 4: Dados e Segurança */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
@@ -765,17 +1057,54 @@ export default function Settings() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-2">
-                  <Button variant="outline" size="sm" className="w-full text-xs justify-start">
-                    <Database className="w-3 h-3 mr-2" />
-                    Fazer backup dos dados
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full text-xs justify-start"
+                    data-testid="button-backup"
+                    disabled={backupInProgress}
+                    onClick={async () => {
+                      setBackupInProgress(true);
+                      try {
+                        const res = await fetch("/api/settings/backup", {
+                          method: "POST",
+                          credentials: "include",
+                        });
+                        if (res.ok) {
+                          const now = new Date();
+                          setLastBackupDate(now.toLocaleString("pt-BR", { 
+                            day: "2-digit", 
+                            month: "short", 
+                            hour: "2-digit", 
+                            minute: "2-digit" 
+                          }));
+                          toast({ title: "Backup realizado com sucesso!" });
+                        } else {
+                          toast({ title: "Erro ao fazer backup", variant: "destructive" });
+                        }
+                      } catch {
+                        toast({ title: "Erro ao fazer backup", variant: "destructive" });
+                      } finally {
+                        setBackupInProgress(false);
+                      }
+                    }}
+                  >
+                    <Download className="w-3 h-3 mr-2" />
+                    {backupInProgress ? "Fazendo backup..." : "Fazer backup dos dados"}
                   </Button>
-                  <Button variant="outline" size="sm" className="w-full text-xs justify-start">
-                    <AlertCircle className="w-3 h-3 mr-2" />
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full text-xs justify-start text-amber-600 dark:text-amber-400"
+                    data-testid="button-clean-data"
+                    onClick={() => setCleanDataOpen(true)}
+                  >
+                    <Trash2 className="w-3 h-3 mr-2" />
                     Limpar dados antigos
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Último backup: 26 de nov às 19:00
+                  {lastBackupDate ? `Último backup: ${lastBackupDate}` : "Nenhum backup recente"}
                 </p>
               </CardContent>
             </Card>
@@ -794,12 +1123,24 @@ export default function Settings() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-2">
-                  <Button variant="outline" size="sm" className="w-full text-xs justify-start">
-                    <Lock className="w-3 h-3 mr-2" />
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full text-xs justify-start"
+                    data-testid="button-change-password"
+                    onClick={() => setChangePasswordOpen(true)}
+                  >
+                    <Key className="w-3 h-3 mr-2" />
                     Alterar senha
                   </Button>
-                  <Button variant="outline" size="sm" className="w-full text-xs justify-start">
-                    <AlertCircle className="w-3 h-3 mr-2" />
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full text-xs justify-start"
+                    data-testid="button-sessions"
+                    onClick={() => setSessionsOpen(true)}
+                  >
+                    <Monitor className="w-3 h-3 mr-2" />
                     Sessões ativas
                   </Button>
                 </div>
@@ -813,6 +1154,7 @@ export default function Settings() {
           {/* Botão de Salvar */}
           <div className="flex justify-end pt-4">
             <Button
+              data-testid="button-save-advanced"
               onClick={async () => {
                 try {
                   const res = await fetch("/api/settings/advanced", {
@@ -820,13 +1162,20 @@ export default function Settings() {
                     headers: { "Content-Type": "application/json" },
                     credentials: "include",
                     body: JSON.stringify({
-                      customCategories,
-                      customLeadOrigins: customOrigins,
+                      categoriasCustos: customCategories,
+                      origensLeads: customOrigins,
+                      localizacoes: customLocations,
+                      prazoPreparacaoVeiculo: prazoPreparacao,
+                      prazoValidadeOrcamento: prazoOrcamento,
+                      prazoAlertaVeiculoParado: prazoAlerta,
+                      notificacoesVeiculosParados: notifVeiculosParados ? 1 : 0,
+                      notificacoesPrazos: notifPrazos ? 1 : 0,
+                      avisosCustosAltos: avisosCustosAltos ? 1 : 0,
                     }),
                   });
                   if (!res.ok) throw new Error();
                   await refetchAdvanced();
-                  toast({ title: "Configurações atualizadas!" });
+                  toast({ title: "Configurações avançadas atualizadas!" });
                 } catch {
                   toast({ title: "Erro ao salvar", variant: "destructive" });
                 }
@@ -838,6 +1187,166 @@ export default function Settings() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Dialog: Alterar Senha */}
+      <Dialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Alterar Senha</DialogTitle>
+            <DialogDescription>
+              Digite sua senha atual e a nova senha para alterar.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="current-password">Senha atual</Label>
+              <Input
+                id="current-password"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                data-testid="input-current-password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-password">Nova senha</Label>
+              <Input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                data-testid="input-new-password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">Confirmar nova senha</Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                data-testid="input-confirm-password"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setChangePasswordOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              data-testid="button-save-password"
+              onClick={async () => {
+                if (newPassword !== confirmPassword) {
+                  toast({ title: "As senhas não coincidem", variant: "destructive" });
+                  return;
+                }
+                if (newPassword.length < 6) {
+                  toast({ title: "A nova senha deve ter pelo menos 6 caracteres", variant: "destructive" });
+                  return;
+                }
+                try {
+                  const res = await fetch("/api/auth/change-password", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({ currentPassword, newPassword }),
+                  });
+                  if (res.ok) {
+                    toast({ title: "Senha alterada com sucesso!" });
+                    setChangePasswordOpen(false);
+                    setCurrentPassword("");
+                    setNewPassword("");
+                    setConfirmPassword("");
+                  } else {
+                    const data = await res.json();
+                    toast({ title: data.error || "Erro ao alterar senha", variant: "destructive" });
+                  }
+                } catch {
+                  toast({ title: "Erro ao alterar senha", variant: "destructive" });
+                }
+              }}
+              className="bg-gradient-to-r from-purple-600 to-green-600"
+            >
+              Alterar Senha
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Sessões Ativas */}
+      <Dialog open={sessionsOpen} onOpenChange={setSessionsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sessões Ativas</DialogTitle>
+            <DialogDescription>
+              Gerencie suas sessões de login ativas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+                <div className="flex items-center gap-3">
+                  <Monitor className="h-5 w-5 text-green-500" />
+                  <div>
+                    <p className="font-medium text-sm">Sessão atual</p>
+                    <p className="text-xs text-muted-foreground">Este dispositivo</p>
+                  </div>
+                </div>
+                <div className="flex h-2 w-2 rounded-full bg-green-500" />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-4">
+              Apenas sua sessão atual está ativa. Não há outras sessões em outros dispositivos.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSessionsOpen(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* AlertDialog: Limpar Dados Antigos */}
+      <AlertDialog open={cleanDataOpen} onOpenChange={setCleanDataOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Limpar Dados Antigos</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação irá remover veículos vendidos há mais de 6 meses, leads inativos há mais de 1 ano, 
+              e logs de atividade antigos. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              data-testid="button-confirm-clean-data"
+              onClick={async () => {
+                try {
+                  const res = await fetch("/api/settings/clean-old-data", {
+                    method: "POST",
+                    credentials: "include",
+                  });
+                  if (res.ok) {
+                    const data = await res.json();
+                    toast({ 
+                      title: "Dados antigos limpos!", 
+                      description: data.message || "A limpeza foi concluída com sucesso." 
+                    });
+                  } else {
+                    toast({ title: "Erro ao limpar dados", variant: "destructive" });
+                  }
+                } catch {
+                  toast({ title: "Erro ao limpar dados", variant: "destructive" });
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Limpar Dados
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
