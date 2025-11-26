@@ -15,6 +15,7 @@ import { ChangeLocationDialog } from "@/components/ChangeLocationDialog";
 import { SalePriceEditor } from "@/components/SalePriceEditor";
 import { ChecklistObservationDialog } from "@/components/ChecklistObservationDialog";
 import { ChecklistItemStatus } from "@/components/ChecklistItemStatus";
+import { PhotoViewer } from "@/components/PhotoViewer";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -56,6 +57,8 @@ export default function VehicleDetails() {
   const [isEditCostOpen, setIsEditCostOpen] = useState(false);
   const [costToDelete, setCostToDelete] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
+  const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [checklist, setChecklist] = useState<ChecklistData>({
     pneus: [],
@@ -535,13 +538,21 @@ export default function VehicleDetails() {
                 {vehicle.images && vehicle.images.length > 0 ? (
                   <div className="grid grid-cols-3 gap-2">
                     {vehicle.images.slice(0, 6).map((img: any, idx: number) => (
-                      <div key={idx} className="relative aspect-square overflow-hidden rounded border">
+                      <button
+                        key={img.id || idx}
+                        onClick={() => {
+                          setSelectedPhotoIndex(idx);
+                          setPhotoViewerOpen(true);
+                        }}
+                        className="relative aspect-[4/3] overflow-hidden rounded border cursor-pointer hover-elevate focus:outline-none focus:ring-2 focus:ring-primary group"
+                        data-testid={`button-overview-photo-${idx}`}
+                      >
                         <img
                           src={img.imageUrl}
                           alt={`Foto ${idx + 1}`}
-                          className="h-full w-full object-cover"
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                         />
-                      </div>
+                      </button>
                     ))}
                   </div>
                 ) : (
@@ -551,6 +562,7 @@ export default function VehicleDetails() {
                   <button
                     onClick={() => setActiveTab("midia")}
                     className="mt-3 text-sm text-primary hover:underline"
+                    data-testid="button-view-all-photos"
                   >
                     Ver todas as {vehicle.images.length} fotos
                   </button>
@@ -758,10 +770,17 @@ export default function VehicleDetails() {
           <TabsContent value="midia">
             <div className="space-y-6">
               <Card className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-card-foreground">
-                    Galeria de Fotos
-                  </h3>
+                <div className="flex items-center justify-between gap-4 mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-card-foreground">
+                      Galeria de Fotos
+                    </h3>
+                    {vehicle.images && vehicle.images.length > 0 && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {vehicle.images.length} foto{vehicle.images.length > 1 ? 's' : ''} - Clique para ampliar
+                      </p>
+                    )}
+                  </div>
                   <Button variant="outline" onClick={() => setIsEditDialogOpen(true)}>
                     <Upload className="mr-2 h-4 w-4" />
                     Gerenciar Fotos
@@ -770,18 +789,27 @@ export default function VehicleDetails() {
                 {vehicle.images && vehicle.images.length > 0 ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {vehicle.images.map((img: any, idx: number) => (
-                      <div key={idx} className="relative aspect-square overflow-hidden rounded-lg border group">
+                      <button
+                        key={img.id || idx}
+                        onClick={() => {
+                          setSelectedPhotoIndex(idx);
+                          setPhotoViewerOpen(true);
+                        }}
+                        className="relative aspect-[4/3] overflow-hidden rounded-lg border group cursor-pointer hover-elevate focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                        data-testid={`button-view-photo-${idx}`}
+                      >
                         <img
                           src={img.imageUrl}
                           alt={`Foto ${idx + 1}`}
-                          className="h-full w-full object-cover"
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                         />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
                         {idx === 0 && (
-                          <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs px-2 py-1 rounded">
+                          <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs px-2 py-1 rounded font-medium">
                             Capa
                           </div>
                         )}
-                      </div>
+                      </button>
                     ))}
                   </div>
                 ) : (
@@ -795,6 +823,13 @@ export default function VehicleDetails() {
                 )}
               </Card>
             </div>
+
+            <PhotoViewer
+              images={vehicle.images || []}
+              initialIndex={selectedPhotoIndex}
+              open={photoViewerOpen}
+              onOpenChange={setPhotoViewerOpen}
+            />
           </TabsContent>
 
           <TabsContent value="documentos">

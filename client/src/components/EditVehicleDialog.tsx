@@ -782,28 +782,6 @@ export function EditVehicleDialog({ vehicleId, vehicle, open, onOpenChange }: Ed
                 onImagesChange={setNewImages}
                 maxImages={8}
               />
-              {newImages.length > 0 && (
-                <div className="mt-3 grid grid-cols-3 gap-3">
-                  {newImages.map((file, idx) => (
-                    <div key={idx} className="relative">
-                      <img
-                        src={URL.createObjectURL(file)}
-                        alt={`Nova foto ${idx + 1}`}
-                        className="w-full h-32 object-cover rounded border"
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        className="absolute top-2 right-2"
-                        onClick={() => setNewImages(prev => prev.filter((_, i) => i !== idx))}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t">
@@ -814,7 +792,14 @@ export function EditVehicleDialog({ vehicleId, vehicle, open, onOpenChange }: Ed
               >
                 Cancelar
               </Button>
-              <Button type="button" onClick={() => { uploadNewImages(); onOpenChange(false); }}>
+              <Button 
+                type="button" 
+                onClick={async () => { 
+                  await uploadNewImages(); 
+                  onOpenChange(false); 
+                }}
+                disabled={newImages.length === 0 && existingImages.length === vehicle.images?.length}
+              >
                 Salvar Fotos
               </Button>
             </div>
