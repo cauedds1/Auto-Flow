@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Building2, Palette, MapPin, Phone, Mail, Settings as SettingsIcon, Plus, X, DollarSign } from "lucide-react";
+import { Building2, Palette, MapPin, Phone, Mail, Settings as SettingsIcon, Plus, X, DollarSign, Clock, Bell, Database, Lock, AlertCircle } from "lucide-react";
 import { useCurrentCompany, useUpdateCompany } from "@/hooks/use-company";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -555,131 +555,263 @@ export default function Settings() {
         </TabsContent>
 
         <TabsContent value="advanced" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                  <SettingsIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          {/* Linha 1: Categorias e Origens lado a lado */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Categorias de Custos */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                    <SettingsIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Categorias de Custos</CardTitle>
+                    <CardDescription className="text-xs">Personalizadas</CardDescription>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle>Categorias de Custos Personalizadas</CardTitle>
-                  <CardDescription>Adicione categorias além das padrões (Mecânica, Estética, Documentação, Outros)</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <Input
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                  placeholder="Nova categoria..."
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex gap-2">
+                  <Input
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value)}
+                    placeholder="Nova categoria..."
+                    className="text-sm"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (newCategory.trim() && !customCategories.includes(newCategory.trim())) {
+                          setCustomCategories([...customCategories, newCategory.trim()]);
+                          setNewCategory("");
+                        }
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
                       if (newCategory.trim() && !customCategories.includes(newCategory.trim())) {
                         setCustomCategories([...customCategories, newCategory.trim()]);
                         setNewCategory("");
                       }
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  onClick={() => {
-                    if (newCategory.trim() && !customCategories.includes(newCategory.trim())) {
-                      setCustomCategories([...customCategories, newCategory.trim()]);
-                      setNewCategory("");
-                    }
-                  }}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Adicionar
-                </Button>
-              </div>
-              
-              <div className="flex flex-wrap gap-2">
-                {customCategories.map((cat) => (
-                  <div key={cat} className="flex items-center gap-1 px-3 py-1 bg-muted rounded-md">
-                    <span className="text-sm">{cat}</span>
-                    <button
-                      type="button"
-                      onClick={() => setCustomCategories(customCategories.filter((c) => c !== cat))}
-                      className="ml-1 text-muted-foreground hover:text-foreground"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-                {customCategories.length === 0 && (
-                  <p className="text-sm text-muted-foreground">Nenhuma categoria personalizada adicionada</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                    }}
+                  >
+                    <Plus className="w-3 h-3" />
+                  </Button>
+                </div>
+                
+                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                  {customCategories.map((cat) => (
+                    <div key={cat} className="flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-950/30 rounded text-xs border border-blue-200 dark:border-blue-800">
+                      <span>{cat}</span>
+                      <button
+                        type="button"
+                        onClick={() => setCustomCategories(customCategories.filter((c) => c !== cat))}
+                        className="ml-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {customCategories.length === 0 && (
+                    <p className="text-xs text-muted-foreground">Nenhuma adicionada</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                  <SettingsIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
+            {/* Origens de Leads */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                    <SettingsIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Origens de Leads</CardTitle>
+                    <CardDescription className="text-xs">Personalizadas</CardDescription>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle>Origens de Leads Personalizadas</CardTitle>
-                  <CardDescription>Adicione origens além das padrões (WhatsApp, Telefone, Presencial, Site, Indicação)</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <Input
-                  value={newOrigin}
-                  onChange={(e) => setNewOrigin(e.target.value)}
-                  placeholder="Nova origem..."
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex gap-2">
+                  <Input
+                    value={newOrigin}
+                    onChange={(e) => setNewOrigin(e.target.value)}
+                    placeholder="Nova origem..."
+                    className="text-sm"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (newOrigin.trim() && !customOrigins.includes(newOrigin.trim())) {
+                          setCustomOrigins([...customOrigins, newOrigin.trim()]);
+                          setNewOrigin("");
+                        }
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
                       if (newOrigin.trim() && !customOrigins.includes(newOrigin.trim())) {
                         setCustomOrigins([...customOrigins, newOrigin.trim()]);
                         setNewOrigin("");
                       }
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  onClick={() => {
-                    if (newOrigin.trim() && !customOrigins.includes(newOrigin.trim())) {
-                      setCustomOrigins([...customOrigins, newOrigin.trim()]);
-                      setNewOrigin("");
-                    }
-                  }}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Adicionar
-                </Button>
-              </div>
-              
-              <div className="flex flex-wrap gap-2">
-                {customOrigins.map((origin) => (
-                  <div key={origin} className="flex items-center gap-1 px-3 py-1 bg-muted rounded-md">
-                    <span className="text-sm">{origin}</span>
-                    <button
-                      type="button"
-                      onClick={() => setCustomOrigins(customOrigins.filter((o) => o !== origin))}
-                      className="ml-1 text-muted-foreground hover:text-foreground"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-                {customOrigins.length === 0 && (
-                  <p className="text-sm text-muted-foreground">Nenhuma origem personalizada adicionada</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                    }}
+                  >
+                    <Plus className="w-3 h-3" />
+                  </Button>
+                </div>
+                
+                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                  {customOrigins.map((origin) => (
+                    <div key={origin} className="flex items-center gap-1 px-2 py-1 bg-green-50 dark:bg-green-950/30 rounded text-xs border border-green-200 dark:border-green-800">
+                      <span>{origin}</span>
+                      <button
+                        type="button"
+                        onClick={() => setCustomOrigins(customOrigins.filter((o) => o !== origin))}
+                        className="ml-1 text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {customOrigins.length === 0 && (
+                    <p className="text-xs text-muted-foreground">Nenhuma adicionada</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-          <div className="flex justify-end">
+          {/* Linha 2: Configurações de Notificações e Prazos */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+                    <Bell className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Notificações</CardTitle>
+                    <CardDescription className="text-xs">Alertas do sistema</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between p-2 rounded bg-muted/50">
+                    <span>Alertas de veículos parados</span>
+                    <div className="flex h-2 w-2 rounded-full bg-green-500" />
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded bg-muted/50">
+                    <span>Notificação de prazos</span>
+                    <div className="flex h-2 w-2 rounded-full bg-green-500" />
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded bg-muted/50">
+                    <span>Avisos de custos altos</span>
+                    <div className="flex h-2 w-2 rounded-full bg-amber-500" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                    <Clock className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Prazos Padrão</CardTitle>
+                    <CardDescription className="text-xs">Períodos do sistema</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between p-2 rounded bg-muted/50">
+                    <span>Preparação de veículo</span>
+                    <span className="font-medium">7 dias</span>
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded bg-muted/50">
+                    <span>Validade de orçamento</span>
+                    <span className="font-medium">30 dias</span>
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded bg-muted/50">
+                    <span>Alerta veículo parado</span>
+                    <span className="font-medium">7 dias</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Linha 3: Dados e Segurança */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-cyan-100 dark:bg-cyan-900/30 rounded-lg">
+                    <Database className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Gestão de Dados</CardTitle>
+                    <CardDescription className="text-xs">Backup e limpeza</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <Button variant="outline" size="sm" className="w-full text-xs justify-start">
+                    <Database className="w-3 h-3 mr-2" />
+                    Fazer backup dos dados
+                  </Button>
+                  <Button variant="outline" size="sm" className="w-full text-xs justify-start">
+                    <AlertCircle className="w-3 h-3 mr-2" />
+                    Limpar dados antigos
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Último backup: 26 de nov às 19:00
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                    <Lock className="h-5 w-5 text-red-600 dark:text-red-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Segurança</CardTitle>
+                    <CardDescription className="text-xs">Privacidade e proteção</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <Button variant="outline" size="sm" className="w-full text-xs justify-start">
+                    <Lock className="w-3 h-3 mr-2" />
+                    Alterar senha
+                  </Button>
+                  <Button variant="outline" size="sm" className="w-full text-xs justify-start">
+                    <AlertCircle className="w-3 h-3 mr-2" />
+                    Sessões ativas
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Sessões: 1 ativa
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Botão de Salvar */}
+          <div className="flex justify-end pt-4">
             <Button
               onClick={async () => {
                 try {
@@ -699,6 +831,7 @@ export default function Settings() {
                   toast({ title: "Erro ao salvar", variant: "destructive" });
                 }
               }}
+              className="bg-gradient-to-r from-purple-600 to-green-600 hover:from-purple-700 hover:to-green-700"
             >
               Salvar Configurações Avançadas
             </Button>
