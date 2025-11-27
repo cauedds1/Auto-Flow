@@ -146,6 +146,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/auth/resend-signup-code - Reenviar código de verificação no signup
+  app.post('/api/auth/resend-signup-code', async (req: any, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({ message: "Email é obrigatório" });
+      }
+
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(400).json({ message: "Usuário não encontrado" });
+      }
+
+      // Gerar novo código
+      const code = generateVerificationCode();
+      const expiry = getVerificationCodeExpiry();
+      await storage.updateUserVerificationCode(user.id, code, expiry);
+
+      // Enviar email
+      const emailHtml = `
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; }
+      .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+      .header { background: linear-gradient(to right, #9333ea, #22c55e); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+      .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+      .code-box { background: white; border: 2px solid #9333ea; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0; }
+      .code { font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #9333ea; font-family: monospace; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header"><h1>VeloStock</h1></div>
+      <div class="content">
+        <p>Seu novo código de verificação:</p>
+        <div class="code-box">
+          <div class="code">${code}</div>
+          <p>Válido por 15 minutos</p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+      `;
+
+      await sendEmail({
+        to: email,
+        subject: 'VeloStock - Novo Código de Verificação',
+        html: emailHtml,
+      });
+
+      res.json({ message: "Código reenviado com sucesso" });
+    } catch (error) {
+      console.error("Erro ao reenviar código:", error);
+      res.status(500).json({ message: "Erro ao reenviar código" });
+    }
+  });
+
   // POST /api/auth/forgot-password - Enviar código de recuperação
   app.post('/api/auth/forgot-password', async (req: any, res) => {
     try {
@@ -257,6 +318,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Erro ao verificar código:", error);
       res.status(500).json({ message: "Erro ao verificar código" });
+    }
+  });
+
+  // POST /api/auth/resend-reset-code - Reenviar código de reset de senha
+  app.post('/api/auth/resend-reset-code', async (req: any, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({ message: "Email é obrigatório" });
+      }
+
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(400).json({ message: "Usuário não encontrado" });
+      }
+
+      // Gerar novo código
+      const code = generateVerificationCode();
+      const expiry = getVerificationCodeExpiry();
+      await storage.updateUserVerificationCode(user.id, code, expiry);
+
+      // Enviar email
+      const emailHtml = `
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; }
+      .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+      .header { background: linear-gradient(to right, #9333ea, #22c55e); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+      .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+      .code-box { background: white; border: 2px solid #9333ea; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0; }
+      .code { font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #9333ea; font-family: monospace; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header"><h1>VeloStock</h1><p>Recuperação de Senha</p></div>
+      <div class="content">
+        <p>Seu novo código de verificação:</p>
+        <div class="code-box">
+          <div class="code">${code}</div>
+          <p>Válido por 15 minutos</p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+      `;
+
+      await sendEmail({
+        to: email,
+        subject: 'VeloStock - Novo Código de Recuperação',
+        html: emailHtml,
+      });
+
+      res.json({ message: "Código reenviado com sucesso" });
+    } catch (error) {
+      console.error("Erro ao reenviar código:", error);
+      res.status(500).json({ message: "Erro ao reenviar código" });
     }
   });
 

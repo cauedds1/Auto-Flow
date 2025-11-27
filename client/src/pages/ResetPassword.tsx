@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Car } from "lucide-react";
+import { Car, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 
@@ -14,6 +14,7 @@ export default function ResetPassword() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
@@ -23,8 +24,17 @@ export default function ResetPassword() {
     const emailParam = params.get("email");
     if (emailParam) {
       setEmail(decodeURIComponent(emailParam));
+      setResendCooldown(60);
     }
   }, []);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (resendCooldown > 0) {
+      timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
 
   const handleVerifyCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,6 +129,42 @@ export default function ResetPassword() {
     }
   };
 
+  const handleResendCode = async () => {
+    if (resendCooldown > 0) return;
+
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/auth/resend-reset-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      if (response.ok) {
+        setResendCooldown(60);
+        toast({
+          title: "Código reenviado!",
+          description: "Verifique seu email",
+        });
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Erro",
+          description: error.message || "Erro ao reenviar código",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-green-600 flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
@@ -164,6 +210,19 @@ export default function ResetPassword() {
                   disabled={isLoading || code.length !== 6}
                 >
                   {isLoading ? "Verificando..." : "Verificar Código"}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  disabled={resendCooldown > 0 || isLoading}
+                  onClick={handleResendCode}
+                >
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  {resendCooldown > 0
+                    ? `Reenviar em ${resendCooldown}s`
+                    : "Reenviar Código"}
                 </Button>
               </form>
             ) : (
