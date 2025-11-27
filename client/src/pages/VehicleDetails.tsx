@@ -6,7 +6,6 @@ import { VehicleDetailsHeader } from "@/components/VehicleDetailsHeader";
 import { VehicleTimeline } from "@/components/VehicleTimeline";
 import { VehicleCosts } from "@/components/VehicleCosts";
 import { VehicleDocuments } from "@/components/VehicleDocuments";
-import { RemindersTab } from "@/components/RemindersTab";
 import { AdGenerator } from "@/components/AdGenerator";
 import { PriceSuggestion } from "@/components/PriceSuggestion";
 import { EditVehicleDialog } from "@/components/EditVehicleDialog";
@@ -725,36 +724,24 @@ export default function VehicleDetails() {
           </TabsContent>
 
           <TabsContent value="anotacoes">
-            <div className="space-y-6">
-              <Card className="p-6">
-                <h3 className="mb-4 text-lg font-semibold text-card-foreground">
-                  Observações Gerais (Visíveis para Todos)
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Registre observações e anotações específicas deste veículo (defeitos, pendências, características especiais, negociações, etc.)
-                </p>
-                <Textarea
-                  placeholder="Ex: Cliente interessado, aguardando contato. Arranhão no para-choque traseiro precisa polimento. Documentação original em mãos..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="min-h-[200px] mb-4"
-                />
-                <Button onClick={saveNotes} disabled={isSavingNotes}>
-                  <Save className="mr-2 h-4 w-4" />
-                  {isSavingNotes ? "Salvando..." : "Salvar Observações"}
-                </Button>
-              </Card>
-
-              <div className="border-t pt-6">
-                <h3 className="mb-4 text-lg font-semibold text-card-foreground">
-                  Meus Lembretes Individuais
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Anotações pessoais que só você pode ver. Crie lembretes com prazo para não esquecer de nada.
-                </p>
-                <RemindersTab vehicleId={vehicleId} />
-              </div>
-            </div>
+            <Card className="p-6">
+              <h3 className="mb-4 text-lg font-semibold text-card-foreground">
+                Observações Gerais
+              </h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Registre observações e anotações específicas deste veículo (defeitos, pendências, características especiais, negociações, etc.)
+              </p>
+              <Textarea
+                placeholder="Ex: Cliente interessado, aguardando contato. Arranhão no para-choque traseiro precisa polimento. Documentação original em mãos..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="min-h-[200px] mb-4"
+              />
+              <Button onClick={saveNotes} disabled={isSavingNotes}>
+                <Save className="mr-2 h-4 w-4" />
+                {isSavingNotes ? "Salvando..." : "Salvar Observações"}
+              </Button>
+            </Card>
           </TabsContent>
 
           <TabsContent value="preco">

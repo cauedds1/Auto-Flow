@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { StickyNote, Plus, Edit2, Trash2, CheckCircle2, AlertCircle } from "lucide-react";
+import { StickyNote, Plus, Edit2, Trash2, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -25,6 +25,8 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import type { StoreObservation } from "@shared/schema";
 import { StoreObservationDialog } from "@/components/StoreObservationDialog";
+import { RemindersTab } from "@/components/RemindersTab";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Notes() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -105,120 +107,144 @@ export default function Notes() {
         </Button>
       </div>
 
-      <div className="mb-6 flex gap-4">
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Filtrar por categoria" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas as Categorias</SelectItem>
-            {uniqueCategories.map((cat) => (
-              <SelectItem key={cat} value={cat!}>
-                {cat}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <Tabs defaultValue="observacoes" className="w-full">
+        <TabsList className="mb-6">
+          <TabsTrigger value="observacoes" data-testid="tab-store-observations">
+            Observações da Loja
+          </TabsTrigger>
+          <TabsTrigger value="lembretes" data-testid="tab-personal-reminders">
+            <Clock className="mr-2 h-4 w-4" />
+            Meus Lembretes
+          </TabsTrigger>
+        </TabsList>
 
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Filtrar por status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os Status</SelectItem>
-            <SelectItem value="Pendente">Pendente</SelectItem>
-            <SelectItem value="Resolvido">Resolvido</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+        <TabsContent value="observacoes">
 
-      {isLoading ? (
-        <p className="text-muted-foreground">Carregando...</p>
-      ) : filteredObservations.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12">
-          <StickyNote className="h-16 w-16 text-muted-foreground mb-4" />
-          <p className="text-lg text-muted-foreground">
-            {observations.length === 0 
-              ? "Nenhuma observação registrada ainda"
-              : "Nenhuma observação encontrada com os filtros aplicados"}
-          </p>
-          {observations.length === 0 && (
-            <p className="mt-2 text-sm text-muted-foreground">
-              Clique em "Nova Observação" para adicionar lembretes sobre a loja
-            </p>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {filteredObservations.map((obs) => (
-            <Card key={obs.id} className="transition-all hover:shadow-md">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      {obs.status === "Pendente" ? (
-                        <AlertCircle className="h-5 w-5 text-yellow-500" />
-                      ) : (
-                        <CheckCircle2 className="h-5 w-5 text-green-500" />
-                      )}
-                      <CardTitle className="text-lg">
-                        {obs.category ? obs.category : "Sem categoria"}
-                      </CardTitle>
-                      <Badge 
-                        variant={obs.status === "Pendente" ? "default" : "outline"}
-                        className={obs.status === "Pendente" ? "bg-yellow-500 text-white" : ""}
-                      >
-                        {obs.status}
-                      </Badge>
-                      {obs.expenseCost && (
-                        <Badge variant="secondary">
-                          R$ {parseFloat(obs.expenseCost as any).toFixed(2)}
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Criado em {format(new Date(obs.createdAt), "dd/MM/yyyy 'às' HH:mm")}
-                      {obs.resolvedAt && (
-                        <> • Resolvido em {format(new Date(obs.resolvedAt), "dd/MM/yyyy 'às' HH:mm")}</>
-                      )}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={() => {
-                        setEditingObservation(obs);
-                        setIsDialogOpen(true);
-                      }}
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={() => setDeleteId(obs.id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-foreground whitespace-pre-wrap">
-                  {obs.description}
+          <div className="mb-6 flex gap-4">
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Filtrar por categoria" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as Categorias</SelectItem>
+                {uniqueCategories.map((cat) => (
+                  <SelectItem key={cat} value={cat!}>
+                    {cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Filtrar por status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Status</SelectItem>
+                <SelectItem value="Pendente">Pendente</SelectItem>
+                <SelectItem value="Resolvido">Resolvido</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {isLoading ? (
+            <p className="text-muted-foreground">Carregando...</p>
+          ) : filteredObservations.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <StickyNote className="h-16 w-16 text-muted-foreground mb-4" />
+              <p className="text-lg text-muted-foreground">
+                {observations.length === 0 
+                  ? "Nenhuma observação registrada ainda"
+                  : "Nenhuma observação encontrada com os filtros aplicados"}
+              </p>
+              {observations.length === 0 && (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Clique em "Nova Observação" para adicionar lembretes sobre a loja
                 </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredObservations.map((obs) => (
+                <Card key={obs.id} className="transition-all hover:shadow-md">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          {obs.status === "Pendente" ? (
+                            <AlertCircle className="h-5 w-5 text-yellow-500" />
+                          ) : (
+                            <CheckCircle2 className="h-5 w-5 text-green-500" />
+                          )}
+                          <CardTitle className="text-lg">
+                            {obs.category ? obs.category : "Sem categoria"}
+                          </CardTitle>
+                          <Badge 
+                            variant={obs.status === "Pendente" ? "default" : "outline"}
+                            className={obs.status === "Pendente" ? "bg-yellow-500 text-white" : ""}
+                          >
+                            {obs.status}
+                          </Badge>
+                          {obs.expenseCost && (
+                            <Badge variant="secondary">
+                              R$ {parseFloat(obs.expenseCost as any).toFixed(2)}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Criado em {format(new Date(obs.createdAt), "dd/MM/yyyy 'às' HH:mm")}
+                          {obs.resolvedAt && (
+                            <> • Resolvido em {format(new Date(obs.resolvedAt), "dd/MM/yyyy 'às' HH:mm")}</>
+                          )}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => {
+                            setEditingObservation(obs);
+                            setIsDialogOpen(true);
+                          }}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => setDeleteId(obs.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-foreground whitespace-pre-wrap">
+                      {obs.description}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
 
-      {!isLoading && filteredObservations.length > 0 && (
-        <div className="mt-6 text-center text-sm text-muted-foreground">
-          Mostrando {filteredObservations.length} de {observations.length} {observations.length === 1 ? 'observação' : 'observações'}
-        </div>
-      )}
+          {!isLoading && filteredObservations.length > 0 && (
+            <div className="mt-6 text-center text-sm text-muted-foreground">
+              Mostrando {filteredObservations.length} de {observations.length} {observations.length === 1 ? 'observação' : 'observações'}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="lembretes">
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Crie lembretes pessoais com prazos. Apenas você verá seus lembretes - são anotações individuais para não esquecer de nada.
+            </p>
+            <RemindersTab vehicleId="" />
+          </div>
+        </TabsContent>
+      </Tabs>
 
       <StoreObservationDialog
         open={isDialogOpen}
