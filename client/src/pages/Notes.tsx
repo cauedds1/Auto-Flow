@@ -41,6 +41,10 @@ export default function Notes() {
     queryKey: ["/api/store-observations"],
   });
 
+  const { data: reminders = [], isLoading: isLoadingReminders } = useQuery<any[]>({
+    queryKey: ["/api/reminders"],
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/store-observations/${id}`, {
@@ -71,8 +75,13 @@ export default function Notes() {
     return matchesCategory && matchesStatus;
   });
 
+  // Contadores de OBSERVAÇÕES DA LOJA
   const pendingCount = observations.filter(o => o.status === "Pendente").length;
   const resolvedCount = observations.filter(o => o.status === "Resolvido").length;
+
+  // Contadores de MEUS LEMBRETES
+  const pendingRemindersCount = reminders.filter(r => r.status === "Pendente").length;
+  const completedRemindersCount = reminders.filter(r => r.status === "Concluído").length;
 
   // Derivar categorias únicas dos dados
   const uniqueCategories = Array.from(
@@ -110,15 +119,37 @@ export default function Notes() {
       <Tabs defaultValue="observacoes" className="w-full">
         <TabsList className="mb-6">
           <TabsTrigger value="observacoes" data-testid="tab-store-observations">
-            Observações da Loja
+            <div className="flex items-center gap-2">
+              <span>Observações da Loja</span>
+              <Badge variant="outline" className="text-xs">
+                <AlertCircle className="mr-1 h-3 w-3" />
+                {pendingCount}
+              </Badge>
+            </div>
           </TabsTrigger>
           <TabsTrigger value="lembretes" data-testid="tab-personal-reminders">
-            <Clock className="mr-2 h-4 w-4" />
-            Meus Lembretes
+            <div className="flex items-center gap-2">
+              <Clock className="mr-2 h-4 w-4" />
+              <span>Meus Lembretes</span>
+              <Badge variant="outline" className="text-xs">
+                <Clock className="mr-1 h-3 w-3" />
+                {pendingRemindersCount}
+              </Badge>
+            </div>
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="observacoes">
+          <div className="mb-6 flex gap-4 items-center">
+            <Badge variant="outline" className="text-sm">
+              <AlertCircle className="mr-1 h-3 w-3" />
+              {pendingCount} Pendente{pendingCount !== 1 ? 's' : ''}
+            </Badge>
+            <Badge variant="outline" className="text-sm">
+              <CheckCircle2 className="mr-1 h-3 w-3" />
+              {resolvedCount} Resolvido{resolvedCount !== 1 ? 's' : ''}
+            </Badge>
+          </div>
 
           <div className="mb-6 flex gap-4">
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
@@ -238,6 +269,16 @@ export default function Notes() {
 
         <TabsContent value="lembretes">
           <div className="space-y-4">
+            <div className="flex gap-4 items-center">
+              <Badge variant="outline" className="text-sm">
+                <Clock className="mr-1 h-3 w-3" />
+                {pendingRemindersCount} Pendente{pendingRemindersCount !== 1 ? 's' : ''}
+              </Badge>
+              <Badge variant="outline" className="text-sm">
+                <CheckCircle2 className="mr-1 h-3 w-3" />
+                {completedRemindersCount} Concluído{completedRemindersCount !== 1 ? 's' : ''}
+              </Badge>
+            </div>
             <p className="text-sm text-muted-foreground">
               Crie lembretes pessoais com prazos. Apenas você verá seus lembretes - são anotações individuais para não esquecer de nada.
             </p>
