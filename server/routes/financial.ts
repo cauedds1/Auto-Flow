@@ -736,14 +736,11 @@ router.delete("/expenses/:id", async (req, res) => {
 router.post("/sales-targets", requireRole(["vendedor", "proprietario", "gerente"]), async (req, res) => {
   try {
     const { metaQuantidade, metaValor, vendedorId } = req.body;
+    const { userId, empresaId } = getUserWithCompany(req);
     
-    // Se for vendedor, usa seu próprio ID
-    const userId = req.roleCheck?.userData?.id || vendedorId;
-    if (!userId) return res.status(401).json({ error: "Não autenticado" });
-
-    // Pega a empresa do request
-    const empresaId = req.roleCheck?.userData?.empresaId;
-    if (!empresaId) return res.status(401).json({ error: "Empresa não identificada" });
+    // Se for vendedor, usa seu próprio ID. Se for proprietário/gerente, usa o vendedorId enviado
+    const targetUserId = (req as any).userRole === "vendedor" ? userId : vendedorId;
+    if (!targetUserId) return res.status(400).json({ error: "ID do vendedor é obrigatório" });
 
     const now = new Date();
     const mesReferencia = now.getMonth() + 1;
@@ -756,7 +753,7 @@ router.post("/sales-targets", requireRole(["vendedor", "proprietario", "gerente"
       .where(
         and(
           eq(salesTargets.empresaId, empresaId),
-          eq(salesTargets.vendedorId, userId),
+          eq(salesTargets.vendedorId, targetUserId),
           eq(salesTargets.mesReferencia, mesReferencia),
           eq(salesTargets.anoReferencia, anoReferencia)
         )
@@ -777,7 +774,7 @@ router.post("/sales-targets", requireRole(["vendedor", "proprietario", "gerente"
       // Criar nova meta
       await db.insert(salesTargets).values({
         empresaId,
-        vendedorId: userId,
+        vendedorId: targetUserId,
         mesReferencia,
         anoReferencia,
         metaQuantidade: metaQuantidade || null,
@@ -798,13 +795,8 @@ router.post("/sales-targets", requireRole(["vendedor", "proprietario", "gerente"
 
 router.get("/seller-dashboard", requireRole(["vendedor"]), async (req, res) => {
   try {
-    const userData = req.roleCheck?.userData;
-    if (!userData) return res.status(401).json({ error: "Não autenticado" });
-
-    const userId = userData.id;
-    if (userData.role !== "vendedor") return res.status(403).json({ error: "Apenas vendedores podem acessar" });
-
-    const empresaId = userData.empresaId;
+    const { userId, empresaId } = getUserWithCompany(req);
+    if (!userId) return res.status(401).json({ error: "Não autenticado" });
     const now = new Date();
     const mesNum = now.getMonth() + 1;
     const anoNum = now.getFullYear();
