@@ -36,6 +36,11 @@ export function VehicleCard({
   const [, setLocation] = useLocation();
   const { changeIconColors } = useCompanyTheme();
 
+  // Imagem genérica de carro como fallback
+  const carPlaceholder = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 250'%3E%3Crect fill='%231a1a1a' width='400' height='250'/%3E%3CradialGradient id='light' cx='50%25' cy='30%25'%3E%3Cstop offset='0%25' style='stop-color:%23404040;stop-opacity:1'/%3E%3Cstop offset='100%25' style='stop-color:%230a0a0a;stop-opacity:1'/%3E%3C/radialGradient%3E%3Crect fill='url(%23light)' width='400' height='250'/%3E%3Cpath d='M 80 140 Q 80 100 120 80 L 280 80 Q 320 100 320 140 L 320 170 Q 320 180 310 180 L 90 180 Q 80 180 80 170 Z' fill='%23222' stroke='%23444' stroke-width='2'/%3E%3Ccircle cx='130' cy='190' r='18' fill='%23111' stroke='%23555' stroke-width='2'/%3E%3Ccircle cx='270' cy='190' r='18' fill='%23111' stroke='%23555' stroke-width='2'/%3E%3Crect x='100' y='100' width='80' height='40' rx='5' fill='%23333' opacity='0.7'/%3E%3Crect x='220' y='100' width='80' height='40' rx='5' fill='%23333' opacity='0.7'/%3E%3C/svg%3E";
+
+  const displayImage = image && image.trim() ? image : carPlaceholder;
+
   const handleClick = () => {
     setLocation(`/vehicles/${id}`);
   };
@@ -54,9 +59,9 @@ export function VehicleCard({
       className="group relative overflow-hidden hover-elevate cursor-pointer transition-all" 
       data-testid={`card-vehicle-${plate}`}
     >
-      <div className="relative aspect-video overflow-hidden">
+      <div className="relative aspect-video overflow-hidden bg-muted">
         <img
-          src={image}
+          src={displayImage}
           alt={`${brand} ${model}`}
           className="h-full w-full object-cover"
         />
