@@ -48,7 +48,7 @@ export default function VehicleDetails() {
   const getInitialTab = () => {
     const searchParams = new URLSearchParams(window.location.search);
     const tabParam = searchParams.get('tab');
-    const validTabs = ['visao-geral', 'historico', 'custos', 'anotacoes', 'lembretes', 'preco', 'anuncio', 'midia', 'documentos', 'checklist'];
+    const validTabs = ['visao-geral', 'historico', 'custos', 'anotacoes', 'preco', 'anuncio', 'midia', 'documentos', 'checklist'];
     return validTabs.includes(tabParam || '') ? (tabParam || "visao-geral") : "visao-geral";
   };
   
@@ -461,11 +461,6 @@ export default function VehicleDetails() {
                 Observações Gerais
               </TabsTrigger>
             )}
-            {can.viewNotesTab && (
-              <TabsTrigger value="lembretes" data-testid="tab-lembretes">
-                Lembretes
-              </TabsTrigger>
-            )}
             {can.viewPriceTab && (
               <TabsTrigger value="preco" data-testid="tab-preco">
                 Sugestão de Preço
@@ -730,28 +725,36 @@ export default function VehicleDetails() {
           </TabsContent>
 
           <TabsContent value="anotacoes">
-            <Card className="p-6">
-              <h3 className="mb-4 text-lg font-semibold text-card-foreground">
-                Observações Gerais
-              </h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Registre observações e anotações específicas deste veículo (defeitos, pendências, características especiais, negociações, etc.)
-              </p>
-              <Textarea
-                placeholder="Ex: Cliente interessado, aguardando contato. Arranhão no para-choque traseiro precisa polimento. Documentação original em mãos..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="min-h-[200px] mb-4"
-              />
-              <Button onClick={saveNotes} disabled={isSavingNotes}>
-                <Save className="mr-2 h-4 w-4" />
-                {isSavingNotes ? "Salvando..." : "Salvar Observações"}
-              </Button>
-            </Card>
-          </TabsContent>
+            <div className="space-y-6">
+              <Card className="p-6">
+                <h3 className="mb-4 text-lg font-semibold text-card-foreground">
+                  Observações Gerais (Visíveis para Todos)
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Registre observações e anotações específicas deste veículo (defeitos, pendências, características especiais, negociações, etc.)
+                </p>
+                <Textarea
+                  placeholder="Ex: Cliente interessado, aguardando contato. Arranhão no para-choque traseiro precisa polimento. Documentação original em mãos..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="min-h-[200px] mb-4"
+                />
+                <Button onClick={saveNotes} disabled={isSavingNotes}>
+                  <Save className="mr-2 h-4 w-4" />
+                  {isSavingNotes ? "Salvando..." : "Salvar Observações"}
+                </Button>
+              </Card>
 
-          <TabsContent value="lembretes">
-            <RemindersTab vehicleId={vehicleId} />
+              <div className="border-t pt-6">
+                <h3 className="mb-4 text-lg font-semibold text-card-foreground">
+                  Meus Lembretes Individuais
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Anotações pessoais que só você pode ver. Crie lembretes com prazo para não esquecer de nada.
+                </p>
+                <RemindersTab vehicleId={vehicleId} />
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="preco">
