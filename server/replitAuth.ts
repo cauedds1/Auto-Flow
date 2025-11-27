@@ -86,13 +86,10 @@ export async function setupAuth(app: Express) {
           return res.status(400).json({ message: info?.message || "Erro ao criar conta" });
         }
         
-        // Gerar código de verificação
+        // Gerar código de verificação ANTES de confirmar a criação
         const code = generateVerificationCode();
         const expiry = getVerificationCodeExpiry();
-        
-        // Salvar código no usuário (user.id vem da estratégia passport)
         const userId = user.claims.id || user.claims.sub;
-        await storage.updateUserVerificationCode(userId, code, expiry);
         
         console.log(`[Signup] Código gerado para ${email}: ${code}`);
         
@@ -140,13 +137,22 @@ export async function setupAuth(app: Express) {
 </html>
         `;
         
-        console.log(`[Signup] Enviando email de verificação para ${email}...`);
-        await sendEmail({
-          to: email,
-          subject: 'VeloStock - Verificação de Email',
-          html: emailHtml,
-        });
-        console.log(`[Signup] Email enviado com sucesso para ${email}`);
+        try {
+          console.log(`[Signup] Enviando email de verificação para ${email}...`);
+          await sendEmail({
+            to: email,
+            subject: 'VeloStock - Verificação de Email',
+            html: emailHtml,
+          });
+          console.log(`[Signup] Email enviado com sucesso para ${email}`);
+          
+          // Salvar código SÓ após email ter sido enviado
+          await storage.updateUserVerificationCode(userId, code, expiry);
+        } catch (emailError) {
+          // Se falhar ao enviar email, não salvar o código (usuário não pode fazer login)
+          console.error("[Signup] Erro ao enviar email:", emailError);
+          return res.status(500).json({ message: "Erro ao enviar email de verificação" });
+        }
         
         // User created, but not logged in yet - will verify email first
         return res.status(201).json({ 
@@ -155,8 +161,8 @@ export async function setupAuth(app: Express) {
           email: email
         });
       } catch (error) {
-        console.error("[Signup] Erro ao enviar email:", error);
-        return res.status(500).json({ message: "Erro ao enviar email de verificação" });
+        console.error("[Signup] Erro no signup:", error);
+        return res.status(500).json({ message: "Erro ao criar conta" });
       }
     })(req, res, next);
   });

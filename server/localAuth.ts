@@ -68,6 +68,11 @@ export function setupLocalAuth() {
             });
           }
 
+          // Verificar se email foi verificado
+          if (user.emailVerified !== "true") {
+            return done(null, false, { message: "Email não verificado. Verifique seu email para ativar a conta." });
+          }
+
           const isValidPassword = await bcrypt.compare(password, user.passwordHash);
 
           if (!isValidPassword) {

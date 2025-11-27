@@ -1,9 +1,5 @@
-// Referenced from Replit Mail integration blueprint
-import { promisify } from "node:util";
-import { execFile } from "node:child_process";
 import { z } from "zod";
 
-// Zod schema matching the backend implementation
 export const zSmtpMessage = z.object({
   to: z
     .union([z.string().email(), z.array(z.string().email())])
@@ -30,35 +26,7 @@ export const zSmtpMessage = z.object({
     .describe("Email attachments"),
 });
 
-export type SmtpMessage = z.infer<typeof zSmtpMessage>
-
-async function getAuthToken(): Promise<{ authToken: string, hostname: string }> {
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  console.log("[ReplitMail] REPLIT_CONNECTORS_HOSTNAME:", hostname);
-  
-  if (!hostname) {
-    throw new Error("REPLIT_CONNECTORS_HOSTNAME environment variable not found");
-  }
-
-  try {
-    const { stdout } = await promisify(execFile)(
-      "replit",
-      ["identity", "create", "--audience", `https://${hostname}`],
-      { encoding: "utf8" },
-    );
-
-    const replitToken = stdout.trim();
-    if (!replitToken) {
-      throw new Error("Replit Identity Token not found for repl/depl");
-    }
-
-    console.log("[ReplitMail] Auth token obtained successfully");
-    return { authToken: `Bearer ${replitToken}`, hostname };
-  } catch (error) {
-    console.error("[ReplitMail] Error getting auth token:", error);
-    throw error;
-  }
-}
+export type SmtpMessage = z.infer<typeof zSmtpMessage>;
 
 export async function sendEmail(message: SmtpMessage): Promise<{
   accepted: string[];
@@ -68,43 +36,57 @@ export async function sendEmail(message: SmtpMessage): Promise<{
   response: string;
 }> {
   try {
-    console.log("[ReplitMail] Starting to send email to:", message.to);
-    
-    const { hostname, authToken } = await getAuthToken();
-    console.log("[ReplitMail] Got auth, sending to endpoint");
+    console.log("[Email] Enviando email para:", message.to);
 
-    const response = await fetch(
-      `https://${hostname}/api/v2/mailer/send`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Replit-Authentication": authToken,
-        },
-        body: JSON.stringify({
-          to: message.to,
-          cc: message.cc,
-          subject: message.subject,
-          text: message.text,
-          html: message.html,
-          attachments: message.attachments,
-        }),
-      }
-    );
+    // Em desenvolvimento, apenas logar
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[Email] MODO DESENVOLVIMENTO - Email não enviado fisicamente");
+      console.log("[Email] Detalhes:", {
+        to: message.to,
+        subject: message.subject,
+      });
 
-    console.log("[ReplitMail] Response status:", response.status);
+      // Retornar simulado
+      return {
+        accepted: Array.isArray(message.to) ? message.to : [message.to],
+        rejected: [],
+        messageId: `dev-${Date.now()}`,
+        response: "Email logged in development mode",
+      };
+    }
+
+    // Em produção, usar a API do Replit Connectors
+    const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME || "connectors.replit.com";
+
+    // Tentar enviar via Replit Mail
+    const response = await fetch(`https://${hostname}/api/v2/mailer/send`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        to: message.to,
+        cc: message.cc,
+        subject: message.subject,
+        text: message.text,
+        html: message.html,
+        attachments: message.attachments,
+      }),
+    });
+
+    console.log("[Email] Response status:", response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("[ReplitMail] Error response:", errorText);
+      console.error("[Email] Error response:", errorText);
       throw new Error(`Failed to send email: ${response.status} - ${errorText}`);
     }
 
     const result = await response.json();
-    console.log("[ReplitMail] Email sent successfully:", result);
+    console.log("[Email] Email sent successfully:", result);
     return result;
   } catch (error) {
-    console.error("[ReplitMail] Fatal error sending email:", error);
+    console.error("[Email] Fatal error sending email:", error);
     throw error;
   }
 }
