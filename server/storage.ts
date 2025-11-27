@@ -19,6 +19,8 @@ import {
   type InsertVehicleDocument,
   type Company,
   type InsertCompany,
+  type Reminder,
+  type InsertReminder,
   users,
   vehicles,
   vehicleImages,
@@ -33,6 +35,7 @@ import {
   activityLog,
   leads,
   followUps,
+  reminders,
 } from "@shared/schema";
 import { or } from "drizzle-orm";
 import { normalizeChecklistData } from "@shared/checklistUtils";
@@ -87,6 +90,12 @@ export interface IStorage {
   addVehicleDocument(document: InsertVehicleDocument): Promise<VehicleDocument>;
   getVehicleDocument(id: string): Promise<VehicleDocument | undefined>;
   deleteVehicleDocument(id: string): Promise<boolean>;
+
+  getVehicleReminders(vehicleId: string): Promise<Reminder[]>;
+  createReminder(reminder: InsertReminder): Promise<Reminder>;
+  updateReminder(id: string, updates: Partial<InsertReminder>): Promise<Reminder | undefined>;
+  deleteReminder(id: string): Promise<boolean>;
+  getUserReminders(userId: string, empresaId: string): Promise<Reminder[]>;
 }
 
 export class DatabaseStorage implements IStorage {

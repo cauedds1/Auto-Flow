@@ -1016,3 +1016,48 @@ export const insertBillPayableSchema = createInsertSchema(billsPayable, {
 
 export type InsertBillPayable = z.infer<typeof insertBillPayableSchema>;
 export type BillPayable = typeof billsPayable.$inferSelect;
+
+// ============================================
+// REMINDERS (Lembretes por usuário)
+// ============================================
+
+export const reminderStatusEnum = pgEnum("reminder_status", [
+  "Pendente",
+  "Concluído",
+  "Cancelado"
+]);
+
+export const alertTypeEnum = pgEnum("alert_type", [
+  "Nenhum",
+  "1_dia_antes",
+  "no_dia",
+  "passou"
+]);
+
+export const reminders = pgTable("reminders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  empresaId: varchar("empresa_id").notNull(),
+  vehicleId: varchar("vehicle_id").notNull(),
+  userId: varchar("user_id").notNull(), // Usuário que criou/é responsável
+  titulo: text("titulo").notNull(),
+  descricao: text("descricao"),
+  dataLimite: timestamp("data_limite").notNull(),
+  status: reminderStatusEnum("status").notNull().default("Pendente"),
+  alertType: alertTypeEnum("alert_type").notNull().default("Nenhum"),
+  concluidoEm: timestamp("concluido_em"),
+  criadoEm: timestamp("criado_em").defaultNow().notNull(),
+  atualizadoEm: timestamp("atualizado_em").defaultNow().notNull(),
+});
+
+export const insertReminderSchema = createInsertSchema(reminders, {
+  dataLimite: z.union([z.date(), z.string()]).transform(val => 
+    typeof val === 'string' ? new Date(val) : val
+  ),
+}).omit({
+  id: true,
+  criadoEm: true,
+  atualizadoEm: true,
+});
+
+export type InsertReminder = z.infer<typeof insertReminderSchema>;
+export type Reminder = typeof reminders.$inferSelect;
