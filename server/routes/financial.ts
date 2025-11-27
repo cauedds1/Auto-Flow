@@ -146,9 +146,9 @@ router.get("/report/complete", requireFinancialOrManagerAccess, async (req, res)
       .where(
         and(
           eq(billsPayable.empresaId, empresaId),
-          eq(billsPayable.tipo, "pagar"),
-          gte(billsPayable.dataVencimento, startDate.toISOString()),
-          lte(billsPayable.dataVencimento, endDate.toISOString())
+          eq(billsPayable.tipo, "a_pagar"),
+          gte(billsPayable.dataVencimento, startDate),
+          lte(billsPayable.dataVencimento, endDate)
         )
       );
 
@@ -159,9 +159,9 @@ router.get("/report/complete", requireFinancialOrManagerAccess, async (req, res)
       .where(
         and(
           eq(billsPayable.empresaId, empresaId),
-          eq(billsPayable.tipo, "receber"),
-          gte(billsPayable.dataVencimento, startDate.toISOString()),
-          lte(billsPayable.dataVencimento, endDate.toISOString())
+          eq(billsPayable.tipo, "a_receber"),
+          gte(billsPayable.dataVencimento, startDate),
+          lte(billsPayable.dataVencimento, endDate)
         )
       );
 
@@ -172,7 +172,7 @@ router.get("/report/complete", requireFinancialOrManagerAccess, async (req, res)
       .where(
         and(
           eq(storeObservations.empresaId, empresaId),
-          eq(storeObservations.status, "pendente")
+          eq(storeObservations.status, "Pendente")
         )
       );
 
@@ -181,7 +181,7 @@ router.get("/report/complete", requireFinancialOrManagerAccess, async (req, res)
     const aquisicaoTotal = vendasPeriodo.reduce((sum, v) => sum + Number(v.purchasePrice || 0), 0);
     const custoOperacionalTotal = custosPeriodo.reduce((sum, c) => sum + Number(c.value || 0), 0);
     const despesasTotal = despesasPeriodo.reduce((sum, d) => sum + Number(d.valor || 0), 0);
-    const comissoesTotal = comissoesPeriodo.reduce((sum, c) => sum + Number(c.valorPago || 0), 0);
+    const comissoesTotal = comissoesPeriodo.reduce((sum, c) => sum + Number(c.valorComissao || 0), 0);
     
     const custoTotal = aquisicaoTotal + custoOperacionalTotal + despesasTotal + comissoesTotal;
     const lucroLiquido = receitaTotal - custoTotal;
@@ -234,7 +234,7 @@ router.get("/report/complete", requireFinancialOrManagerAccess, async (req, res)
     for (const comissao of comissoesPeriodo) {
       if (comissao.vendedorId && vendedoresMap.has(comissao.vendedorId)) {
         const vendedor = vendedoresMap.get(comissao.vendedorId)!;
-        vendedor.comissao += Number(comissao.valorPago || 0);
+        vendedor.comissao += Number(comissao.valorComissao || 0);
       }
     }
     
@@ -275,8 +275,8 @@ router.get("/report/complete", requireFinancialOrManagerAccess, async (req, res)
       },
       comissoes: {
         total: comissoesTotal,
-        pagas: comissoesPeriodo.filter(c => c.status === "pago").reduce((sum, c) => sum + Number(c.valorPago || 0), 0),
-        aPagar: comissoesPeriodo.filter(c => c.status === "pendente").reduce((sum, c) => sum + Number(c.valorPago || 0), 0),
+        pagas: comissoesPeriodo.filter(c => c.status === "Paga").reduce((sum, c) => sum + Number(c.valorComissao || 0), 0),
+        aPagar: comissoesPeriodo.filter(c => c.status === "A Pagar").reduce((sum, c) => sum + Number(c.valorComissao || 0), 0),
       },
       contasPagar: {
         lista: contasPagar,
