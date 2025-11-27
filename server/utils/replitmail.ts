@@ -34,22 +34,30 @@ export type SmtpMessage = z.infer<typeof zSmtpMessage>
 
 async function getAuthToken(): Promise<{ authToken: string, hostname: string }> {
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
+  console.log("[ReplitMail] REPLIT_CONNECTORS_HOSTNAME:", hostname);
+  
   if (!hostname) {
     throw new Error("REPLIT_CONNECTORS_HOSTNAME environment variable not found");
   }
 
-  const { stdout } = await promisify(execFile)(
-    "replit",
-    ["identity", "create", "--audience", `https://${hostname}`],
-    { encoding: "utf8" },
-  );
+  try {
+    const { stdout } = await promisify(execFile)(
+      "replit",
+      ["identity", "create", "--audience", `https://${hostname}`],
+      { encoding: "utf8" },
+    );
 
-  const replitToken = stdout.trim();
-  if (!replitToken) {
-    throw new Error("Replit Identity Token not found for repl/depl");
+    const replitToken = stdout.trim();
+    if (!replitToken) {
+      throw new Error("Replit Identity Token not found for repl/depl");
+    }
+
+    console.log("[ReplitMail] Auth token obtained successfully");
+    return { authToken: `Bearer ${replitToken}`, hostname };
+  } catch (error) {
+    console.error("[ReplitMail] Error getting auth token:", error);
+    throw error;
   }
-
-  return { authToken: `Bearer ${replitToken}`, hostname };
 }
 
 export async function sendEmail(message: SmtpMessage): Promise<{
@@ -59,31 +67,44 @@ export async function sendEmail(message: SmtpMessage): Promise<{
   messageId: string;
   response: string;
 }> {
-  const { hostname, authToken } = await getAuthToken();
+  try {
+    console.log("[ReplitMail] Starting to send email to:", message.to);
+    
+    const { hostname, authToken } = await getAuthToken();
+    console.log("[ReplitMail] Got auth, sending to endpoint");
 
-  const response = await fetch(
-    `https://${hostname}/api/v2/mailer/send`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Replit-Authentication": authToken,
-      },
-      body: JSON.stringify({
-        to: message.to,
-        cc: message.cc,
-        subject: message.subject,
-        text: message.text,
-        html: message.html,
-        attachments: message.attachments,
-      }),
+    const response = await fetch(
+      `https://${hostname}/api/v2/mailer/send`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Replit-Authentication": authToken,
+        },
+        body: JSON.stringify({
+          to: message.to,
+          cc: message.cc,
+          subject: message.subject,
+          text: message.text,
+          html: message.html,
+          attachments: message.attachments,
+        }),
+      }
+    );
+
+    console.log("[ReplitMail] Response status:", response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("[ReplitMail] Error response:", errorText);
+      throw new Error(`Failed to send email: ${response.status} - ${errorText}`);
     }
-  );
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to send email");
+    const result = await response.json();
+    console.log("[ReplitMail] Email sent successfully:", result);
+    return result;
+  } catch (error) {
+    console.error("[ReplitMail] Fatal error sending email:", error);
+    throw error;
   }
-
-  return await response.json();
 }
