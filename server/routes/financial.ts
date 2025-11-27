@@ -16,7 +16,7 @@ import {
   insertCommissionsConfigSchema
 } from "@shared/schema";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
-import { requireProprietarioOrGerente, requireFinancialOrManagerAccess } from "../middleware/roleCheck";
+import { requireProprietarioOrGerente, requireFinancialOrManagerAccess, requireRole } from "../middleware/roleCheck";
 
 // Helper para validar autenticação e obter empresaId
 // IMPORTANTE: Não confia no JWT, usa empresaId validado pelo middleware requireRole
@@ -727,6 +727,106 @@ router.delete("/expenses/:id", async (req, res) => {
     );
 
   res.json({ success: true });
+});
+
+// ============================================
+// DASHBOARD DO VENDEDOR
+// ============================================
+
+router.get("/seller-dashboard", requireRole(["vendedor"]), async (req, res) => {
+  try {
+    const userId = req.user?.claims?.id || req.user?.claims?.sub;
+    if (!userId) return res.status(401).json({ error: "Não autenticado" });
+
+    const user = req.userFromDb;
+    if (user.role !== "vendedor") return res.status(403).json({ error: "Apenas vendedores podem acessar" });
+
+    const empresaId = user.empresaId;
+    const now = new Date();
+    const mesNum = now.getMonth() + 1;
+    const anoNum = now.getFullYear();
+    const startDate = new Date(anoNum, mesNum - 1, 1);
+    const endDate = new Date(anoNum, mesNum, 0, 23, 59, 59);
+
+    // Meta do vendedor
+    const [metaVendedor] = await db
+      .select()
+      .from(salesTargets)
+      .where(
+        and(
+          eq(salesTargets.empresaId, empresaId),
+          eq(salesTargets.vendedorId, userId)
+        )
+      )
+      .limit(1);
+
+    // Vendas do vendedor no mês
+    const vendasVendedor = await db
+      .select()
+      .from(vehicles)
+      .where(
+        and(
+          eq(vehicles.empresaId, empresaId),
+          eq(vehicles.vendedorId, userId),
+          eq(vehicles.status, "Vendido"),
+          gte(vehicles.dataVenda, startDate),
+          lte(vehicles.dataVenda, endDate)
+        )
+      );
+
+    // Comissões do vendedor
+    const [comissaoData] = await db
+      .select({
+        total: sql<string>`COALESCE(SUM(${commissionPayments.valorComissao}), 0)`,
+        pagas: sql<string>`COALESCE(SUM(CASE WHEN ${commissionPayments.status} = 'Paga' THEN ${commissionPayments.valorComissao} ELSE 0 END), 0)`,
+        aPagar: sql<string>`COALESCE(SUM(CASE WHEN ${commissionPayments.status} = 'A Pagar' THEN ${commissionPayments.valorComissao} ELSE 0 END), 0)`,
+      })
+      .from(commissionPayments)
+      .where(
+        and(
+          eq(commissionPayments.empresaId, empresaId),
+          eq(commissionPayments.vendedorId, userId),
+          gte(commissionPayments.createdAt, startDate),
+          lte(commissionPayments.createdAt, endDate)
+        )
+      );
+
+    // Percentual de comissão do vendedor
+    const [percentualConfig] = await db
+      .select()
+      .from(commissionsConfig)
+      .where(
+        and(
+          eq(commissionsConfig.empresaId, empresaId),
+          eq(commissionsConfig.vendedorId, userId)
+        )
+      )
+      .limit(1);
+
+    const quantidadeVendas = vendasVendedor.length;
+    const receitaTotal = vendasVendedor.reduce((sum, v) => sum + Number(v.salePrice || 0), 0);
+    const metaQuantidade = metaVendedor?.metaQuantidade || null;
+    const metaValor = metaVendedor?.metaValor ? Number(metaVendedor.metaValor) : null;
+    const percentualComissao = percentualConfig?.percentualComissao ? Number(percentualConfig.percentualComissao) : 0;
+
+    res.json({
+      meta: {
+        metaQuantidade,
+        metaValor,
+        quantidadeVendas,
+        receitaTotal,
+      },
+      comissoes: {
+        total: Number(comissaoData?.total || 0),
+        pagas: Number(comissaoData?.pagas || 0),
+        aPagar: Number(comissaoData?.aPagar || 0),
+        percentualComissao,
+      },
+    });
+  } catch (error) {
+    console.error("Erro ao gerar dashboard do vendedor:", error);
+    res.status(500).json({ error: "Erro ao gerar dashboard" });
+  }
 });
 
 // ============================================
