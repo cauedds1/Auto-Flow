@@ -74,7 +74,7 @@ export function ChangeLocationDialog({
     salePrice: "",
   });
 
-  const { data: users = [] } = useQuery<Array<{ id: string; firstName: string; lastName: string }>>({
+  const { data: allUsers = [] } = useQuery<Array<{ id: string; firstName: string; lastName: string; role?: string }>>({
     queryKey: ["/api/users"],
     queryFn: async () => {
       const response = await fetch("/api/users");
@@ -85,6 +85,11 @@ export function ChangeLocationDialog({
     },
     enabled: open && formData.status === "Vendido",
   });
+
+  // Filtrar apenas vendedores, gerentes e proprietários (excluir motorista e financeiro)
+  const users = allUsers.filter(user => 
+    ["vendedor", "gerente", "proprietario"].includes(user.role || "")
+  );
 
   // Buscar localizações das configurações avançadas
   const { data: advancedSettings } = useQuery({

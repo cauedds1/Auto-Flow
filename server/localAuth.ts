@@ -74,6 +74,11 @@ export function setupLocalAuth() {
             return done(null, false, { message: "Email ou senha incorretos" });
           }
 
+          // Verificar se usuário está ativo
+          if (user.isActive === "false") {
+            return done(null, false, { message: "Sua conta foi desativada. Entre em contato com o administrador." });
+          }
+
           return done(null, {
             claims: {
               id: user.id, // Use 'id' instead of 'sub' for consistency

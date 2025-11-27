@@ -9,7 +9,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users as UsersIcon, UserPlus, Edit, XCircle, CheckCircle, DollarSign, Shield } from "lucide-react";
+import { Users as UsersIcon, UserPlus, Edit, XCircle, CheckCircle, DollarSign, Shield, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { getRoleName, getRoleBadgeColor, AVAILABLE_PERMISSIONS, type UserRole } from "@/hooks/use-permissions";
 import { formatDistanceToNow } from "date-fns";
@@ -36,6 +46,7 @@ export default function Users() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
   // Buscar usuários
   const { data: users = [], isLoading } = useQuery<User[]>({
@@ -113,6 +124,35 @@ export default function Users() {
     });
   };
 
+  // Deletar usuário
+  const deleteUser = useMutation({
+    mutationFn: async (userId: string) => {
+      const response = await fetch(`/api/users/${userId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Erro ao remover usuário");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      setUserToDelete(null);
+      toast({
+        title: "Usuário removido!",
+        description: "O usuário foi removido permanentemente.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao remover usuário",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -187,6 +227,7 @@ export default function Users() {
                       setSelectedUser(user);
                       setIsEditDialogOpen(true);
                     }}
+                    title="Editar usuário"
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
@@ -194,12 +235,22 @@ export default function Users() {
                     variant={user.isActive === "true" ? "outline" : "default"}
                     size="sm"
                     onClick={() => handleToggleActive(user)}
+                    title={user.isActive === "true" ? "Desativar usuário" : "Ativar usuário"}
                   >
                     {user.isActive === "true" ? (
                       <XCircle className="h-4 w-4" />
                     ) : (
                       <CheckCircle className="h-4 w-4" />
                     )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setUserToDelete(user)}
+                    title="Remover usuário permanentemente"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
@@ -234,6 +285,31 @@ export default function Users() {
           isLoading={updateUser.isPending}
         />
       )}
+
+      {/* Dialog Confirmar Exclusão */}
+      <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover Usuário</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover permanentemente o usuário{" "}
+              <strong>{userToDelete?.firstName} {userToDelete?.lastName}</strong>?
+              <br /><br />
+              Esta ação não pode ser desfeita. Todos os dados associados a este usuário serão mantidos, 
+              mas ele não poderá mais acessar o sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => userToDelete && deleteUser.mutate(userToDelete.id)}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {deleteUser.isPending ? "Removendo..." : "Remover Permanentemente"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -363,8 +439,25 @@ function EditUserDialog({ open, onOpenChange, user, onSubmit, isLoading }: EditU
     comissaoFixa: user.comissaoFixa || "",
   });
 
+  // Normalizar customPermissions: converter strings "true"/"false" para booleanos
+  const normalizePermissions = (perms: any): CustomPermissions => {
+    if (!perms) return {};
+    const normalized: CustomPermissions = {};
+    for (const key of Object.keys(perms)) {
+      const value = perms[key];
+      if (value === "true" || value === true) {
+        normalized[key as keyof CustomPermissions] = true;
+      } else if (value === "false" || value === false) {
+        normalized[key as keyof CustomPermissions] = false;
+      } else {
+        normalized[key as keyof CustomPermissions] = value;
+      }
+    }
+    return normalized;
+  };
+
   const [customPermissions, setCustomPermissions] = useState<CustomPermissions>(
-    user.customPermissions || {}
+    normalizePermissions(user.customPermissions)
   );
 
   const [activeTab, setActiveTab] = useState("info");

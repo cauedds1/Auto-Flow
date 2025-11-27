@@ -1443,14 +1443,14 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
       
       // Verificar senha atual
       const bcrypt = require("bcrypt");
-      const isValid = await bcrypt.compare(currentPassword, user.password);
+      const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
       if (!isValid) {
         return res.status(400).json({ error: "Senha atual incorreta" });
       }
       
       // Hash da nova senha e atualizar
       const hashedPassword = await bcrypt.hash(newPassword, 10);
-      await storage.updateUser(userId as string, { password: hashedPassword });
+      await storage.updateUser(userId as string, { passwordHash: hashedPassword });
       
       res.json({ success: true, message: "Senha alterada com sucesso" });
     } catch (error) {
@@ -1777,7 +1777,7 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
       }
 
       // Validar role
-      const validRoles = ["proprietario", "gerente", "vendedor", "motorista"];
+      const validRoles = ["proprietario", "gerente", "financeiro", "vendedor", "motorista"];
       if (!validRoles.includes(role)) {
         return res.status(400).json({ error: "Papel inválido" });
       }
@@ -1844,7 +1844,7 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
       if (firstName !== undefined) updates.firstName = firstName;
       if (lastName !== undefined) updates.lastName = lastName;
       if (role !== undefined) {
-        const validRoles = ["proprietario", "gerente", "vendedor", "motorista"];
+        const validRoles = ["proprietario", "gerente", "financeiro", "vendedor", "motorista"];
         if (!validRoles.includes(role)) {
           return res.status(400).json({ error: "Papel inválido" });
         }
@@ -1889,6 +1889,45 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
     } catch (error) {
       console.error("Erro ao atualizar usuário:", error);
       res.status(500).json({ error: "Erro ao atualizar usuário" });
+    }
+  });
+
+  // DELETE /api/users/:id - Remover usuário permanentemente (só Proprietário)
+  app.delete("/api/users/:id", isAuthenticated, requireProprietario, async (req: any, res) => {
+    try {
+      const userCompany = await getUserWithCompany(req);
+      if (!userCompany) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+
+      // Buscar usuário a ser removido
+      const targetUser = await storage.getUser(req.params.id);
+      if (!targetUser) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+
+      // Verificar se usuário pertence à mesma empresa
+      if (targetUser.empresaId !== userCompany.empresaId) {
+        return res.status(403).json({ error: "Usuário não pertence a esta empresa" });
+      }
+
+      // Evitar que proprietário delete a si mesmo
+      if (targetUser.id === userCompany.userId) {
+        return res.status(400).json({ error: "Você não pode remover sua própria conta" });
+      }
+
+      // Evitar deletar outro proprietário
+      if (targetUser.role === "proprietario") {
+        return res.status(400).json({ error: "Não é possível remover outro proprietário" });
+      }
+
+      // Deletar usuário do banco
+      await db.delete(users).where(eq(users.id, req.params.id));
+
+      res.json({ success: true, message: "Usuário removido com sucesso" });
+    } catch (error) {
+      console.error("Erro ao remover usuário:", error);
+      res.status(500).json({ error: "Erro ao remover usuário" });
     }
   });
 
