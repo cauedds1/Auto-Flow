@@ -733,14 +733,17 @@ router.delete("/expenses/:id", async (req, res) => {
 // GERENCIAR METAS DE VENDAS
 // ============================================
 
-router.post("/sales-targets", requireRole(["vendedor"]), async (req, res) => {
+router.post("/sales-targets", requireRole(["vendedor", "proprietario", "gerente"]), async (req, res) => {
   try {
-    const userId = req.user?.claims?.id || req.user?.claims?.sub;
+    const { metaQuantidade, metaValor, vendedorId } = req.body;
+    
+    // Se for vendedor, usa seu próprio ID
+    const userId = req.roleCheck?.userData?.id || vendedorId;
     if (!userId) return res.status(401).json({ error: "Não autenticado" });
 
-    const user = req.userFromDb;
-    const empresaId = user.empresaId;
-    const { metaQuantidade, metaValor } = req.body;
+    // Pega a empresa do request
+    const empresaId = req.roleCheck?.userData?.empresaId;
+    if (!empresaId) return res.status(401).json({ error: "Empresa não identificada" });
 
     const now = new Date();
     const mesReferencia = now.getMonth() + 1;
@@ -795,13 +798,13 @@ router.post("/sales-targets", requireRole(["vendedor"]), async (req, res) => {
 
 router.get("/seller-dashboard", requireRole(["vendedor"]), async (req, res) => {
   try {
-    const userId = req.user?.claims?.id || req.user?.claims?.sub;
-    if (!userId) return res.status(401).json({ error: "Não autenticado" });
+    const userData = req.roleCheck?.userData;
+    if (!userData) return res.status(401).json({ error: "Não autenticado" });
 
-    const user = req.userFromDb;
-    if (user.role !== "vendedor") return res.status(403).json({ error: "Apenas vendedores podem acessar" });
+    const userId = userData.id;
+    if (userData.role !== "vendedor") return res.status(403).json({ error: "Apenas vendedores podem acessar" });
 
-    const empresaId = user.empresaId;
+    const empresaId = userData.empresaId;
     const now = new Date();
     const mesNum = now.getMonth() + 1;
     const anoNum = now.getFullYear();

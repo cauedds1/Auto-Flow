@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users as UsersIcon, UserPlus, Edit, XCircle, CheckCircle, DollarSign, Shield, Trash2 } from "lucide-react";
+import { Users as UsersIcon, UserPlus, Edit, XCircle, CheckCircle, DollarSign, Shield, Trash2, Target } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +38,8 @@ interface User {
   comissaoFixa?: string | null;
   usarComissaoFixaGlobal?: string;
   customPermissions?: CustomPermissions;
+  metaQuantidade?: number | null;
+  metaValor?: string | null;
 }
 
 export default function Users() {
@@ -437,6 +439,8 @@ function EditUserDialog({ open, onOpenChange, user, onSubmit, isLoading }: EditU
     role: user.role,
     usarComissaoFixaGlobal: user.usarComissaoFixaGlobal !== "false",
     comissaoFixa: user.comissaoFixa || "",
+    metaQuantidade: user.metaQuantidade?.toString() || "",
+    metaValor: user.metaValor || "",
   });
 
   // Normalizar customPermissions: converter strings "true"/"false" para booleanos
@@ -473,6 +477,8 @@ function EditUserDialog({ open, onOpenChange, user, onSubmit, isLoading }: EditU
       ...formData,
       usarComissaoFixaGlobal: formData.usarComissaoFixaGlobal ? "true" : "false",
       comissaoFixa: formData.usarComissaoFixaGlobal ? null : (formData.comissaoFixa || null),
+      metaQuantidade: formData.metaQuantidade ? parseInt(formData.metaQuantidade) : null,
+      metaValor: formData.metaValor || null,
       customPermissions: permissionsToSubmit,
     };
     onSubmit(dataToSubmit);
@@ -598,6 +604,42 @@ function EditUserDialog({ open, onOpenChange, user, onSubmit, isLoading }: EditU
                         </p>
                       </div>
                     )}
+
+                    {/* Metas de vendas */}
+                    <div className="space-y-4 pt-4 border-t">
+                      <div className="flex items-center gap-2">
+                        <Target className="h-5 w-5 text-blue-600" />
+                        <Label className="text-base font-semibold">Metas de Vendas</Label>
+                      </div>
+
+                      <div className="grid gap-2">
+                        <Label htmlFor="meta-quantidade">Meta de Quantidade (Veículos)</Label>
+                        <Input
+                          id="meta-quantidade"
+                          type="number"
+                          placeholder="Ex: 5"
+                          value={formData.metaQuantidade}
+                          onChange={(e) => setFormData({ ...formData, metaQuantidade: e.target.value })}
+                          data-testid="input-edit-meta-quantidade"
+                        />
+                      </div>
+
+                      <div className="grid gap-2">
+                        <Label htmlFor="meta-valor">Meta de Faturamento (R$)</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
+                          <Input
+                            id="meta-valor"
+                            type="number"
+                            placeholder="Ex: 50000"
+                            className="pl-10"
+                            value={formData.metaValor}
+                            onChange={(e) => setFormData({ ...formData, metaValor: e.target.value })}
+                            data-testid="input-edit-meta-valor"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
