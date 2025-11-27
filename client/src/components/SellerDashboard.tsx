@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
-import { Target, TrendingUp, Check, AlertCircle } from "lucide-react";
+import { Target, TrendingUp, Check, AlertCircle, Car } from "lucide-react";
 
 type SellerDashboardData = {
   meta: {
@@ -17,6 +17,14 @@ type SellerDashboardData = {
     aPagar: number;
     percentualComissao: number;
   };
+  veiculos: {
+    id: string;
+    marca: string;
+    modelo: string;
+    ano: number;
+    salePrice: string | null;
+    dataVenda: string;
+  }[];
 };
 
 export function SellerDashboard() {
@@ -149,6 +157,37 @@ export function SellerDashboard() {
           </div>
         </Card>
       </motion.div>
+
+      {/* Veículos Vendidos */}
+      {data.veiculos && data.veiculos.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+          <Card className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Car className="h-5 w-5 text-blue-600" />
+              <p className="text-sm font-medium text-muted-foreground">Veículos Vendidos este Mês</p>
+            </div>
+
+            <div className="space-y-3">
+              {data.veiculos.map((veiculo) => (
+                <div key={veiculo.id} className="flex items-center justify-between p-3 bg-muted rounded-md" data-testid={`card-vehicle-${veiculo.id}`}>
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">{veiculo.marca} {veiculo.modelo}</p>
+                    <p className="text-xs text-muted-foreground">{veiculo.ano}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-foreground">
+                      R$ {Number(veiculo.salePrice || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(veiculo.dataVenda).toLocaleDateString("pt-BR")}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </motion.div>
+      )}
     </div>
   );
 }

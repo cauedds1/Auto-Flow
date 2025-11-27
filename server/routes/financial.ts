@@ -458,6 +458,14 @@ router.get("/seller-dashboard", requireRole(["vendedor"]), async (req, res) => {
         aPagar: Number(comissaoData?.aPagar || 0),
         percentualComissao,
       },
+      veiculos: vendasVendedor.map(v => ({
+        id: v.id,
+        marca: v.marca,
+        modelo: v.modelo,
+        ano: v.ano,
+        salePrice: v.salePrice,
+        dataVenda: v.dataVenda?.toISOString() || new Date().toISOString(),
+      })),
     });
   } catch (error) {
     console.error("Erro ao gerar dashboard do vendedor:", error);
