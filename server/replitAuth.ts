@@ -60,7 +60,7 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   // Local signup endpoint
-  app.post("/api/auth/signup", (req, res, next) => {
+  app.post("/api/auth/signup-step1", (req, res, next) => {
     // Server-side validation
     const { email, password, firstName, lastName } = req.body;
     
