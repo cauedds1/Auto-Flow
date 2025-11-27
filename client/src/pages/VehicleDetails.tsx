@@ -6,6 +6,7 @@ import { VehicleDetailsHeader } from "@/components/VehicleDetailsHeader";
 import { VehicleTimeline } from "@/components/VehicleTimeline";
 import { VehicleCosts } from "@/components/VehicleCosts";
 import { VehicleDocuments } from "@/components/VehicleDocuments";
+import { RemindersTab } from "@/components/RemindersTab";
 import { AdGenerator } from "@/components/AdGenerator";
 import { PriceSuggestion } from "@/components/PriceSuggestion";
 import { EditVehicleDialog } from "@/components/EditVehicleDialog";
@@ -47,7 +48,7 @@ export default function VehicleDetails() {
   const getInitialTab = () => {
     const searchParams = new URLSearchParams(window.location.search);
     const tabParam = searchParams.get('tab');
-    const validTabs = ['visao-geral', 'historico', 'custos', 'anotacoes', 'preco', 'anuncio', 'midia', 'documentos', 'checklist'];
+    const validTabs = ['visao-geral', 'historico', 'custos', 'anotacoes', 'lembretes', 'preco', 'anuncio', 'midia', 'documentos', 'checklist'];
     return validTabs.includes(tabParam || '') ? (tabParam || "visao-geral") : "visao-geral";
   };
   
@@ -460,6 +461,11 @@ export default function VehicleDetails() {
                 Observações Gerais
               </TabsTrigger>
             )}
+            {can.viewNotesTab && (
+              <TabsTrigger value="lembretes" data-testid="tab-lembretes">
+                Lembretes
+              </TabsTrigger>
+            )}
             {can.viewPriceTab && (
               <TabsTrigger value="preco" data-testid="tab-preco">
                 Sugestão de Preço
@@ -742,6 +748,10 @@ export default function VehicleDetails() {
                 {isSavingNotes ? "Salvando..." : "Salvar Observações"}
               </Button>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="lembretes">
+            <RemindersTab vehicleId={vehicleId} />
           </TabsContent>
 
           <TabsContent value="preco">

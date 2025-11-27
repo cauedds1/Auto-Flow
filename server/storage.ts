@@ -520,6 +520,38 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
+  // Reminders
+  async getVehicleReminders(vehicleId: string): Promise<Reminder[]> {
+    const result = await db.select()
+      .from(reminders)
+      .where(eq(reminders.vehicleId, vehicleId))
+      .orderBy(desc(reminders.dataLimite));
+    return result;
+  }
+
+  async createReminder(reminder: InsertReminder): Promise<Reminder> {
+    const result = await db.insert(reminders).values(reminder as any).returning();
+    return result[0];
+  }
+
+  async updateReminder(id: string, updates: Partial<InsertReminder>): Promise<Reminder | undefined> {
+    const result = await db.update(reminders).set(updates as any).where(eq(reminders.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteReminder(id: string): Promise<boolean> {
+    const result = await db.delete(reminders).where(eq(reminders.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getUserReminders(userId: string, empresaId: string): Promise<Reminder[]> {
+    const result = await db.select()
+      .from(reminders)
+      .where(and(eq(reminders.userId, userId), eq(reminders.empresaId, empresaId)))
+      .orderBy(desc(reminders.dataLimite));
+    return result;
+  }
+
   // User Permissions (Custom Permissions)
   async getUserPermissions(userId: string, empresaId: string) {
     const result = await db.select()
