@@ -118,17 +118,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Email é obrigatório" });
       }
 
+      console.log(`[ForgotPassword] Buscando usuário com email: ${email}`);
+
       const user = await storage.getUserByEmail(email);
       if (!user) {
+        console.log(`[ForgotPassword] Email não encontrado: ${email}`);
         // Segurança: retorna sucesso mesmo se email não existe
         return res.json({ message: "Se o email existir, um código será enviado" });
       }
+
+      console.log(`[ForgotPassword] Usuário encontrado: ${user.id}, gerando código...`);
 
       // Gerar código e expiração
       const code = generateVerificationCode();
       const expiry = getVerificationCodeExpiry();
       
       await storage.updateUserVerificationCode(user.id, code, expiry);
+      console.log(`[ForgotPassword] Código salvo para usuário ${user.id}: ${code}`);
 
       // Enviar email
       const emailHtml = `
@@ -174,16 +180,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 </html>
       `;
 
-      await sendEmail({
+      console.log(`[ForgotPassword] Enviando email para ${email}...`);
+      const emailResult = await sendEmail({
         to: email,
         subject: 'VeloStock - Recuperação de Senha',
         html: emailHtml,
       });
+      console.log(`[ForgotPassword] Email enviado com sucesso:`, emailResult);
 
       res.json({ message: "Código enviado para seu email" });
     } catch (error) {
       console.error("Erro ao enviar código:", error);
-      res.status(500).json({ message: "Erro ao enviar código" });
+      res.status(500).json({ message: `Erro ao enviar código: ${error}` });
     }
   });
 
