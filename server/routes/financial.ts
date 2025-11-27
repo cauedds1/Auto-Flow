@@ -460,9 +460,9 @@ router.get("/seller-dashboard", requireRole(["vendedor"]), async (req, res) => {
       },
       veiculos: vendasVendedor.map(v => ({
         id: v.id,
-        marca: v.marca,
-        modelo: v.modelo,
-        ano: v.ano,
+        marca: v.brand,
+        modelo: v.model,
+        ano: v.year,
         salePrice: v.salePrice,
         dataVenda: v.dataVenda?.toISOString() || new Date().toISOString(),
       })),

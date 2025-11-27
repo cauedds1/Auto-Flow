@@ -79,15 +79,15 @@ export function usePermissions() {
     viewLeads: hasPermission(isProprietario || isGerente || isVendedor, "viewLeads"),
     
     // Ver abas de veículos - Financeiro tem acesso total para visualizar custos e informações financeiras
-    viewOverviewTab: true, // Financeiro pode ver visão geral
-    viewHistoryTab: isProprietario || isGerente || isFinanceiro, // Financeiro pode ver histórico
+    viewOverviewTab: true, // Todos podem ver visão geral
+    viewHistoryTab: isProprietario || isGerente || isFinanceiro || isVendedor, // Vendedor pode ver histórico
     viewCostsTab: true, // Todos podem ver custos
-    viewNotesTab: isProprietario || isGerente || isFinanceiro, // Financeiro pode ver observações
-    viewPriceTab: hasPermission(isProprietario || isGerente || isFinanceiro, "viewPriceTab"),
+    viewNotesTab: isProprietario || isGerente || isFinanceiro || isVendedor, // Vendedor pode ver observações
+    viewPriceTab: hasPermission(isProprietario || isGerente || isFinanceiro || isVendedor, "viewPriceTab"),
     viewAdTab: hasPermission(isProprietario || isGerente || isVendedor, "viewAdTab"),
     viewMediaTab: hasPermission(isProprietario || isGerente || isVendedor, "viewMediaTab"),
     viewDocumentsTab: hasPermission(isProprietario || isGerente || isVendedor || isFinanceiro, "viewDocumentsTab"),
-    viewChecklistTab: isProprietario || isGerente || isVendedor, // Financeiro não precisa ver checklist
+    viewChecklistTab: isProprietario || isGerente || isVendedor, // Vendedor e Financeiro não precisam ver checklist
     
     // Marcar como vendido
     markAsSold: hasPermission(isProprietario || isGerente || isVendedor, "markAsSold"),
