@@ -5,12 +5,15 @@ import { FinancialSummary } from "@/components/FinancialSummary";
 import { RecentActivity } from "@/components/RecentActivity";
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { AddVehicleDialog } from "@/components/AddVehicleDialog";
+import { SellerDashboard } from "@/components/SellerDashboard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingUp, DollarSign, Clock } from "lucide-react";
 import { useCompanyTheme } from "@/components/CompanyThemeProvider";
+import { usePermissions } from "@/hooks/use-permissions";
 
 export default function Dashboard() {
   const { changeIconColors, primaryColor } = useCompanyTheme();
+  const { isVendedor } = usePermissions();
   const { data: vehicles = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/vehicles"],
   });
@@ -39,6 +42,16 @@ export default function Dashboard() {
       {/* Conteúdo principal */}
       <div className="flex-1 overflow-auto p-8">
         <div className="space-y-8 max-w-[1800px] mx-auto">
+          {/* Dashboard de Vendedor */}
+          {isVendedor && (
+            <div className="animate-fade-in">
+              <div className="mb-4">
+                <h2 className="text-2xl font-bold">Minha Meta e Comissões</h2>
+              </div>
+              <SellerDashboard />
+            </div>
+          )}
+          
           {/* Métricas principais - cards com gradientes */}
           <div className="animate-fade-in">
             <DashboardMetricsEnhanced />

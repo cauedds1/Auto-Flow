@@ -17,7 +17,6 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { motion } from "framer-motion";
 import { CommissionDetailsButton } from "@/components/CommissionDetailsButton";
 import { FinancialReportPDF } from "@/components/FinancialReportPDF";
-import { SellerDashboard } from "@/components/SellerDashboard";
 
 const COLORS = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
 
@@ -759,12 +758,7 @@ export default function Reports() {
         </Select>
       </div>
 
-      {isVendedor ? (
-        <div className="w-full">
-          <h2 className="text-2xl font-bold mb-6">Dashboard de Vendedor</h2>
-          <SellerDashboard />
-        </div>
-      ) : hasFinancialAccess ? (
+      {hasFinancialAccess ? (
         <Tabs defaultValue="estoque" className="flex-1">
           <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
             <TabsList>

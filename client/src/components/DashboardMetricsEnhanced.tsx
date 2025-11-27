@@ -3,9 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Car, CheckCircle, Wrench, TrendingUp, DollarSign, Clock, ArrowUp, ArrowDown } from "lucide-react";
 import { useCompanyTheme } from "./CompanyThemeProvider";
+import { usePermissions } from "@/hooks/use-permissions";
 
 export function DashboardMetricsEnhanced() {
   const { changeIconColors } = useCompanyTheme();
+  const { isVendedor } = usePermissions();
   
   const { data: metrics, isLoading } = useQuery<any>({
     queryKey: ["/api/metrics"],
@@ -71,7 +73,7 @@ export function DashboardMetricsEnhanced() {
   const avgMargin = countWithMargin > 0 ? (totalMargin / countWithMargin).toFixed(1) : "0.0";
   const avgDays = countWithDays > 0 ? Math.round(totalDays / countWithDays) : 0;
 
-  const metricsData = [
+  const baseMetricsData = [
     {
       title: "Prontos para Venda",
       value: readyForSale,
@@ -99,6 +101,9 @@ export function DashboardMetricsEnhanced() {
       iconBg: "hsl(var(--badge-color-3) / 0.1)",
       trend: soldThisMonth > 0 ? "up" : null,
     },
+  ];
+
+  const financeMetricsData = [
     {
       title: "Margem Média",
       value: `${avgMargin}%`,
@@ -127,6 +132,8 @@ export function DashboardMetricsEnhanced() {
       trend: null,
     },
   ];
+
+  const metricsData = isVendedor ? baseMetricsData : [...baseMetricsData, ...financeMetricsData];
 
   return (
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
