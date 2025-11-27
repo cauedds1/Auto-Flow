@@ -13,6 +13,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { usePermissions } from "@/hooks/use-permissions";
+import { useCompanyTheme } from "./CompanyThemeProvider";
 
 const menuItems = [
   {
@@ -66,6 +67,7 @@ export function AppSidebar() {
   const [location] = useLocation();
   const { isMobile, setOpenMobile } = useSidebar();
   const { can } = usePermissions();
+  const { changeIconColors, primaryColor } = useCompanyTheme();
 
   const handleLinkClick = () => {
     if (isMobile) {
@@ -107,7 +109,10 @@ export function AppSidebar() {
                     data-testid={`link-${item.title.toLowerCase().replace(/\s/g, '-')}`}
                   >
                     <Link href={item.url} onClick={handleLinkClick}>
-                      <item.icon className="h-5 w-5" />
+                      <item.icon 
+                        className="h-5 w-5"
+                        style={changeIconColors ? { color: primaryColor } : undefined}
+                      />
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>

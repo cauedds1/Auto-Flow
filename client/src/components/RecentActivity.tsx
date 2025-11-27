@@ -4,8 +4,10 @@ import { Activity, ArrowRight, DollarSign } from "lucide-react";
 import { Link } from "wouter";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useCompanyTheme } from "./CompanyThemeProvider";
 
 export function RecentActivity() {
+  const { changeIconColors, secondaryColor } = useCompanyTheme();
   const { data: vehicles = [] } = useQuery<any[]>({
     queryKey: ["/api/vehicles"],
   });
@@ -25,7 +27,10 @@ export function RecentActivity() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
+            <Activity 
+              className="h-5 w-5"
+              style={{ color: changeIconColors ? secondaryColor : undefined }}
+            />
             Atividade Recente
           </CardTitle>
         </div>
@@ -60,8 +65,13 @@ export function RecentActivity() {
                     </div>
                     {vehicle.salePrice && (
                       <div className="flex items-center gap-1 mt-1">
-                        <DollarSign className="h-3 w-3 text-green-500" />
-                        <span className="text-xs text-green-500 font-medium">
+                        <DollarSign 
+                          className="h-3 w-3"
+                          style={{ color: changeIconColors ? secondaryColor : "#22c55e" }}
+                        />
+                        <span 
+                          className="text-xs font-medium"
+                          style={{ color: changeIconColors ? secondaryColor : "#22c55e" }}>
                           {new Intl.NumberFormat('pt-BR', {
                             style: 'currency',
                             currency: 'BRL'

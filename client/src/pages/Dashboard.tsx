@@ -7,8 +7,10 @@ import { KanbanBoard } from "@/components/KanbanBoard";
 import { AddVehicleDialog } from "@/components/AddVehicleDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingUp, DollarSign, Clock } from "lucide-react";
+import { useCompanyTheme } from "@/components/CompanyThemeProvider";
 
 export default function Dashboard() {
+  const { changeIconColors, primaryColor } = useCompanyTheme();
   const { data: vehicles = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/vehicles"],
   });
@@ -23,7 +25,10 @@ export default function Dashboard() {
               Dashboard
             </h1>
             <p className="mt-2 text-muted-foreground flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
+              <TrendingUp 
+                className="h-4 w-4"
+                style={changeIconColors ? { color: primaryColor } : undefined}
+              />
               Visão geral completa do estoque e operações
             </p>
           </div>

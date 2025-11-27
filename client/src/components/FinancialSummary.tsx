@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, TrendingUp, Package, Wallet } from "lucide-react";
+import { useCompanyTheme } from "./CompanyThemeProvider";
 
 export function FinancialSummary() {
+  const { changeIconColors, primaryColor, secondaryColor } = useCompanyTheme();
   const { data: vehicles = [] } = useQuery<any[]>({
     queryKey: ["/api/vehicles"],
   });
@@ -37,6 +39,7 @@ export function FinancialSummary() {
       icon: Package,
       gradient: "from-blue-500 to-cyan-600",
       bgGradient: "from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20",
+      colorOverride: primaryColor,
     },
     {
       label: "Receita Total",
@@ -45,6 +48,7 @@ export function FinancialSummary() {
       icon: TrendingUp,
       gradient: "from-green-500 to-emerald-600",
       bgGradient: "from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20",
+      colorOverride: secondaryColor,
     },
     {
       label: "Custos Totais",
@@ -53,6 +57,7 @@ export function FinancialSummary() {
       icon: Wallet,
       gradient: "from-orange-500 to-amber-600",
       bgGradient: "from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20",
+      colorOverride: primaryColor,
     },
   ];
 
@@ -60,8 +65,14 @@ export function FinancialSummary() {
     <Card className="overflow-hidden border-none shadow-lg">
       <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10 border-b">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-gradient-to-br from-primary to-secondary">
-            <DollarSign className="h-5 w-5 text-white" />
+          <div 
+            className="p-2 rounded-lg"
+            style={{ backgroundColor: changeIconColors ? primaryColor : undefined }}
+          >
+            <DollarSign 
+              className="h-5 w-5 text-white"
+              style={{ color: changeIconColors ? "white" : undefined }}
+            />
           </div>
           <CardTitle className="text-xl font-bold">Resumo Financeiro</CardTitle>
         </div>
@@ -85,8 +96,14 @@ export function FinancialSummary() {
                     {stat.subtext}
                   </p>
                 </div>
-                <div className={`p-3 rounded-xl bg-gradient-to-br ${stat.gradient} shadow-md`}>
-                  <stat.icon className="h-6 w-6 text-white" />
+                <div 
+                className={`p-3 rounded-xl shadow-md`}
+                style={{ backgroundColor: changeIconColors ? stat.colorOverride : undefined }}
+              >
+                  <stat.icon 
+                    className="h-6 w-6 text-white"
+                    style={{ color: changeIconColors ? "white" : undefined }}
+                  />
                 </div>
               </div>
             </div>

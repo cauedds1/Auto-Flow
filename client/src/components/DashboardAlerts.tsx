@@ -3,8 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, Camera, DollarSign, Clock } from "lucide-react";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
+import { useCompanyTheme } from "./CompanyThemeProvider";
 
 export function DashboardAlerts() {
+  const { changeIconColors, primaryColor, secondaryColor } = useCompanyTheme();
   const { data: vehicles = [] } = useQuery<any[]>({
     queryKey: ["/api/vehicles"],
   });
@@ -80,8 +82,14 @@ export function DashboardAlerts() {
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {alert.title}
               </CardTitle>
-              <div className={`rounded-full p-2 ${alert.bgColor}`}>
-                <alert.icon className={`h-4 w-4 ${alert.color}`} />
+              <div 
+                className={changeIconColors ? "rounded-full p-2" : `rounded-full p-2 ${alert.bgColor}`}
+                style={changeIconColors ? { backgroundColor: primaryColor + "20" } : undefined}
+              >
+                <alert.icon 
+                  className={changeIconColors ? "h-4 w-4" : `h-4 w-4 ${alert.color}`}
+                  style={changeIconColors ? { color: primaryColor } : undefined}
+                />
               </div>
             </div>
           </CardHeader>
