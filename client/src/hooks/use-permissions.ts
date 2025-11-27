@@ -57,8 +57,8 @@ export function usePermissions() {
     // Upload de fotos
     uploadPhotos: true, // Todos podem
     
-    // Ver veículos - Financeiro NÃO vê detalhes completos dos veículos
-    viewVehicles: !isFinanceiro, // Financeiro não tem acesso
+    // Ver veículos - Financeiro pode ver para acessar custos e relatórios
+    viewVehicles: true, // Todos podem ver
     
     // Ver dashboard
     viewDashboard: isProprietario || isGerente || isVendedor || isFinanceiro,
@@ -78,16 +78,16 @@ export function usePermissions() {
     // Ver Leads (proprietário, gerente e vendedor - SEM motorista e SEM financeiro)
     viewLeads: hasPermission(isProprietario || isGerente || isVendedor, "viewLeads"),
     
-    // Ver abas de veículos
-    viewOverviewTab: !isFinanceiro, // Financeiro não vê
-    viewHistoryTab: !isFinanceiro, // Financeiro não vê
-    viewCostsTab: true, // Todos podem ver custos (financeiro precisa ver)
-    viewNotesTab: !isFinanceiro, // Financeiro não vê
+    // Ver abas de veículos - Financeiro tem acesso total para visualizar custos e informações financeiras
+    viewOverviewTab: true, // Financeiro pode ver visão geral
+    viewHistoryTab: isProprietario || isGerente || isFinanceiro, // Financeiro pode ver histórico
+    viewCostsTab: true, // Todos podem ver custos
+    viewNotesTab: isProprietario || isGerente || isFinanceiro, // Financeiro pode ver observações
     viewPriceTab: hasPermission(isProprietario || isGerente || isFinanceiro, "viewPriceTab"),
     viewAdTab: hasPermission(isProprietario || isGerente || isVendedor, "viewAdTab"),
     viewMediaTab: hasPermission(isProprietario || isGerente || isVendedor, "viewMediaTab"),
-    viewDocumentsTab: hasPermission(isProprietario || isGerente || isVendedor, "viewDocumentsTab"),
-    viewChecklistTab: !isFinanceiro, // Financeiro não vê
+    viewDocumentsTab: hasPermission(isProprietario || isGerente || isVendedor || isFinanceiro, "viewDocumentsTab"),
+    viewChecklistTab: isProprietario || isGerente || isVendedor, // Financeiro não precisa ver checklist
     
     // Marcar como vendido
     markAsSold: hasPermission(isProprietario || isGerente || isVendedor, "markAsSold"),

@@ -8,12 +8,15 @@ import {
   vehicles,
   vehicleCosts,
   users,
+  companies,
+  billsPayable,
+  storeObservations,
   insertOperationalExpenseSchema,
   insertCommissionPaymentSchema,
   insertCommissionsConfigSchema
 } from "@shared/schema";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
-import { requireProprietarioOrGerente } from "../middleware/roleCheck";
+import { requireProprietarioOrGerente, requireFinancialOrManagerAccess } from "../middleware/roleCheck";
 
 // Helper para validar autenticação e obter empresaId
 // IMPORTANTE: Não confia no JWT, usa empresaId validado pelo middleware requireRole
@@ -37,7 +40,286 @@ function getUserWithCompany(req: any): { userId: string; empresaId: string } {
 
 const router = Router();
 
-// Todas as rotas financeiras exigem papel de Proprietário ou Gerente
+// Rota do relatório completo com acesso financeiro (proprietário, gerente OU financeiro)
+// Definida ANTES do middleware global para ter seu próprio controle de acesso
+router.get("/report/complete", requireFinancialOrManagerAccess, async (req, res) => {
+  try {
+    const { empresaId } = getUserWithCompanyForReport(req);
+    const { mes, ano, startDate: startDateParam, endDate: endDateParam, tipo } = req.query;
+    
+    // Tipo de relatório
+    const tipoRelatorio = (tipo as string) || "mensal";
+    
+    // Determinar período baseado no tipo
+    let startDate: Date;
+    let endDate: Date;
+    let mesNum: number;
+    let anoNum: number;
+    
+    if (tipoRelatorio === "personalizado" && startDateParam && endDateParam) {
+      startDate = new Date(startDateParam as string);
+      endDate = new Date(endDateParam as string);
+      mesNum = startDate.getMonth() + 1;
+      anoNum = startDate.getFullYear();
+    } else if (tipoRelatorio === "ultimos3meses") {
+      endDate = new Date();
+      startDate = new Date();
+      startDate.setMonth(startDate.getMonth() - 3);
+      mesNum = new Date().getMonth() + 1;
+      anoNum = new Date().getFullYear();
+    } else if (tipoRelatorio === "mespassado") {
+      const now = new Date();
+      startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+      mesNum = startDate.getMonth() + 1;
+      anoNum = startDate.getFullYear();
+    } else {
+      mesNum = mes ? parseInt(mes as string) : new Date().getMonth() + 1;
+      anoNum = ano ? parseInt(ano as string) : new Date().getFullYear();
+      startDate = new Date(anoNum, mesNum - 1, 1);
+      endDate = new Date(anoNum, mesNum, 0, 23, 59, 59, 999);
+    }
+
+    // Buscar dados da empresa
+    const [empresa] = await db
+      .select()
+      .from(companies)
+      .where(eq(companies.id, empresaId))
+      .limit(1);
+
+    // Vendas do período
+    const vendasPeriodo = await db
+      .select()
+      .from(vehicles)
+      .where(
+        and(
+          eq(vehicles.empresaId, empresaId),
+          eq(vehicles.status, "Vendido"),
+          gte(vehicles.dataSaida, startDate.toISOString()),
+          lte(vehicles.dataSaida, endDate.toISOString())
+        )
+      );
+
+    // Custos do período
+    const custosPeriodo = await db
+      .select()
+      .from(vehicleCosts)
+      .where(
+        and(
+          eq(vehicleCosts.empresaId, empresaId),
+          gte(vehicleCosts.date, startDate.toISOString()),
+          lte(vehicleCosts.date, endDate.toISOString())
+        )
+      );
+
+    // Despesas operacionais do período
+    const despesasPeriodo = await db
+      .select()
+      .from(operationalExpenses)
+      .where(
+        and(
+          eq(operationalExpenses.empresaId, empresaId),
+          gte(operationalExpenses.createdAt, startDate),
+          lte(operationalExpenses.createdAt, endDate)
+        )
+      );
+
+    // Pagamentos de comissão do período
+    const comissoesPeriodo = await db
+      .select()
+      .from(commissionPayments)
+      .where(
+        and(
+          eq(commissionPayments.empresaId, empresaId),
+          gte(commissionPayments.createdAt, startDate),
+          lte(commissionPayments.createdAt, endDate)
+        )
+      );
+
+    // Contas a pagar do período
+    const contasPagar = await db
+      .select()
+      .from(billsPayable)
+      .where(
+        and(
+          eq(billsPayable.empresaId, empresaId),
+          eq(billsPayable.tipo, "pagar"),
+          gte(billsPayable.dataVencimento, startDate.toISOString()),
+          lte(billsPayable.dataVencimento, endDate.toISOString())
+        )
+      );
+
+    // Contas a receber do período
+    const contasReceber = await db
+      .select()
+      .from(billsPayable)
+      .where(
+        and(
+          eq(billsPayable.empresaId, empresaId),
+          eq(billsPayable.tipo, "receber"),
+          gte(billsPayable.dataVencimento, startDate.toISOString()),
+          lte(billsPayable.dataVencimento, endDate.toISOString())
+        )
+      );
+
+    // Observações pendentes
+    const observacoesPendentes = await db
+      .select()
+      .from(storeObservations)
+      .where(
+        and(
+          eq(storeObservations.empresaId, empresaId),
+          eq(storeObservations.status, "pendente")
+        )
+      );
+
+    // Cálculos financeiros
+    const receitaTotal = vendasPeriodo.reduce((sum, v) => sum + Number(v.salePrice || 0), 0);
+    const aquisicaoTotal = vendasPeriodo.reduce((sum, v) => sum + Number(v.purchasePrice || 0), 0);
+    const custoOperacionalTotal = custosPeriodo.reduce((sum, c) => sum + Number(c.value || 0), 0);
+    const despesasTotal = despesasPeriodo.reduce((sum, d) => sum + Number(d.valor || 0), 0);
+    const comissoesTotal = comissoesPeriodo.reduce((sum, c) => sum + Number(c.valorPago || 0), 0);
+    
+    const custoTotal = aquisicaoTotal + custoOperacionalTotal + despesasTotal + comissoesTotal;
+    const lucroLiquido = receitaTotal - custoTotal;
+    const margemLucro = receitaTotal > 0 ? (lucroLiquido / receitaTotal) * 100 : 0;
+
+    // Custos por categoria
+    const custosPorCategoria = custosPeriodo.reduce((acc: any[], custo) => {
+      const existing = acc.find(c => c.categoria === custo.category);
+      if (existing) {
+        existing.total += Number(custo.value || 0);
+        existing.quantidade += 1;
+      } else {
+        acc.push({
+          categoria: custo.category,
+          total: Number(custo.value || 0),
+          quantidade: 1
+        });
+      }
+      return acc;
+    }, []).sort((a, b) => b.total - a.total);
+
+    // Ranking de vendedores
+    const vendedoresMap = new Map<string, { nome: string; email: string; vendas: number; receita: number; comissao: number }>();
+    
+    for (const venda of vendasPeriodo) {
+      if (venda.vendedorId) {
+        const existing = vendedoresMap.get(venda.vendedorId);
+        if (existing) {
+          existing.vendas += 1;
+          existing.receita += Number(venda.salePrice || 0);
+        } else {
+          const [vendedor] = await db
+            .select()
+            .from(users)
+            .where(eq(users.id, venda.vendedorId))
+            .limit(1);
+          
+          vendedoresMap.set(venda.vendedorId, {
+            nome: vendedor ? `${vendedor.firstName || ""} ${vendedor.lastName || ""}`.trim() : "Não informado",
+            email: vendedor?.email || "",
+            vendas: 1,
+            receita: Number(venda.salePrice || 0),
+            comissao: 0
+          });
+        }
+      }
+    }
+    
+    // Adicionar comissões aos vendedores
+    for (const comissao of comissoesPeriodo) {
+      if (comissao.vendedorId && vendedoresMap.has(comissao.vendedorId)) {
+        const vendedor = vendedoresMap.get(comissao.vendedorId)!;
+        vendedor.comissao += Number(comissao.valorPago || 0);
+      }
+    }
+    
+    const rankingVendedores = Array.from(vendedoresMap.values()).sort((a, b) => b.receita - a.receita);
+
+    // Totais de contas
+    const totalContasPagar = contasPagar.reduce((sum, c) => sum + Number(c.valor || 0), 0);
+    const totalContasReceber = contasReceber.reduce((sum, c) => sum + Number(c.valor || 0), 0);
+    const contasPagarVencidas = contasPagar.filter(c => new Date(c.dataVencimento) < new Date() && c.status !== "pago");
+    const contasReceberVencidas = contasReceber.filter(c => new Date(c.dataVencimento) < new Date() && c.status !== "pago");
+
+    res.json({
+      empresa: {
+        nome: empresa?.nomeFantasia || "Empresa",
+        logo: empresa?.logoUrl || null,
+      },
+      periodo: {
+        tipo: tipoRelatorio,
+        mes: mesNum,
+        ano: anoNum,
+        dataInicio: startDate.toISOString(),
+        dataFim: endDate.toISOString(),
+      },
+      resumoFinanceiro: {
+        receitaTotal,
+        custoAquisicao: aquisicaoTotal,
+        custoOperacional: custoOperacionalTotal,
+        despesasOperacionais: despesasTotal,
+        comissoes: comissoesTotal,
+        custoTotal,
+        lucroLiquido,
+        margemLucro,
+      },
+      vendas: {
+        quantidade: vendasPeriodo.length,
+        receitaTotal,
+        ticketMedio: vendasPeriodo.length > 0 ? receitaTotal / vendasPeriodo.length : 0,
+      },
+      comissoes: {
+        total: comissoesTotal,
+        pagas: comissoesPeriodo.filter(c => c.status === "pago").reduce((sum, c) => sum + Number(c.valorPago || 0), 0),
+        aPagar: comissoesPeriodo.filter(c => c.status === "pendente").reduce((sum, c) => sum + Number(c.valorPago || 0), 0),
+      },
+      contasPagar: {
+        lista: contasPagar,
+        total: totalContasPagar,
+        vencidas: contasPagarVencidas.length,
+        valorVencido: contasPagarVencidas.reduce((sum, c) => sum + Number(c.valor || 0), 0),
+      },
+      contasReceber: {
+        lista: contasReceber,
+        total: totalContasReceber,
+        vencidas: contasReceberVencidas.length,
+        valorVencido: contasReceberVencidas.reduce((sum, c) => sum + Number(c.valor || 0), 0),
+      },
+      despesasOperacionais: {
+        lista: despesasPeriodo,
+        total: despesasTotal,
+      },
+      custosPorCategoria,
+      rankingVendedores,
+      observacoesPendentes: observacoesPendentes.length,
+      dataGeracao: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Erro ao gerar relatório completo:", error);
+    res.status(500).json({ error: "Erro ao gerar relatório" });
+  }
+});
+
+// Helper para a rota de relatório (aceita financeiro)
+function getUserWithCompanyForReport(req: any): { userId: string; empresaId: string } {
+  const userId = req.user?.claims?.id || req.user?.claims?.sub;
+  
+  if (!userId) {
+    throw new Error("Unauthorized");
+  }
+  
+  const user = req.userFromDb;
+  
+  if (!user?.empresaId) {
+    throw new Error("User not linked to a company");
+  }
+  
+  return { userId, empresaId: user.empresaId };
+}
+
+// Todas as outras rotas financeiras exigem papel de Proprietário ou Gerente
 router.use(requireProprietarioOrGerente);
 
 // ============================================

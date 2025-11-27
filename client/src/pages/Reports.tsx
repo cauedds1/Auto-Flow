@@ -13,8 +13,10 @@ import { subMonths, startOfMonth, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { checklistItems, getChecklistStats, normalizeChecklistData, hasChecklistStarted } from "@shared/checklistUtils";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/use-permissions";
 import { motion } from "framer-motion";
 import { CommissionDetailsButton } from "@/components/CommissionDetailsButton";
+import { FinancialReportPDF } from "@/components/FinancialReportPDF";
 
 const COLORS = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
 
@@ -58,7 +60,8 @@ export default function Reports() {
   const [costPaymentMethodFilter, setCostPaymentMethodFilter] = useState<string>("all");
 
   const { user } = useAuth();
-  const isOwner = user?.role === "proprietario";
+  const { can, isFinanceiro, isProprietario } = usePermissions();
+  const hasFinancialAccess = can.viewFinancialReports; // Proprietário e Financeiro
 
   const getPeriodFromFilter = () => {
     const now = new Date();
@@ -121,17 +124,17 @@ export default function Reports() {
 
   const { data: financialMetrics, isLoading: isLoadingMetrics } = useQuery<FinancialMetrics>({
     queryKey: [buildMetricsUrl()],
-    enabled: isOwner,
+    enabled: hasFinancialAccess,
   });
 
   const { data: sellersRanking = [], isLoading: isLoadingRanking } = useQuery<SellerRanking[]>({
     queryKey: [buildRankingUrl()],
-    enabled: isOwner,
+    enabled: hasFinancialAccess,
   });
 
   const { data: billsDashboard } = useQuery<BillsDashboard>({
     queryKey: ["/api/bills/dashboard"],
-    enabled: isOwner,
+    enabled: hasFinancialAccess,
   });
 
   const getFilteredData = () => {
@@ -755,13 +758,16 @@ export default function Reports() {
         </Select>
       </div>
 
-      {isOwner ? (
+      {hasFinancialAccess ? (
         <Tabs defaultValue="estoque" className="flex-1">
-          <TabsList className="mb-6">
-            <TabsTrigger value="estoque">Estoque</TabsTrigger>
-            <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
-            <TabsTrigger value="custos">Custos</TabsTrigger>
-          </TabsList>
+          <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
+            <TabsList>
+              <TabsTrigger value="estoque">Estoque</TabsTrigger>
+              <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
+              <TabsTrigger value="custos">Custos</TabsTrigger>
+            </TabsList>
+            <FinancialReportPDF />
+          </div>
           
           <TabsContent value="estoque" className="mt-0">
             {inventoryContent}
