@@ -67,19 +67,22 @@ export function ChatbotWidget() {
 
   if (!isOpen) {
     return (
-      <Button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-8 right-8 h-14 w-14 rounded-full shadow-lg z-[9999]"
-        size="icon"
-        data-testid="button-open-chatbot"
-      >
-        <MessageSquare className="h-6 w-6" />
-      </Button>
+      <div style={{ position: "fixed", bottom: "24px", right: "24px", zIndex: 9999 }}>
+        <Button
+          onClick={() => setIsOpen(true)}
+          className="h-14 w-14 rounded-full shadow-lg"
+          size="icon"
+          data-testid="button-open-chatbot"
+        >
+          <MessageSquare className="h-6 w-6" />
+        </Button>
+      </div>
     );
   }
 
   return (
-    <Card className="fixed bottom-8 right-8 w-80 h-96 flex flex-col shadow-2xl z-[9999] overflow-hidden">
+    <div style={{ position: "fixed", bottom: "24px", right: "24px", zIndex: 9999 }}>
+      <Card className="w-80 h-96 flex flex-col shadow-2xl overflow-hidden">
       <div className="flex items-center justify-between p-3 border-b bg-primary text-primary-foreground">
         <div className="flex items-center gap-2">
           <Bot className="h-5 w-5" />
@@ -165,5 +168,6 @@ export function ChatbotWidget() {
         </div>
       </div>
     </Card>
+    </div>
   );
 }
