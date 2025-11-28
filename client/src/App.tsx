@@ -103,37 +103,39 @@ function AppContent() {
   }
 
   return (
-    <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex flex-1 flex-col">
-          <header className="flex h-14 items-center justify-between border-b border-border px-4">
-            <SidebarTrigger data-testid="button-sidebar-toggle" />
-            <div className="flex items-center gap-3">
-              <NotificationCenter />
-              <ModeToggle />
-              <img 
-                src={logoUrl || "/velostock-logo.svg"} 
-                alt={companyName} 
-                className="h-10 w-auto object-contain"
-              />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => window.location.href = '/api/logout'}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                Sair
-              </Button>
-            </div>
-          </header>
-          <main className="flex-1 overflow-auto">
-            <MainAppRouter />
-          </main>
+    <>
+      <SidebarProvider style={style as React.CSSProperties}>
+        <div className="flex h-screen w-full">
+          <AppSidebar />
+          <div className="flex flex-1 flex-col">
+            <header className="flex h-14 items-center justify-between border-b border-border px-4">
+              <SidebarTrigger data-testid="button-sidebar-toggle" />
+              <div className="flex items-center gap-3">
+                <NotificationCenter />
+                <ModeToggle />
+                <img 
+                  src={logoUrl || "/velostock-logo.svg"} 
+                  alt={companyName} 
+                  className="h-10 w-auto object-contain"
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => window.location.href = '/api/logout'}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  Sair
+                </Button>
+              </div>
+            </header>
+            <main className="flex-1 overflow-auto">
+              <MainAppRouter />
+            </main>
+          </div>
         </div>
-      </div>
+      </SidebarProvider>
       <ChatbotWidget />
-    </SidebarProvider>
+    </>
   );
 }
 
