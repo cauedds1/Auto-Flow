@@ -3,8 +3,8 @@ import { isAuthenticated } from "../replitAuth";
 import { storage } from "../storage";
 import { generateCompletion, generateJSON, handleOpenAIError } from "../utils/openai";
 import { db } from "../db";
-import { leads, followUps } from "@shared/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { leads, followUps, vehicles, storeObservations, billsPayable, users } from "@shared/schema";
+import { eq, and, desc, isNull, lt, gte } from "drizzle-orm";
 
 async function getUserWithCompany(req: any): Promise<{ userId: string; empresaId: string } | null> {
   const userId = req.user?.claims?.id || req.user?.claims?.sub;
@@ -204,7 +204,7 @@ Retorne um JSON com: { "analysis": "texto da análise", "recommendations": ["rec
     }
   });
 
-  // POST /api/chatbot/message - Chatbot FAQ
+  // POST /api/chatbot/message - Chatbot FAQ com contexto completo do sistema
   app.post("/api/chatbot/message", isAuthenticated, async (req: any, res) => {
     try {
       const userCompany = await getUserWithCompany(req);
@@ -227,6 +227,11 @@ Retorne um JSON com: { "analysis": "texto da análise", "recommendations": ["rec
       const company = companies.find(c => c.id === userCompany.empresaId);
       const companyName = company?.nomeFantasia || "Nossa Loja";
 
+      // Buscar usuário para verificar permissões
+      const currentUser = await storage.getUser(userCompany.userId);
+      const userRole = currentUser?.role || "vendedor";
+      const userPermissions = currentUser?.customPermissions || {};
+
       // Validate and sanitize conversation history (only allow valid structure)
       const validHistory = Array.isArray(conversationHistory) 
         ? conversationHistory
@@ -248,51 +253,134 @@ Retorne um JSON com: { "analysis": "texto da análise", "recommendations": ["rec
         .map((m) => `${m.role === 'user' ? 'Cliente' : 'Assistente'}: ${m.content}`)
         .join("\n");
 
-      const prompt = `${historyText ? `Histórico:\n${historyText}\n\n` : ''}Cliente: ${sanitizedMessage}
+      // ====== BUSCAR DADOS DO SISTEMA ======
+      // Veículos com detalhes
+      const allVehicles = await db.select({
+        id: vehicles.id,
+        brand: vehicles.brand,
+        model: vehicles.model,
+        year: vehicles.year,
+        color: vehicles.color,
+        status: vehicles.status,
+        location: vehicles.physicalLocation,
+        plate: vehicles.plate,
+      }).from(vehicles).where(eq(vehicles.empresaId, userCompany.empresaId));
 
-Responda de forma útil e personalizada.`;
+      // Observações pendentes
+      const pendingObservations = await db.select({
+        id: storeObservations.id,
+        description: storeObservations.description,
+        status: storeObservations.status,
+        createdAt: storeObservations.createdAt,
+      }).from(storeObservations).where(
+        and(
+          eq(storeObservations.empresaId, userCompany.empresaId),
+          eq(storeObservations.status, "Pendente")
+        )
+      ).limit(10);
+
+      // Contas a pagar (apenas se usuário tem permissão)
+      let billsContext = "";
+      const canViewBills = userRole === "proprietario" || userRole === "gerente" || userPermissions?.viewBills;
+      if (canViewBills) {
+        const bills = await db.select({
+          id: billsPayable.id,
+          descricao: billsPayable.descricao,
+          valor: billsPayable.valor,
+          dataVencimento: billsPayable.dataVencimento,
+          status: billsPayable.status,
+        }).from(billsPayable).where(
+          and(
+            eq(billsPayable.empresaId, userCompany.empresaId),
+            eq(billsPayable.status, "pendente")
+          )
+        ).orderBy(billsPayable.dataVencimento).limit(10);
+        
+        billsContext = bills.length > 0 ? `\n## CONTAS A PAGAR (Pendentes):\n${bills.map(b => 
+          `- ${b.descricao}: R$ ${Number(b.valor).toFixed(2)} (Vence: ${new Date(b.dataVencimento).toLocaleDateString('pt-BR')})`
+        ).join("\n")}` : "\n## CONTAS: Nenhuma conta pendente";
+      } else {
+        billsContext = "\n[Usuário sem permissão para visualizar contas financeiras]";
+      }
+
+      // Leads ativos (do vendedor ou de todos, dependendo do role)
+      let leadsContext = "";
+      const userLeads = userRole === "proprietario" || userRole === "gerente" 
+        ? await db.select({
+            nome: leads.nome,
+            status: leads.status,
+            veiculoInteresseNome: leads.veiculoInteresseNome,
+          }).from(leads).where(
+            and(
+              eq(leads.empresaId, userCompany.empresaId),
+              eq(leads.status, "Negociando")
+            )
+          ).limit(5)
+        : await db.select({
+            nome: leads.nome,
+            status: leads.status,
+            veiculoInteresseNome: leads.veiculoInteresseNome,
+          }).from(leads).where(
+            and(
+              eq(leads.empresaId, userCompany.empresaId),
+              eq(leads.status, "Negociando"),
+              eq(leads.vendedorResponsavel, userCompany.userId)
+            )
+          ).limit(5);
+
+      if (userLeads.length > 0) {
+        leadsContext = `\n## LEADS EM NEGOCIAÇÃO:\n${userLeads.map(l => 
+          `- ${l.nome} (${l.veiculoInteresseNome || "Veículo não especificado"})`
+        ).join("\n")}`;
+      }
+
+      // Formatar dados de veículos
+      const vehiclesContext = allVehicles.length > 0 ? `\n## ESTOQUE DE VEÍCULOS:\n${allVehicles.slice(0, 15).map(v => 
+        `- ${v.brand} ${v.model} ${v.year} (${v.color}) - Placa: ${v.plate || "N/A"} - Status: ${v.status} - Local: ${v.location || "N/A"}`
+      ).join("\n")}` : "\n## ESTOQUE: Sem veículos cadastrados";
+
+      const observationsContext = pendingObservations.length > 0 ? `\n## OBSERVAÇÕES PENDENTES:\n${pendingObservations.map(o => 
+        `- ${o.description} (Criada em: ${new Date(o.createdAt).toLocaleDateString('pt-BR')})`
+      ).join("\n")}` : "\n## OBSERVAÇÕES: Nenhuma observação pendente";
+
+      const systemContext = `${vehiclesContext}${leadsContext}${observationsContext}${billsContext}`;
+
+      const prompt = `${historyText ? `Histórico:\n${historyText}\n\n` : ''}CONTEXTO DO SISTEMA:\n${systemContext}\n\nUsuário: ${sanitizedMessage}
+
+Responda com base nos dados do sistema acima. Seja específico com details como marca, modelo, ano, placa e localização de veículos.`;
 
       const veloStockSystemPrompt = `Você é o assistente virtual especializado do VeloStock - um sistema completo de gestão de revenda de veículos da "${companyName}".
 
-## SOBRE O VELOSTOCK
-VeloStock é uma plataforma profissional para gerenciar 100% do negócio de revenda de veículos:
-- Gestão completa de inventário de veículos
-- Controle de custos e precificação
-- CRM integrado para leads e clientes
-- Documentação e checklist de preparação
-- Relatórios financeiros e operacionais
-- IA integrada para marketing e vendas
+## VISÃO GERAL
+VeloStock é uma plataforma profissional que você domina completamente. Você conhece todos os veículos em estoque, observações pendentes, leads em negociação, contas a pagar e toda a operação do negócio.
 
-## PARA USUÁRIOS DO SISTEMA (Vendedores, Gerentes, Proprietários)
-Você pode ajudar com:
-1. **Navigação**: Como usar cada aba/seção (Veículos, Leads, Relatórios, Documentação, etc)
-2. **Operações**: Como criar leads, atualizar status de veículos, registrar custos, gerar anúncios com IA
-3. **Dúvidas de negócio**: Análise de vendas, preços recomendados, estratégias de vendas
-4. **Técnicas**: Como usar LeadAssistant (gera respostas para clientes), AdGenerator (cria anúncios para múltiplas plataformas), ChatbotWidget (você mesmo!)
+## DADOS DO SISTEMA QUE VOCÊ TEM ACESSO
+${systemContext}
+
+## ROLE DO USUÁRIO ATUAL
+Papel: ${userRole}
+Permissões de Visualização de Contas: ${canViewBills ? 'SIM' : 'NÃO'}
+
+## COMPORTAMENTO OBRIGATÓRIO
+1. **Você é o MESTRE do sistema** - responde tudo com detalhes específicos (marca, modelo, ano, placa, localização)
+2. **Respeite permissões**: Se o usuário pergunta sobre contas (boletos, pagamentos, faturamento) e não tem permissão, recuse educadamente
+3. **Sempre cite detalhes**: Quando mencionar um veículo, inclua: marca + modelo + ano + cor + placa + status + localização
+4. **Para observações pendentes**: Liste descricao e quando foram criadas
+5. **Para contas a pagar**: Só mostre se o usuário tem permissão (role proprietario/gerente OU permissão customizada)
+
+## EXEMPLOS DE RESPOSTAS ESPERADAS
+- Pergunta: "Onde está o onix prata?"
+  Resposta: "Onix 2017 prata Placa OKG-0935 está em [localização]. Onix 2022 prata Placa RYT-7648 está em [localização]."
+- Pergunta: "Quais observações estão pendentes?"
+  Resposta: "[Lista de observações com detalhes]"
+- Pergunta: "Quais contas devo pagar?"
+  Resposta: Se tem permissão: "[Lista de contas com prazos]" | Se não tem: "Desculpe, você não tem acesso aos dados financeiros da loja"
 
 ## PARA CLIENTES/COMPRADORES
-Você pode ajudar com:
-1. **Sobre veículos**: Características, opcionais, financiamento, documentação
-2. **Processo de compra**: Etapas, documentos necessários, prazos
-3. **Garantia e pós-venda**: Políticas, cobertura, contato de suporte
-4. **Comparações**: Ajudar a escolher entre modelos disponíveis
-5. **Avaliação**: Informações sobre preço justo baseado em mercado
-
-## COMPORTAMENTO ESPERADO
-- Sempre responda em português brasileiro
-- Seja profissional, amigável e conciso
-- Para usuários: explique recursos do VeloStock com exemplos práticos
-- Para clientes: seja persuasivo mas honesto sobre os veículos
-- Se não souber detalhes específicos sobre um veículo, oriente a falar com um vendedor
-- Use a contexto da conversa anterior para respostas mais personalizadas
-- Nunca invente features ou capacidades que o VeloStock não tem
-
-## PRINCIPAIS FUNCIONALIDADES DE IA NO VELOSTOCK
-1. **LeadAssistant**: Gera respostas prontas para responder clientes interessados baseado no carro sendo negociado
-2. **AdGenerator**: Cria anúncios otimizados para Instagram, Facebook, OLX, WhatsApp, e SEO
-3. **Análise de Vendedor**: Avalia performance e dá recomendações de coaching
-4. **Coaching**: Dicas diárias personalizadas para melhorar vendas
-5. **ChatbotWidget**: Você! Assistente para clientes e usuários 24/7`;
+Se reconhecer que é um cliente externo (não está no sistema):
+1. Responda sobre veículos disponíveis com detalhes técnicos
+2. Seja persuasivo mas honesto
+3. Direcione para contato com vendedor conforme necessário`;
 
       const response = await generateCompletion(prompt, {
         model: "gpt-4o-mini",
