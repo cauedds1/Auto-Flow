@@ -161,47 +161,60 @@ export function EditVehicleDialog({ vehicleId, vehicle, open, onOpenChange }: Ed
     setFipeMetadata(null);
   }, [vehicle, form]);
 
-  // SIMPLE useEffect: Carrega versões quando marca/modelo/ano mudam
+  // Limpar cache quando mudanças ocorrem
   useEffect(() => {
-    // Pega valores diretos do form (getValues é mais confiável que watch)
-    const brand = form.getValues("brand")?.trim();
-    const model = form.getValues("model")?.trim();
+    setFipeVersions([]);
+    setFipeMetadata(null);
+    form.setValue("version", "");
+  }, [watchedBrand, watchedModel, watchedYear]);
+
+  // Auto-load em background quando campos estiverem preenchidos
+  useEffect(() => {
+    const brand = form.getValues("brand");
+    const model = form.getValues("model");
     const year = form.getValues("year");
+    
+    if (!brand || !model || !year) return;
 
-    // Validação simples: se algum campo essencial está vazio, limpa versões
-    if (!brand || !model || !year) {
-      setFipeVersions([]);
-      setFipeMetadata(null);
-      form.setValue("version", "");
-      return;
-    }
-
-    // Converter year para número de forma segura
-    const yearNum = parseInt(String(year), 10);
-    if (isNaN(yearNum) || yearNum < 1900 || yearNum > 2100) {
-      setFipeVersions([]);
-      setFipeMetadata(null);
-      form.setValue("version", "");
-      return;
-    }
-
-    // Carregar versões em background
     const loadVersions = async () => {
       try {
+        const yearNum = parseInt(String(year), 10);
+        if (isNaN(yearNum)) return;
+        
         const result = await versionsMutation.mutateAsync({ 
-          brand, 
-          model, 
-          year: yearNum
+          brand, model, year: yearNum
         });
         setFipeVersions(result.versions);
         setFipeMetadata({ brandId: result.brandId });
-      } catch (error: any) {
-        // Falha silenciosa
-      }
+      } catch (e) {}
     };
 
     loadVersions();
   }, [watchedBrand, watchedModel, watchedYear]);
+
+  const handleLoadVersions = async () => {
+    const brand = form.getValues("brand");
+    const model = form.getValues("model");
+    const year = form.getValues("year");
+
+    if (!brand || !model || !year) {
+      toast({ title: "Campos incompletos", variant: "destructive" });
+      return;
+    }
+
+    if (fipeVersions.length > 0) return;
+
+    try {
+      const yearNum = parseInt(String(year), 10);
+      const result = await versionsMutation.mutateAsync({ 
+        brand, model, year: yearNum
+      });
+      setFipeVersions(result.versions);
+      setFipeMetadata({ brandId: result.brandId });
+    } catch (error: any) {
+      toast({ title: "Erro ao buscar versões", variant: "destructive" });
+    }
+  };
 
   const removeExistingImage = async (imageId: string) => {
     try {
@@ -505,6 +518,7 @@ export function EditVehicleDialog({ vehicleId, vehicle, open, onOpenChange }: Ed
                     <Select 
                       onValueChange={handleVersionChange}
                       value={field.value}
+                      onOpenChange={(open) => { if (open) handleLoadVersions(); }}
                     >
                       <FormControl>
                         <SelectTrigger>
