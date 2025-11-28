@@ -270,44 +270,30 @@ export function EditVehicleDialog({ vehicleId, vehicle, open, onOpenChange }: Ed
     }
   };
 
-  const handleLoadVersions = async () => {
+  // CARREGAMENTO AUTOMÁTICO EM BACKGROUND: Buscar versões assim que marca/modelo/ano forem preenchidos
+  useEffect(() => {
     const brand = form.getValues("brand");
     const model = form.getValues("model");
     const year = form.getValues("year");
 
-    if (!brand || !model || !year) {
-      toast({
-        title: "Campos incompletos",
-        description: "Preencha marca, modelo e ano primeiro.",
-        variant: "destructive",
-      });
+    // Só carrega se tiver todos os dados e ainda não carregou
+    if (!brand || !model || !year || fipeVersions.length > 0) {
       return;
     }
 
-    if (fipeVersions.length > 0) {
-      return;
-    }
-
-    try {
-      const result = await versionsMutation.mutateAsync();
-      setFipeVersions(result.versions);
-      setFipeMetadata({ brandId: result.brandId });
-      
-      if (result.versions.length === 0) {
-        toast({
-          title: "Nenhuma versão encontrada",
-          description: "Não foram encontradas versões FIPE para este veículo.",
-          variant: "destructive",
-        });
+    // Carregar versões em background (sem aguardar)
+    const loadVersions = async () => {
+      try {
+        const result = await versionsMutation.mutateAsync();
+        setFipeVersions(result.versions);
+        setFipeMetadata({ brandId: result.brandId });
+      } catch (error: any) {
+        // Falha silenciosa - usuário verá mensagem de erro se tentar usar
       }
-    } catch (error: any) {
-      toast({
-        title: "Erro ao buscar versões",
-        description: error.message || "Não foi possível encontrar o veículo. Verifique os dados.",
-        variant: "destructive",
-      });
-    }
-  };
+    };
+
+    loadVersions();
+  }, [watchedBrand, watchedModel, watchedYear, fipeVersions.length]);
 
   const handleVersionChange = async (versionJson: string) => {
     if (!fipeMetadata) return;
