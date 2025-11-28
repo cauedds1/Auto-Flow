@@ -320,6 +320,30 @@ Retorne um JSON com: { "analysis": "texto da análise", "recommendations": ["rec
         valorVenda: vehicles.valorVenda,
       }).from(vehicles).where(eq(vehicles.empresaId, userCompany.empresaId));
 
+      // ====== EXTRAIR VEÍCULO EM CONTEXTO DO HISTÓRICO ======
+      // Procura por menções de marca + modelo nos últimos 5 turnos
+      let vehicleInContext: { id: string; brand: string; model: string; year?: number } | null = null;
+      if (validHistory.length > 0 && allVehicles.length > 0) {
+        const recentText = validHistory
+          .map((m) => m.content)
+          .join(" ")
+          .toLowerCase();
+        
+        // Procurar por nome de veículo mencionado (ex: "chevrolet onix", "ford fiesta")
+        for (const vehicle of allVehicles) {
+          const searchText = `${vehicle.brand} ${vehicle.model}`.toLowerCase();
+          if (recentText.includes(searchText)) {
+            vehicleInContext = {
+              id: vehicle.id,
+              brand: vehicle.brand,
+              model: vehicle.model,
+              year: vehicle.year,
+            };
+            break;
+          }
+        }
+      }
+
       // 2. Observações pendentes
       const pendingObservations = await db.select({
         id: storeObservations.id,
@@ -400,16 +424,38 @@ Retorne um JSON com: { "analysis": "texto da análise", "recommendations": ["rec
         return `- ${v.brand} ${v.model} ${v.year} | Vendedor: ${v.vendedorNome || "N/A"} | ${dataStr} | ${valor}`;
       }).join("\n")}` : "\n## VENDAS: Nenhuma venda registrada";
 
-      // 7. Custos de veículos (limitado aos primeiros 15)
-      const vehicleCostsList = await db.select({
-        vehicleId: vehicleCosts.vehicleId,
-        description: vehicleCosts.description,
-        value: vehicleCosts.value,
-      }).from(vehicleCosts).limit(15);
-
-      const costsContext = vehicleCostsList.length > 0 ? `\n## CUSTOS REGISTRADOS:\n${vehicleCostsList.map(c => 
-        `- Custo: ${c.description} | R$ ${Number(c.value).toFixed(2)}`
-      ).join("\n")}` : "\n## CUSTOS: Nenhum custo registrado";
+      // 7. Custos de veículos (filtrado por vehicleInContext se disponível)
+      let vehicleCostsList: any[] = [];
+      let costsContext = "";
+      
+      if (vehicleInContext) {
+        // Se há um veículo em contexto, buscar APENAS custos daquele veículo
+        vehicleCostsList = await db.select({
+          vehicleId: vehicleCosts.vehicleId,
+          description: vehicleCosts.description,
+          value: vehicleCosts.value,
+        }).from(vehicleCosts).where(eq(vehicleCosts.vehicleId, vehicleInContext.id));
+        
+        if (vehicleCostsList.length > 0) {
+          const totalCosts = vehicleCostsList.reduce((sum, c) => sum + Number(c.value), 0);
+          costsContext = `\n## CUSTOS DO ${vehicleInContext.brand.toUpperCase()} ${vehicleInContext.model.toUpperCase()} (Total: R$ ${totalCosts.toFixed(2)}):\n${vehicleCostsList.map(c => 
+            `- ${c.description}: R$ ${Number(c.value).toFixed(2)}`
+          ).join("\n")}`;
+        } else {
+          costsContext = `\n## CUSTOS: ${vehicleInContext.brand} ${vehicleInContext.model} não tem custos registrados`;
+        }
+      } else {
+        // Se não há veículo em contexto, mostrar custos gerais (limitado)
+        vehicleCostsList = await db.select({
+          vehicleId: vehicleCosts.vehicleId,
+          description: vehicleCosts.description,
+          value: vehicleCosts.value,
+        }).from(vehicleCosts).limit(15);
+        
+        costsContext = vehicleCostsList.length > 0 ? `\n## CUSTOS REGISTRADOS (gerais):\n${vehicleCostsList.map(c => 
+          `- Custo: ${c.description} | R$ ${Number(c.value).toFixed(2)}`
+        ).join("\n")}` : "\n## CUSTOS: Nenhum custo registrado";
+      }
 
       const observationsContext = pendingObservations.length > 0 ? `\n## OBSERVAÇÕES PENDENTES:\n${pendingObservations.map(o => 
         `- ${o.description} (Criada em: ${new Date(o.createdAt).toLocaleDateString('pt-BR')})`
@@ -442,11 +488,20 @@ Retorne um JSON com: { "analysis": "texto da análise", "recommendations": ["rec
         }
       }
 
-      const systemContext = `${vehiclesContext}${leadsContext}${observationsContext}${soldContext}${costsContext}${billsContext}${commissionsContext}`;
+      // Adicionar contexto do veículo se estiver sendo discutido
+      let vehicleContextInfo = "";
+      if (vehicleInContext) {
+        const vehicleData = allVehicles.find(v => v.id === vehicleInContext.id);
+        if (vehicleData) {
+          vehicleContextInfo = `\n## VEÍCULO EM DISCUSSÃO: ${vehicleData.brand} ${vehicleData.model} ${vehicleData.year}\nPlaca: ${vehicleData.plate}\nStatus: ${vehicleData.status}\nLocalização: ${vehicleData.location || "N/A"}\nPreço de Venda: R$ ${vehicleData.salePrice || "N/A"}`;
+        }
+      }
+
+      const systemContext = `${vehiclesContext}${leadsContext}${observationsContext}${soldContext}${costsContext}${billsContext}${commissionsContext}${vehicleContextInfo}`;
 
       const prompt = `${historyText ? `Histórico:\n${historyText}\n\n` : ''}Usuário perguntou: ${sanitizedMessage}
 
-Responda de forma CONCISA e DIRETA, respondendo APENAS o que foi perguntado, sem adicionar informações extras ou irrelevantes.`;
+Responda de forma CONCISA e DIRETA, respondendo APENAS o que foi perguntado, sem adicionar informações extras ou irrelevantes.${vehicleInContext ? `\n\nIMPORTANTE: Quando perguntarem sobre custos, movimentações ou detalhes do ${vehicleInContext.brand} ${vehicleInContext.model}, responda APENAS sobre ESTE VEÍCULO ESPECÍFICO, não sobre outros carros.` : ""}`;
 
       const veloStockSystemPrompt = `Você é o assistente virtual especializado do VeloStock - um sistema completo de gestão de revenda de veículos da "${companyName}".
 
