@@ -73,7 +73,9 @@ async function getCredentials() {
 
 export async function sendEmail(message: SmtpMessage) {
   try {
-    const to = Array.isArray(message.to) ? message.to : [message.to];
+    // Normalizar emails para lowercase (Resend faz verificação case-sensitive)
+    const toRaw = Array.isArray(message.to) ? message.to : [message.to];
+    const to = toRaw.map(email => email.toLowerCase());
     
     console.log("\n" + "=".repeat(60));
     console.log("📧 ENVIANDO EMAIL DE VERIFICAÇÃO");
