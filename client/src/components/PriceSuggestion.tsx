@@ -38,47 +38,54 @@ export function PriceSuggestion({ vehicleId, vehicleData, fipeReferencePrice }: 
     setIsLoading(true);
     
     try {
-      // Passo 1: Buscar preço FIPE automaticamente
-      toast({
-        title: "Consultando FIPE...",
-        description: "Buscando preço de referência para o veículo.",
-      });
-
       let fipeValue = "";
-      try {
-        // Buscar versões disponíveis
-        const versionsData = await versionsMutation.mutateAsync();
-        
-        if (versionsData.versions.length > 1) {
+      
+      // Se já temos FIPE cadastrada, usar diretamente
+      if (fipeReferencePrice) {
+        fipeValue = fipeReferencePrice.replace("R$", "").trim();
+        setFipePrice(fipeValue);
+      } else {
+        // Passo 1: Buscar preço FIPE automaticamente se não estiver cadastrada
+        toast({
+          title: "Consultando FIPE...",
+          description: "Buscando preço de referência para o veículo.",
+        });
+
+        try {
+          // Buscar versões disponíveis
+          const versionsData = await versionsMutation.mutateAsync();
+          
+          if (versionsData.versions.length > 1) {
+            toast({
+              title: "Múltiplas versões encontradas",
+              description: `Usando a primeira versão encontrada (${versionsData.versions[0].nome}). Para escolher uma versão específica, consulte FIPE no cadastro do veículo.`,
+              variant: "default",
+            });
+          }
+          
+          // Usar primeira versão disponível
+          const firstVersion = versionsData.versions[0];
+          const fipeData = await priceMutation.mutateAsync({
+            brandId: versionsData.brandId,
+            modelId: versionsData.modelId,
+            versionCode: firstVersion.codigo
+          });
+          
+          fipeValue = fipeData.Valor.replace("R$", "").trim();
+          setFipePrice(fipeValue);
+          
           toast({
-            title: "Múltiplas versões encontradas",
-            description: `Usando a primeira versão encontrada (${versionsData.versions[0].nome}). Para escolher uma versão específica, consulte FIPE no cadastro do veículo.`,
+            title: "Preço FIPE encontrado!",
+            description: `${fipeData.Marca} ${fipeData.Modelo}: ${fipeData.Valor}`,
+          });
+        } catch (fipeError: any) {
+          console.warn("Erro ao buscar FIPE:", fipeError);
+          toast({
+            title: "FIPE não encontrado",
+            description: "Continuando sugestão sem referência FIPE...",
             variant: "default",
           });
         }
-        
-        // Usar primeira versão disponível
-        const firstVersion = versionsData.versions[0];
-        const fipeData = await priceMutation.mutateAsync({
-          brandId: versionsData.brandId,
-          modelId: versionsData.modelId,
-          versionCode: firstVersion.codigo
-        });
-        
-        fipeValue = fipeData.Valor.replace("R$", "").trim();
-        setFipePrice(fipeValue);
-        
-        toast({
-          title: "Preço FIPE encontrado!",
-          description: `${fipeData.Marca} ${fipeData.Modelo}: ${fipeData.Valor}`,
-        });
-      } catch (fipeError: any) {
-        console.warn("Erro ao buscar FIPE:", fipeError);
-        toast({
-          title: "FIPE não encontrado",
-          description: "Continuando sugestão sem referência FIPE...",
-          variant: "default",
-        });
       }
 
       // Passo 2: Chamar IA para sugerir preço
