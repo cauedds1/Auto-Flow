@@ -42,23 +42,10 @@ export function DashboardMetricsEnhanced() {
     return soldDate >= startOfMonth;
   }).length;
 
-  let totalMargin = 0;
   let totalDays = 0;
-  let countWithMargin = 0;
   let countWithDays = 0;
 
   vehicles.forEach(v => {
-    if (v.status === "Vendido" && v.salePrice) {
-      const purchasePrice = Number(v.purchasePrice) || 0;
-      const operationalCosts = Number(v.totalCost) || 0;
-      const totalCost = purchasePrice + operationalCosts;
-      const margin = v.salePrice - totalCost;
-      if (v.salePrice > 0) {
-        totalMargin += (margin / v.salePrice) * 100;
-        countWithMargin++;
-      }
-    }
-
     if (v.status === "Vendido") {
       const created = new Date(v.createdAt);
       const sold = new Date(v.locationChangedAt || v.createdAt);
@@ -70,7 +57,7 @@ export function DashboardMetricsEnhanced() {
     }
   });
 
-  const avgMargin = countWithMargin > 0 ? (totalMargin / countWithMargin).toFixed(1) : "0.0";
+  const avgMargin = metrics?.resultados?.margemLucro?.toFixed(1) || "0.0";
   const avgDays = countWithDays > 0 ? Math.round(totalDays / countWithDays) : 0;
 
   const baseMetricsData = [
