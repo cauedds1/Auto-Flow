@@ -105,7 +105,16 @@ Use linguagem brasileira natural. Não use emojis excessivos.`;
       const company = companies.find(c => c.id === userCompany.empresaId);
       const companyName = company?.nomeFantasia || "Nossa Loja";
 
-      const prompt = `Você é um vendedor da "${companyName}". O lead "${lead.nome}" está interessado em ${lead.veiculoInteresseNome || "veículos"}.
+      // Construir descrição do veículo com dados detalhados do frontend, se fornecido
+      const veiculoData = req.body?.veiculoData;
+      let veiculoDescricao = lead.veiculoInteresseNome || "veículos";
+      
+      if (veiculoData && veiculoData.brand && veiculoData.model) {
+        // Usar dados detalhados se disponíveis
+        veiculoDescricao = `${veiculoData.brand} ${veiculoData.model} ${veiculoData.year}${veiculoData.color ? ` (${veiculoData.color})` : ""}`;
+      }
+
+      const prompt = `Você é um vendedor da "${companyName}". O lead "${lead.nome}" está interessado em um ${veiculoDescricao}.
 
 Histórico de contatos:
 ${historyText || "Nenhum contato anterior registrado."}
@@ -113,7 +122,7 @@ ${historyText || "Nenhum contato anterior registrado."}
 Status atual: ${lead.status}
 Contato: ${lead.telefone || lead.email}
 
-Sugira uma resposta profissional, persuasiva e personalizada para continuar a negociação. A resposta deve ser pronta para enviar via WhatsApp ou email.`;
+Sugira uma resposta profissional, persuasiva e personalizada para continuar a negociação, mencionando especificamente o ${veiculoDescricao} se relevante. A resposta deve ser pronta para enviar via WhatsApp ou email.`;
 
       const suggestedResponse = await generateCompletion(prompt, {
         model: "gpt-4o-mini",
