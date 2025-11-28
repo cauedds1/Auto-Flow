@@ -119,6 +119,9 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
 
   // Auto-load em background quando campos estiverem preenchidos
   useEffect(() => {
+    // Evita auto-load se já tem versões carregadas (evita duplicação)
+    if (fipeVersions.length > 0) return;
+    
     const brand = form.getValues("brand");
     const model = form.getValues("model");
     const year = form.getValues("year");
@@ -136,10 +139,14 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
         });
         setFipeVersions(result.versions);
         setFipeMetadata({ brandId: result.brandId });
-      } catch (e) {}
+      } catch (e) {
+        // Silencioso em background
+      }
     };
 
-    loadVersions();
+    // Delay pequeno para evitar conflito com clique
+    const timer = setTimeout(loadVersions, 300);
+    return () => clearTimeout(timer);
   }, [watchedBrand, watchedModel, watchedYear]);
 
   const handleLoadVersions = async () => {
