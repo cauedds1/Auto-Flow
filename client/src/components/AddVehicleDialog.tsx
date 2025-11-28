@@ -107,7 +107,7 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
   
   const priceMutation = useFipePriceByVersion();
 
-  // Watch para limpar cache quando marca/modelo/ano mudam
+  // Watch para limpar cache quando marca/modelo/ano mudan
   const watchedBrand = form.watch("brand");
   const watchedModel = form.watch("model");
   const watchedYear = form.watch("year");
@@ -119,53 +119,37 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
     form.setValue("version", "");
   }, [watchedBrand, watchedModel, watchedYear, vehicleType]);
 
-  // Carregar versões automaticamente quando usuário abre o dropdown "Versão"
-  const handleLoadVersions = async () => {
+  // CARREGAMENTO AUTOMÁTICO E EAGERLY: Buscar versões em background assim que marca/modelo/ano forem preenchidos
+  useEffect(() => {
     const brand = form.getValues("brand");
     const model = form.getValues("model");
     const year = form.getValues("year");
     const currentVehicleType = form.getValues("vehicleType");
 
-    if (!brand || !model || !year) {
-      toast({
-        title: "Campos incompletos",
-        description: "Preencha marca, modelo e ano primeiro.",
-        variant: "destructive",
-      });
+    // Só carrega se tiver todos os dados e ainda não carregou
+    if (!brand || !model || !year || fipeVersions.length > 0) {
       return;
     }
 
-    // Se já carregou versões, não carregar novamente
-    if (fipeVersions.length > 0) {
-      return;
-    }
-
-    try {
-      const fipeVehicleType = vehicleTypeMap[currentVehicleType] || "carros";
-      const result = await versionsMutation.mutateAsync({ 
-        brand, 
-        model, 
-        year,
-        vehicleType: fipeVehicleType
-      });
-      setFipeVersions(result.versions);
-      setFipeMetadata({ brandId: result.brandId });
-      
-      if (result.versions.length === 0) {
-        toast({
-          title: "Nenhuma versão encontrada",
-          description: "Não foram encontradas versões FIPE para este veículo.",
-          variant: "destructive",
+    // Carregar versões em background (sem aguardar)
+    const loadVersions = async () => {
+      try {
+        const fipeVehicleType = vehicleTypeMap[currentVehicleType] || "carros";
+        const result = await versionsMutation.mutateAsync({ 
+          brand, 
+          model, 
+          year,
+          vehicleType: fipeVehicleType
         });
+        setFipeVersions(result.versions);
+        setFipeMetadata({ brandId: result.brandId });
+      } catch (error: any) {
+        // Falha silenciosa - usuário verá mensagem de erro se tentar usar
       }
-    } catch (error: any) {
-      toast({
-        title: "Erro ao buscar versões",
-        description: error.message || "Não foi possível encontrar o veículo. Verifique os dados.",
-        variant: "destructive",
-      });
-    }
-  };
+    };
+
+    loadVersions();
+  }, [watchedBrand, watchedModel, watchedYear, vehicleType, fipeVersions.length]);
 
   // Quando usuário seleciona uma versão, buscar preço FIPE automaticamente
   const handleVersionChange = async (versionJson: string) => {
