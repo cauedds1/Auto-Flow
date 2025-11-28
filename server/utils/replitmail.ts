@@ -43,9 +43,13 @@ async function getCredentials() {
         
         if (connectionSettings?.settings?.api_key) {
           console.log("[Resend] ✓ Credenciais obtidas via Replit Connectors");
+          // Usar email de teste do Resend para evitar problemas de domínio não verificado
+          // Para produção, verificar o domínio em https://resend.com/domains
+          const fromEmail = 'onboarding@resend.dev';
+          console.log("[Resend] Usando email remetente:", fromEmail);
           return {
             apiKey: connectionSettings.settings.api_key,
-            fromEmail: connectionSettings.settings.from_email || 'onboarding@resend.dev'
+            fromEmail: fromEmail
           };
         }
       }
