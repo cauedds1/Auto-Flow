@@ -362,7 +362,8 @@ export default function Leads() {
                   )}
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
+                  <LeadAssistant leadId={lead.id} leadName={lead.nome} />
                   <Button
                     size="sm"
                     variant="ghost"

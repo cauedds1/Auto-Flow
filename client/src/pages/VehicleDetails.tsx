@@ -7,6 +7,7 @@ import { VehicleTimeline } from "@/components/VehicleTimeline";
 import { VehicleCosts } from "@/components/VehicleCosts";
 import { VehicleDocuments } from "@/components/VehicleDocuments";
 import { AdGenerator } from "@/components/AdGenerator";
+import { AdGeneratorMulti } from "@/components/AdGeneratorMulti";
 import { PriceSuggestion } from "@/components/PriceSuggestion";
 import { EditVehicleDialog } from "@/components/EditVehicleDialog";
 import { AddCostDialog } from "@/components/AddCostDialog";
@@ -756,16 +757,28 @@ export default function VehicleDetails() {
           </TabsContent>
 
           <TabsContent value="anuncio">
-            <AdGenerator
-              vehicleId={vehicleId}
-              vehicleData={{
-                brand: vehicle.brand,
-                model: vehicle.model,
-                year: vehicle.year,
-                color: vehicle.color,
-                features: vehicle.features || [],
-              }}
-            />
+            <div className="space-y-6">
+              <AdGeneratorMulti
+                vehicleId={vehicleId}
+                vehicleData={{
+                  brand: vehicle.brand,
+                  model: vehicle.model,
+                  year: vehicle.year,
+                  color: vehicle.color,
+                  features: vehicle.features || [],
+                }}
+              />
+              <AdGenerator
+                vehicleId={vehicleId}
+                vehicleData={{
+                  brand: vehicle.brand,
+                  model: vehicle.model,
+                  year: vehicle.year,
+                  color: vehicle.color,
+                  features: vehicle.features || [],
+                }}
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="midia">
