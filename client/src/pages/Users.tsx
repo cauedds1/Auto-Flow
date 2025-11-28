@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -433,16 +433,6 @@ interface EditUserDialogProps {
 }
 
 function EditUserDialog({ open, onOpenChange, user, onSubmit, isLoading }: EditUserDialogProps) {
-  const [formData, setFormData] = useState({
-    firstName: user.firstName,
-    lastName: user.lastName || "",
-    role: user.role,
-    usarComissaoFixaGlobal: user.usarComissaoFixaGlobal !== "false",
-    comissaoFixa: user.comissaoFixa || "",
-    metaQuantidade: user.metaQuantidade?.toString() || "",
-    metaValor: user.metaValor || "",
-  });
-
   // Normalizar customPermissions: converter strings "true"/"false" para booleanos
   const normalizePermissions = (perms: any): CustomPermissions => {
     if (!perms) return {};
@@ -460,11 +450,36 @@ function EditUserDialog({ open, onOpenChange, user, onSubmit, isLoading }: EditU
     return normalized;
   };
 
+  const [formData, setFormData] = useState({
+    firstName: user.firstName,
+    lastName: user.lastName || "",
+    role: user.role,
+    usarComissaoFixaGlobal: user.usarComissaoFixaGlobal !== "false",
+    comissaoFixa: user.comissaoFixa || "",
+    metaQuantidade: user.metaQuantidade?.toString() || "",
+    metaValor: user.metaValor || "",
+  });
+
   const [customPermissions, setCustomPermissions] = useState<CustomPermissions>(
     normalizePermissions(user.customPermissions)
   );
 
   const [activeTab, setActiveTab] = useState("info");
+
+  // CORRECAO: Atualizar formData quando o usuario mudar
+  useEffect(() => {
+    setFormData({
+      firstName: user.firstName,
+      lastName: user.lastName || "",
+      role: user.role,
+      usarComissaoFixaGlobal: user.usarComissaoFixaGlobal !== "false",
+      comissaoFixa: user.comissaoFixa || "",
+      metaQuantidade: user.metaQuantidade?.toString() || "",
+      metaValor: user.metaValor || "",
+    });
+    setCustomPermissions(normalizePermissions(user.customPermissions));
+    setActiveTab("info");
+  }, [user.id]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

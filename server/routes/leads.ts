@@ -304,7 +304,23 @@ router.delete("/:id", async (req: any, res) => {
 
 router.get("/stats/me", async (req: any, res) => {
   try {
-    const { userId, empresaId } = req.companyUser;
+    const { userId, empresaId, role } = req.companyUser;
+    
+    // CORRECAO: Gerente e proprietario veem TODOS os leads da empresa
+    // Vendedor ve apenas os seus
+    let whereCondition;
+    if (role === "vendedor") {
+      whereCondition = and(
+        eq(leads.empresaId, empresaId),
+        or(
+          eq(leads.vendedorResponsavel, userId),
+          eq(leads.criadoPor, userId)
+        )
+      );
+    } else {
+      // Proprietario e gerente veem todos da empresa
+      whereCondition = eq(leads.empresaId, empresaId);
+    }
     
     const stats = await db
       .select({
@@ -312,23 +328,19 @@ router.get("/stats/me", async (req: any, res) => {
         count: sql<number>`count(*)::int`,
       })
       .from(leads)
-      .where(and(
-        eq(leads.empresaId, empresaId),
-        or(
-          eq(leads.vendedorResponsavel, userId),
-          eq(leads.criadoPor, userId)
-        )
-      ))
+      .where(whereCondition)
       .groupBy(leads.status);
     
     const total = stats.reduce((sum, s) => sum + s.count, 0);
     const convertidos = stats.find(s => s.status === "Convertido")?.count || 0;
+    const emNegociacao = stats.find(s => s.status === "Negociando")?.count || 0;
     const taxaConversao = total > 0 ? ((convertidos / total) * 100).toFixed(1) : "0.0";
     
     res.json({
       porStatus: stats,
       total,
       convertidos,
+      emNegociacao,
       taxaConversao: parseFloat(taxaConversao),
     });
   } catch (error) {
