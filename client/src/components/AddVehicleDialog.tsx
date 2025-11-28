@@ -114,13 +114,14 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
 
   // SINGLE useEffect: Carrega versões quando marca/modelo/ano mudam, sem conflito
   useEffect(() => {
-    const brand = watchedBrand;
-    const model = watchedModel;
+    const brand = watchedBrand?.trim();
+    const model = watchedModel?.trim();
     const year = watchedYear;
     const currentVehicleType = form.getValues("vehicleType");
 
     // Se qualquer campo está vazio, limpa versões
-    if (!brand || !model || !year) {
+    // Validação mais robusta: year pode ser 0 quando está vazio no Input
+    if (!brand || !model || !year || year === 0 || isNaN(Number(year))) {
       setFipeVersions([]);
       setFipeMetadata(null);
       form.setValue("version", "");
