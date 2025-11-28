@@ -764,9 +764,20 @@ INSTRUÇÕES CRÍTICAS:
 - Comparar com similares e ajustar para cima se KM for vantagem
 - Ser agressivo em precificação se KM for excepcional
 
-Analise TODOS esses fatores e retorne um preço estratégico que maximize venda respeitando a realidade do carro.
+ESTRUTURA DA JUSTIFICATIVA (OBRIGATÓRIA):
+A justificativa DEVE incluir:
+1. Cálculo base: "Custo total R$ X + margem de Y% = R$ Z"
+2. Análise de KM: "Quilometragem está X% abaixo/acima do esperado, o que justifica [premium/desconto]"
+3. Comparação com similares: "Comparado com similares, este veículo está [mais caro/mais barato/competitivo]"
+4. Fatores adicionais: Tempo em estoque, sazonalidade, condições específicas
+5. Conclusão: "Preço sugerido: R$ X é [competitivo/premium/agressivo] por causa de [motivos principais]"
 
-Retorne APENAS JSON válido (sem markdown): { "suggestedPrice": 00000.00, "reasoning": "justificativa detalhada considerando todos os fatores", "recommendation": "recomendação de ação" }`;
+Exemplo de justificativa PLAUSÍVEL:
+"Custo total R$ 40.000 + 20% de margem = R$ 48.000. Como o carro está com 50.000 km (77% abaixo do esperado para 2010), aplicamos prêmio de 12% = R$ 53.760. Similares estão entre R$ 52.000-56.000. Preço de R$ 53.500 é competitivo considerando o km excepcional e 8 dias em estoque."
+
+Analise TODOS esses fatores e retorne um preço estratégico com justificativa PLAUSÍVEL que cite dados concretos.
+
+Retorne APENAS JSON válido (sem markdown): { "suggestedPrice": 00000.00, "reasoning": "justificativa detalhada com cálculos e fatores específicos", "recommendation": "recomendação de ação" }`;
 
       const result = await generateJSON(prompt, {
         model: "gpt-4o-mini",
