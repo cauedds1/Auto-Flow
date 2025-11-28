@@ -61,7 +61,7 @@ export async function setupAuth(app: Express) {
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
-  // Local signup step 1 - Create account and send verification email
+  // Local signup - Create account (email verification DISABLED temporarily)
   app.post("/api/auth/signup-step1", async (req, res, next) => {
     const { email, password, firstName, lastName } = req.body;
     
@@ -84,66 +84,7 @@ export async function setupAuth(app: Express) {
         return res.status(400).json({ message: "Email já cadastrado" });
       }
 
-      // Gerar código antes de enviar
-      const code = generateVerificationCode();
-      const expiry = getVerificationCodeExpiry();
-
-      const emailHtml = `
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8">
-    <style>
-      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; line-height: 1.6; color: #333; }
-      .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-      .header { background: linear-gradient(to right, #9333ea, #22c55e); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-      .header h1 { margin: 0; font-size: 28px; }
-      .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
-      .code-box { background: white; border: 2px solid #9333ea; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0; }
-      .code { font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #9333ea; font-family: monospace; }
-      .expiry { color: #666; font-size: 14px; margin-top: 15px; }
-      .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; font-size: 12px; color: #999; }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <div class="header">
-        <h1>VeloStock</h1>
-        <p>Verificação de Email</p>
-      </div>
-      <div class="content">
-        <p>Olá <strong>${firstName}</strong>,</p>
-        <p>Bem-vindo ao VeloStock! Use o código abaixo para verificar seu email e ativar sua conta:</p>
-        
-        <div class="code-box">
-          <div class="code">${code}</div>
-          <div class="expiry">Este código expira em 15 minutos</div>
-        </div>
-
-        <p>Se você não criou esta conta, pode ignorar este email. Sua conta está segura.</p>
-        
-        <div class="footer">
-          <p>&copy; 2024 VeloStock. Todos os direitos reservados.</p>
-        </div>
-      </div>
-    </div>
-  </body>
-</html>
-      `;
-
-      // ENVIAR EMAIL PRIMEIRO
-      console.log(`[Signup] Código gerado para ${email}: ${code}`);
-      console.log(`[Signup] Enviando email de verificação para ${email}...`);
-      
-      await sendEmail({
-        to: email,
-        subject: 'VeloStock - Verificação de Email',
-        html: emailHtml,
-      });
-
-      console.log(`[Signup] Email enviado com sucesso para ${email}`);
-
-      // SÓ depois de enviar com sucesso, criar o usuário
+      // Criar usuário diretamente (verificação de email DESATIVADA)
       const passwordHash = await require('bcrypt').hash(password, 10);
       const newUser = await storage.createLocalUser({
         email,
@@ -153,18 +94,21 @@ export async function setupAuth(app: Express) {
         authProvider: "local",
       });
 
-      // Salvar código no usuário
-      await storage.updateUserVerificationCode(newUser.id, code, expiry);
+      // Marcar email como verificado automaticamente
+      await storage.verifyUserEmail(newUser.id);
 
-      // User created, but not logged in yet - will verify email first
+      console.log(`[Signup] Conta criada com sucesso para ${email} (verificação de email desativada)`);
+
+      // Retornar sucesso - usuário pode fazer login imediatamente
       return res.status(201).json({ 
         success: true, 
-        message: "Conta criada. Verifique seu email para ativar a conta.",
-        email: email
+        message: "Conta criada com sucesso! Você já pode fazer login.",
+        email: email,
+        skipVerification: true
       });
     } catch (error) {
       console.error("[Signup] Erro no signup:", error);
-      return res.status(500).json({ message: "Erro ao enviar email de verificação" });
+      return res.status(500).json({ message: "Erro ao criar conta" });
     }
   });
 
