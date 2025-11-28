@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FileText, Download, Loader2, Printer, TrendingUp, TrendingDown, DollarSign, Users, Wallet, Calendar } from "lucide-react";
+import { FileText, Download, Loader2, Printer, TrendingUp, TrendingDown } from "lucide-react";
 import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import html2pdf from "html2pdf.js";
@@ -38,6 +38,11 @@ const MESES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
 ];
+
+const VELOSTOCK_LOGO = `<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+  <rect width="60" height="60" fill="#7c3aed" rx="8"/>
+  <text x="50%" y="50%" font-size="32" font-weight="bold" fill="white" text-anchor="middle" dominant-baseline="middle">V</text>
+</svg>`;
 
 export function FinancialReportPDF() {
   const [open, setOpen] = useState(false);
@@ -151,37 +156,38 @@ export function FinancialReportPDF() {
   };
 
   const getPrintStyles = () => `
-    @page { size: A4; margin: 15mm; }
+    @page { size: A4; margin: 12mm; }
     * { box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
-    body { margin: 0; padding: 0; color: #1a1a1a; line-height: 1.4; }
+    body { margin: 0; padding: 0; color: #1a1a1a; line-height: 1.5; }
     .report-container { width: 100%; max-width: 210mm; margin: 0 auto; }
-    .header { text-align: center; padding-bottom: 15px; border-bottom: 3px solid #7c3aed; margin-bottom: 20px; }
-    .header h1 { font-size: 24px; color: #7c3aed; margin: 0 0 5px 0; }
-    .header p { color: #666; margin: 3px 0; font-size: 12px; }
-    .section { margin-bottom: 20px; page-break-inside: avoid; }
-    .section-title { font-size: 14px; font-weight: 600; color: #7c3aed; padding: 8px 12px; background: #f5f3ff; border-left: 4px solid #7c3aed; margin-bottom: 12px; }
-    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
-    .summary-card { padding: 12px; background: #fafafa; border: 1px solid #e5e5e5; border-radius: 6px; text-align: center; }
-    .summary-card .label { font-size: 10px; color: #666; text-transform: uppercase; margin-bottom: 4px; }
-    .summary-card .value { font-size: 16px; font-weight: 700; }
-    .summary-card .value.positive { color: #16a34a; }
-    .summary-card .value.negative { color: #dc2626; }
-    .summary-card .value.neutral { color: #1a1a1a; }
-    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    table { width: 100%; border-collapse: collapse; font-size: 11px; }
-    th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #e5e5e5; }
-    th { background: #f5f3ff; font-weight: 600; color: #5b21b6; font-size: 10px; text-transform: uppercase; }
+    .header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #7c3aed; }
+    .logo { width: 50px; height: 50px; background: #7c3aed; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 24px; }
+    .header-info h1 { font-size: 20px; color: #1a1a1a; margin: 0 0 3px 0; font-weight: 700; }
+    .header-info p { color: #666; margin: 2px 0; font-size: 11px; }
+    .section { margin-bottom: 16px; page-break-inside: avoid; }
+    .section-title { font-size: 13px; font-weight: 700; color: #fff; background: #7c3aed; padding: 8px 12px; border-radius: 4px; margin-bottom: 10px; }
+    .metrics-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 12px; }
+    .metric-card { background: #f9f7ff; border: 1px solid #e9d5ff; border-radius: 6px; padding: 10px; }
+    .metric-label { font-size: 10px; color: #666; text-transform: uppercase; font-weight: 600; margin-bottom: 3px; }
+    .metric-value { font-size: 16px; font-weight: 700; color: #1a1a1a; }
+    .metric-value.positive { color: #16a34a; }
+    .metric-value.negative { color: #dc2626; }
+    .highlight-box { background: linear-gradient(135deg, #f0e7ff, #e9d5ff); border: 2px solid #7c3aed; border-radius: 8px; padding: 15px; text-align: center; margin: 15px 0; }
+    .highlight-box .label { font-size: 12px; color: #5b21b6; font-weight: 600; margin-bottom: 5px; }
+    .highlight-box .value { font-size: 28px; font-weight: 700; color: #7c3aed; }
+    table { width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 8px; }
+    th, td { padding: 7px 8px; text-align: left; border-bottom: 1px solid #e5e5e5; }
+    th { background: #f0e7ff; font-weight: 700; color: #5b21b6; text-transform: uppercase; font-size: 9px; }
+    tr:nth-child(even) { background: #fafaf8; }
     .text-right { text-align: right; }
     .text-center { text-align: center; }
-    .footer { margin-top: 30px; padding-top: 15px; border-top: 1px solid #e5e5e5; font-size: 10px; color: #888; text-align: center; }
-    .result-box { padding: 15px; border-radius: 8px; text-align: center; margin: 15px 0; }
-    .result-box.profit { background: linear-gradient(135deg, #dcfce7, #bbf7d0); border: 1px solid #86efac; }
-    .result-box.loss { background: linear-gradient(135deg, #fee2e2, #fecaca); border: 1px solid #fca5a5; }
-    .result-box .label { font-size: 12px; color: #666; margin-bottom: 5px; }
-    .result-box .value { font-size: 28px; font-weight: 700; }
-    .result-box.profit .value { color: #15803d; }
-    .result-box.loss .value { color: #b91c1c; }
-    .mini-stats { display: flex; justify-content: center; gap: 30px; margin-top: 10px; font-size: 11px; color: #666; }
+    .footer { margin-top: 20px; padding-top: 10px; border-top: 1px solid #e5e5e5; font-size: 9px; color: #999; text-align: center; }
+    .two-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .summary-box { background: #f9f7ff; border-radius: 6px; padding: 12px; }
+    .summary-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #e9d5ff; }
+    .summary-item:last-child { border-bottom: none; }
+    .summary-label { font-size: 10px; color: #666; }
+    .summary-value { font-size: 11px; font-weight: 700; color: #1a1a1a; }
     @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
   `;
 
@@ -302,111 +308,123 @@ export function FinancialReportPDF() {
             <div ref={reportRef} className="p-8" style={{ backgroundColor: 'white', color: '#1a1a1a' }}>
               <style>{getPrintStyles()}</style>
               <div className="report-container">
-                <div className="header">
-                  <h1>{reportData.empresa.nome}</h1>
-                  <p style={{ fontSize: '18px', fontWeight: 600, color: '#5b21b6' }}>Relatório Financeiro</p>
-                  <p style={{ color: '#333', fontWeight: 500 }}>Período: {getPeriodoLabel()}</p>
-                  <p style={{ color: '#333', fontWeight: 500 }}>Gerado em: {format(new Date(reportData.dataGeracao), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
+                {/* Header com Logo */}
+                <div className="header-top">
+                  <div className="logo">V</div>
+                  <div className="header-info">
+                    <h1>{reportData.empresa.nome}</h1>
+                    <p style={{ color: '#333', fontWeight: 500 }}>Relatório Financeiro Completo</p>
+                    <p style={{ color: '#333', fontWeight: 500 }}>Período: {getPeriodoLabel()}</p>
+                    <p style={{ color: '#999' }}>Gerado em: {format(new Date(reportData.dataGeracao), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
+                  </div>
                 </div>
 
-                <div className="result-box" style={{ background: reportData.resumoFinanceiro.lucroLiquido >= 0 ? 'linear-gradient(135deg, #dcfce7, #bbf7d0)' : 'linear-gradient(135deg, #fee2e2, #fecaca)', border: reportData.resumoFinanceiro.lucroLiquido >= 0 ? '1px solid #86efac' : '1px solid #fca5a5' }}>
-                  <div className="label">Resultado do Período</div>
-                  <div className="value" style={{ color: reportData.resumoFinanceiro.lucroLiquido >= 0 ? '#15803d' : '#b91c1c' }}>
+                {/* Resultado Principal */}
+                <div className="highlight-box">
+                  <div className="label">Resultado do Período (Lucro Líquido)</div>
+                  <div className="value" style={{ color: reportData.resumoFinanceiro.lucroLiquido >= 0 ? '#16a34a' : '#dc2626' }}>
                     {formatCurrency(reportData.resumoFinanceiro.lucroLiquido)}
                   </div>
-                  <div className="mini-stats">
-                    <span>Margem: {reportData.resumoFinanceiro.margemLucro.toFixed(1)}%</span>
-                    <span>|</span>
-                    <span>{reportData.vendas.quantidade} veículos vendidos</span>
+                  <div style={{ fontSize: '11px', color: '#666', marginTop: '8px' }}>
+                    Margem de Lucro: {reportData.resumoFinanceiro.margemLucro.toFixed(1)}% | {reportData.vendas.quantidade} veículos vendidos
                   </div>
                 </div>
 
+                {/* Resumo Financeiro Executivo */}
                 <div className="section">
-                  <div className="section-title">Resumo Financeiro</div>
-                  <div className="summary-grid">
-                    <div className="summary-card">
-                      <div className="label">Receita Total</div>
-                      <div className="value positive">{formatCurrency(reportData.resumoFinanceiro.receitaTotal)}</div>
+                  <div className="section-title">Resumo Financeiro Executivo</div>
+                  <div className="metrics-grid">
+                    <div className="metric-card">
+                      <div className="metric-label">Receita Total</div>
+                      <div className="metric-value positive">{formatCurrency(reportData.resumoFinanceiro.receitaTotal)}</div>
                     </div>
-                    <div className="summary-card">
-                      <div className="label">Custo Aquisição</div>
-                      <div className="value negative">{formatCurrency(reportData.resumoFinanceiro.custoAquisicao)}</div>
+                    <div className="metric-card">
+                      <div className="metric-label">Custo Total</div>
+                      <div className="metric-value negative">{formatCurrency(reportData.resumoFinanceiro.custoTotal)}</div>
                     </div>
-                    <div className="summary-card">
-                      <div className="label">Custo Operacional</div>
-                      <div className="value negative">{formatCurrency(reportData.resumoFinanceiro.custoOperacional)}</div>
+                    <div className="metric-card">
+                      <div className="metric-label">Valor Gasto em Aquisição</div>
+                      <div className="metric-value">{formatCurrency(reportData.resumoFinanceiro.custoAquisicao)}</div>
                     </div>
-                    <div className="summary-card">
-                      <div className="label">Despesas</div>
-                      <div className="value negative">{formatCurrency(reportData.resumoFinanceiro.despesasOperacionais)}</div>
+                    <div className="metric-card">
+                      <div className="metric-label">Lucro Bruto</div>
+                      <div className="metric-value positive">{formatCurrency(reportData.resumoFinanceiro.receitaTotal - reportData.resumoFinanceiro.custoAquisicao)}</div>
                     </div>
                   </div>
                 </div>
 
+                {/* Custos Detalhados */}
                 <div className="section">
-                  <div className="section-title">Vendas</div>
-                  <div className="summary-grid">
-                    <div className="summary-card">
-                      <div className="label">Quantidade</div>
-                      <div className="value neutral">{reportData.vendas.quantidade}</div>
+                  <div className="section-title">Custos Operacionais</div>
+                  <div className="metrics-grid">
+                    <div className="metric-card">
+                      <div className="metric-label">Custo Operacional</div>
+                      <div className="metric-value">{formatCurrency(reportData.resumoFinanceiro.custoOperacional)}</div>
                     </div>
-                    <div className="summary-card">
-                      <div className="label">Receita</div>
-                      <div className="value positive">{formatCurrency(reportData.vendas.receitaTotal)}</div>
+                    <div className="metric-card">
+                      <div className="metric-label">Despesas Operacionais</div>
+                      <div className="metric-value">{formatCurrency(reportData.resumoFinanceiro.despesasOperacionais)}</div>
                     </div>
-                    <div className="summary-card">
-                      <div className="label">Ticket Médio</div>
-                      <div className="value neutral">{formatCurrency(reportData.vendas.ticketMedio)}</div>
+                    <div className="metric-card">
+                      <div className="metric-label">Comissões (Total)</div>
+                      <div className="metric-value">{formatCurrency(reportData.comissoes.total)}</div>
                     </div>
-                    <div className="summary-card">
-                      <div className="label">Comissões</div>
-                      <div className="value negative">{formatCurrency(reportData.comissoes.total)}</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="two-col" style={{ pageBreakInside: 'avoid' }}>
-                  <div className="section">
-                    <div className="section-title">Contas a Pagar</div>
-                    <div className="summary-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
-                      <div className="summary-card">
-                        <div className="label">Total</div>
-                        <div className="value negative">{formatCurrency(reportData.contasPagar.total)}</div>
-                      </div>
-                      <div className="summary-card">
-                        <div className="label">Vencidas</div>
-                        <div className="value" style={{ color: reportData.contasPagar.vencidas > 0 ? '#dc2626' : '#16a34a' }}>
-                          {reportData.contasPagar.vencidas} ({formatCurrency(reportData.contasPagar.valorVencido)})
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="section">
-                    <div className="section-title">Contas a Receber</div>
-                    <div className="summary-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
-                      <div className="summary-card">
-                        <div className="label">Total</div>
-                        <div className="value positive">{formatCurrency(reportData.contasReceber.total)}</div>
-                      </div>
-                      <div className="summary-card">
-                        <div className="label">Vencidas</div>
-                        <div className="value" style={{ color: reportData.contasReceber.vencidas > 0 ? '#dc2626' : '#16a34a' }}>
-                          {reportData.contasReceber.vencidas} ({formatCurrency(reportData.contasReceber.valorVencido)})
-                        </div>
-                      </div>
+                    <div className="metric-card">
+                      <div className="metric-label">Comissões Pagas</div>
+                      <div className="metric-value positive">{formatCurrency(reportData.comissoes.pagas)}</div>
                     </div>
                   </div>
                 </div>
 
+                {/* Vendas */}
+                <div className="section">
+                  <div className="section-title">Dados de Vendas</div>
+                  <div className="metrics-grid">
+                    <div className="metric-card">
+                      <div className="metric-label">Quantidade de Vendas</div>
+                      <div className="metric-value">{reportData.vendas.quantidade}</div>
+                    </div>
+                    <div className="metric-card">
+                      <div className="metric-label">Receita de Vendas</div>
+                      <div className="metric-value positive">{formatCurrency(reportData.vendas.receitaTotal)}</div>
+                    </div>
+                    <div className="metric-card">
+                      <div className="metric-label">Ticket Médio</div>
+                      <div className="metric-value">{formatCurrency(reportData.vendas.ticketMedio)}</div>
+                    </div>
+                    <div className="metric-card">
+                      <div className="metric-label">Comissões Pendentes</div>
+                      <div className="metric-value negative">{formatCurrency(reportData.comissoes.aPagar)}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contas Financeiras */}
+                <div className="section">
+                  <div className="section-title">Contas Financeiras</div>
+                  <div className="metrics-grid">
+                    <div className="metric-card">
+                      <div className="metric-label">Contas Pagas (a Pagar)</div>
+                      <div className="metric-value negative">{formatCurrency(reportData.contasPagar.total)}</div>
+                      <div style={{ fontSize: '9px', color: '#666', marginTop: '3px' }}>{reportData.contasPagar.quantidade} contas</div>
+                    </div>
+                    <div className="metric-card">
+                      <div className="metric-label">Contas Recebidas (a Receber)</div>
+                      <div className="metric-value positive">{formatCurrency(reportData.contasReceber.total)}</div>
+                      <div style={{ fontSize: '9px', color: '#666', marginTop: '3px' }}>{reportData.contasReceber.quantidade} contas</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Custos por Categoria */}
                 {reportData.custosPorCategoria.length > 0 && (
-                  <div className="section" style={{ pageBreakInside: 'avoid' }}>
+                  <div className="section">
                     <div className="section-title">Custos por Categoria</div>
                     <table>
                       <thead>
                         <tr>
                           <th>Categoria</th>
-                          <th className="text-center">Quantidade</th>
+                          <th className="text-right">Quantidade</th>
                           <th className="text-right">Total</th>
                         </tr>
                       </thead>
@@ -414,8 +432,8 @@ export function FinancialReportPDF() {
                         {reportData.custosPorCategoria.map((cat, idx) => (
                           <tr key={idx}>
                             <td>{cat.categoria}</td>
-                            <td className="text-center">{cat.quantidade}</td>
-                            <td className="text-right" style={{ color: '#dc2626' }}>{formatCurrency(cat.total)}</td>
+                            <td className="text-right">{cat.quantidade}</td>
+                            <td className="text-right">{formatCurrency(cat.total)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -423,27 +441,26 @@ export function FinancialReportPDF() {
                   </div>
                 )}
 
+                {/* Ranking de Vendedores */}
                 {reportData.rankingVendedores.length > 0 && (
-                  <div className="section" style={{ pageBreakInside: 'avoid' }}>
+                  <div className="section">
                     <div className="section-title">Ranking de Vendedores</div>
                     <table>
                       <thead>
                         <tr>
-                          <th>#</th>
                           <th>Vendedor</th>
-                          <th className="text-center">Vendas</th>
+                          <th className="text-right">Vendas</th>
                           <th className="text-right">Receita</th>
                           <th className="text-right">Comissão</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {reportData.rankingVendedores.map((v, idx) => (
+                        {reportData.rankingVendedores.map((vendor, idx) => (
                           <tr key={idx}>
-                            <td style={{ fontWeight: 600, color: idx === 0 ? '#ca8a04' : '#666' }}>{idx + 1}</td>
-                            <td>{v.nome || "Não informado"}</td>
-                            <td className="text-center">{v.vendas}</td>
-                            <td className="text-right" style={{ color: '#16a34a' }}>{formatCurrency(v.receita)}</td>
-                            <td className="text-right">{formatCurrency(v.comissao)}</td>
+                            <td>{vendor.nome}</td>
+                            <td className="text-right">{vendor.vendas}</td>
+                            <td className="text-right">{formatCurrency(vendor.receita)}</td>
+                            <td className="text-right">{formatCurrency(vendor.comissao)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -451,60 +468,16 @@ export function FinancialReportPDF() {
                   </div>
                 )}
 
-                {reportData.despesasOperacionais.lista.length > 0 && (
-                  <div className="section" style={{ pageBreakInside: 'avoid' }}>
-                    <div className="section-title">Despesas Operacionais ({formatCurrency(reportData.despesasOperacionais.total)})</div>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Data</th>
-                          <th>Categoria</th>
-                          <th>Descrição</th>
-                          <th className="text-center">Status</th>
-                          <th className="text-right">Valor</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {reportData.despesasOperacionais.lista.slice(0, 20).map((d: any, idx) => (
-                          <tr key={idx}>
-                            <td>{format(new Date(d.createdAt), "dd/MM/yy")}</td>
-                            <td>{d.categoria}</td>
-                            <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.descricao}</td>
-                            <td className="text-center">
-                              <span style={{ 
-                                padding: '2px 8px', 
-                                borderRadius: '10px', 
-                                fontSize: '10px',
-                                background: d.pago === 'true' ? '#dcfce7' : '#fef3c7',
-                                color: d.pago === 'true' ? '#15803d' : '#a16207'
-                              }}>
-                                {d.pago === 'true' ? 'Pago' : 'Pendente'}
-                              </span>
-                            </td>
-                            <td className="text-right" style={{ color: '#dc2626' }}>{formatCurrency(Number(d.valor))}</td>
-                          </tr>
-                        ))}
-                        {reportData.despesasOperacionais.lista.length > 20 && (
-                          <tr>
-                            <td colSpan={5} className="text-center" style={{ fontStyle: 'italic', color: '#888' }}>
-                              ... e mais {reportData.despesasOperacionais.lista.length - 20} despesas
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
+                {/* Footer */}
                 <div className="footer">
-                  <p>Relatório gerado automaticamente pelo sistema VeloStock</p>
-                  <p>{reportData.empresa.nome} - {format(new Date(), "dd/MM/yyyy HH:mm")}</p>
+                  <p>Relatório confidencial - VeloStock Sistema de Gestão de Revenda</p>
+                  <p>Este documento foi gerado automaticamente pelo sistema</p>
                 </div>
               </div>
             </div>
           ) : (
             <div className="flex items-center justify-center h-64 text-muted-foreground">
-              Selecione o período para visualizar o relatório
+              Nenhum dado disponível
             </div>
           )}
         </div>
