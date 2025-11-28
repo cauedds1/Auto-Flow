@@ -1539,13 +1539,24 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
     }
   });
 
-  // GET /api/store-observations/:id - Buscar observação por ID
-  app.get("/api/store-observations/:id", async (req, res) => {
+  // GET /api/store-observations/:id - Buscar observação por ID (COM VALIDAÇÃO DE EMPRESA)
+  app.get("/api/store-observations/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const userCompany = await getUserWithCompany(req);
+      if (!userCompany) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+
       const observation = await storage.getStoreObservation(req.params.id);
       if (!observation) {
         return res.status(404).json({ error: "Observação não encontrada" });
       }
+      
+      // Validar que a observação pertence à empresa do usuário
+      if (observation.empresaId !== userCompany.empresaId) {
+        return res.status(403).json({ error: "Observação não pertence a esta empresa" });
+      }
+      
       res.json(observation);
     } catch (error) {
       console.error("Erro ao buscar observação:", error);
@@ -1586,15 +1597,26 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
     }
   });
 
-  // PATCH /api/store-observations/:id - Atualizar observação
-  app.patch("/api/store-observations/:id", async (req, res) => {
+  // PATCH /api/store-observations/:id - Atualizar observação (COM VALIDAÇÃO DE EMPRESA)
+  app.patch("/api/store-observations/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const updates = insertStoreObservationSchema.partial().parse(req.body);
-      const updatedObservation = await storage.updateStoreObservation(req.params.id, updates);
-      
-      if (!updatedObservation) {
+      const userCompany = await getUserWithCompany(req);
+      if (!userCompany) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+
+      // Verificar se a observação existe e pertence à empresa
+      const existingObservation = await storage.getStoreObservation(req.params.id);
+      if (!existingObservation) {
         return res.status(404).json({ error: "Observação não encontrada" });
       }
+      
+      if (existingObservation.empresaId !== userCompany.empresaId) {
+        return res.status(403).json({ error: "Observação não pertence a esta empresa" });
+      }
+
+      const updates = insertStoreObservationSchema.partial().parse(req.body);
+      const updatedObservation = await storage.updateStoreObservation(req.params.id, updates);
       
       io.emit("storeObservationUpdated", updatedObservation);
       
@@ -1608,13 +1630,25 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
     }
   });
 
-  // DELETE /api/store-observations/:id - Deletar observação
-  app.delete("/api/store-observations/:id", async (req, res) => {
+  // DELETE /api/store-observations/:id - Deletar observação (COM VALIDAÇÃO DE EMPRESA)
+  app.delete("/api/store-observations/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const deleted = await storage.deleteStoreObservation(req.params.id);
-      if (!deleted) {
+      const userCompany = await getUserWithCompany(req);
+      if (!userCompany) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+
+      // Verificar se a observação existe e pertence à empresa
+      const existingObservation = await storage.getStoreObservation(req.params.id);
+      if (!existingObservation) {
         return res.status(404).json({ error: "Observação não encontrada" });
       }
+      
+      if (existingObservation.empresaId !== userCompany.empresaId) {
+        return res.status(403).json({ error: "Observação não pertence a esta empresa" });
+      }
+
+      await storage.deleteStoreObservation(req.params.id);
       
       io.emit("storeObservationDeleted", req.params.id);
       
@@ -1627,8 +1661,8 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
 
   // Company Settings endpoints
   
-  // GET /api/company-settings - Buscar configurações da empresa
-  app.get("/api/company-settings", async (req, res) => {
+  // GET /api/company-settings - Buscar configurações da empresa (COM AUTENTICAÇÃO)
+  app.get("/api/company-settings", isAuthenticated, async (req: any, res) => {
     try {
       const settings = await storage.getCompanySettings();
       res.json(settings || {});
@@ -1638,8 +1672,8 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
     }
   });
 
-  // PATCH /api/company-settings - Atualizar configurações da empresa
-  app.patch("/api/company-settings", async (req, res) => {
+  // PATCH /api/company-settings - Atualizar configurações da empresa (COM AUTENTICAÇÃO E PERMISSÃO)
+  app.patch("/api/company-settings", isAuthenticated, requireProprietario, async (req: any, res) => {
     try {
       const updatedSettings = await storage.createOrUpdateCompanySettings(req.body);
       res.json(updatedSettings);
