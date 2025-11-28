@@ -26,11 +26,11 @@ export const checklistCategoriesCarro = {
 
 export const checklistItemsCarro = {
   pneus: ["Pneus Dianteiros", "Pneus Traseiros"],
-  interior: ["Limpeza", "Estado dos bancos", "Tapetes", "Porta-objetos", "Acabamentos"],
+  interior: ["Limpeza", "Estado dos bancos", "Tapetes", "Porta-objetos", "Acabamentos", "Volante"],
   somEletrica: ["Funcionamento do som", "Vidros elétricos", "Ar-condicionado", "Travas elétricas"],
   lataria: ["Arranhões", "Amassados", "Pintura desbotada", "Faróis/Lanternas"],
   documentacao: ["Documento do veículo", "IPVA", "Licenciamento"],
-  equipamentos: ["Macaco", "Chave de Roda", "Triângulo"]
+  equipamentos: ["Macaco", "Chave de Roda", "Triângulo", "Estepe"]
 } as const;
 
 // Categorias para MOTOS
@@ -49,7 +49,7 @@ export const checklistItemsMoto = {
   somEletrica: ["Faróis", "Lanterna", "Setas", "Bateria", "Painel"],
   lataria: ["Carenagens", "Tanque", "Arranhões", "Amassados", "Pintura"],
   documentacao: ["Documento do veículo", "IPVA", "Licenciamento"],
-  equipamentos: ["Macaco", "Chave de Roda", "Triângulo"]
+  equipamentos: ["Macaco", "Chave de Roda", "Triângulo", "Estepe"]
 } as const;
 
 // Função helper para obter categorias baseado no tipo
