@@ -267,7 +267,13 @@ Retorne um JSON com: { "analysis": "texto da análise", "recommendations": ["rec
 
       // Buscar usuário para verificar permissões
       const currentUser = await storage.getUser(userCompany.userId);
-      const userRole = currentUser?.role || "vendedor";
+      const userRole = currentUser?.role?.toLowerCase() || "vendedor";
+      
+      // CORRECAO: Motoristas nao podem usar chatbot
+      if (userRole === "motorista") {
+        return res.status(403).json({ error: "Motoristas não têm acesso ao chatbot." });
+      }
+      
       const userPermissions = currentUser?.customPermissions || {};
 
       // Validate and sanitize conversation history (only allow valid structure)
