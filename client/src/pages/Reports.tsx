@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -63,6 +63,14 @@ export default function Reports() {
   const { user } = useAuth();
   const { can, isFinanceiro, isProprietario, isVendedor } = usePermissions();
   const hasFinancialAccess = can.viewFinancialReports; // Proprietário e Financeiro
+  const queryClient = useQueryClient();
+
+  // Quando o dialog de média de dias abre, invalidar e refetch dos dados
+  useEffect(() => {
+    if (avgDaysDialogOpen) {
+      queryClient.invalidateQueries({ queryKey: ["/api/vehicles"] });
+    }
+  }, [avgDaysDialogOpen, queryClient]);
 
   const getPeriodFromFilter = () => {
     const now = new Date();
