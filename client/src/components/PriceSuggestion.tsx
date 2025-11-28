@@ -15,9 +15,10 @@ interface PriceSuggestionProps {
     model: string;
     year: number;
   };
+  fipeReferencePrice?: string;
 }
 
-export function PriceSuggestion({ vehicleId, vehicleData }: PriceSuggestionProps) {
+export function PriceSuggestion({ vehicleId, vehicleData, fipeReferencePrice }: PriceSuggestionProps) {
   const [suggestedPrice, setSuggestedPrice] = useState("");
   const [reasoning, setReasoning] = useState("");
   const [fipePrice, setFipePrice] = useState("");
@@ -148,6 +149,24 @@ export function PriceSuggestion({ vehicleId, vehicleData }: PriceSuggestionProps
           Análise inteligente baseada em custos, margem desejada e preço FIPE de referência
         </p>
       </div>
+
+      {fipeReferencePrice && (
+        <div className="mb-6 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 rounded-lg border border-blue-200 dark:border-blue-800">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-1">
+                Preço FIPE Cadastrado
+              </p>
+              <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+                {fipeReferencePrice}
+              </p>
+            </div>
+            <div className="text-blue-300 dark:text-blue-700">
+              <TrendingUp className="h-8 w-8" />
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-4">
         <div>

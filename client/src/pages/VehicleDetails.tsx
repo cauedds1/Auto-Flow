@@ -6,7 +6,6 @@ import { VehicleDetailsHeader } from "@/components/VehicleDetailsHeader";
 import { VehicleTimeline } from "@/components/VehicleTimeline";
 import { VehicleCosts } from "@/components/VehicleCosts";
 import { VehicleDocuments } from "@/components/VehicleDocuments";
-import { AdGenerator } from "@/components/AdGenerator";
 import { AdGeneratorMulti } from "@/components/AdGeneratorMulti";
 import { PriceSuggestion } from "@/components/PriceSuggestion";
 import { EditVehicleDialog } from "@/components/EditVehicleDialog";
@@ -753,32 +752,21 @@ export default function VehicleDetails() {
                 model: vehicle.model,
                 year: vehicle.year,
               }}
+              fipeReferencePrice={vehicle.fipeReferencePrice}
             />
           </TabsContent>
 
           <TabsContent value="anuncio">
-            <div className="space-y-6">
-              <AdGeneratorMulti
-                vehicleId={vehicleId}
-                vehicleData={{
-                  brand: vehicle.brand,
-                  model: vehicle.model,
-                  year: vehicle.year,
-                  color: vehicle.color,
-                  features: vehicle.features || [],
-                }}
-              />
-              <AdGenerator
-                vehicleId={vehicleId}
-                vehicleData={{
-                  brand: vehicle.brand,
-                  model: vehicle.model,
-                  year: vehicle.year,
-                  color: vehicle.color,
-                  features: vehicle.features || [],
-                }}
-              />
-            </div>
+            <AdGeneratorMulti
+              vehicleId={vehicleId}
+              vehicleData={{
+                brand: vehicle.brand,
+                model: vehicle.model,
+                year: vehicle.year,
+                color: vehicle.color,
+                features: vehicle.features || [],
+              }}
+            />
           </TabsContent>
 
           <TabsContent value="midia">
