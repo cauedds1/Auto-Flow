@@ -106,8 +106,27 @@ The frontend utilizes React with TypeScript, Vite, Tailwind CSS, Radix UI primit
 - **connect-pg-simple**: PostgreSQL session store.
 
 ### AI Integration
-- **OpenAI API**: Utilizes GPT-4o-mini for AI-powered price suggestions and ad generation.
+- **OpenAI API**: Utilizes GPT-4o-mini for AI-powered features:
+  - **LeadAssistant**: Generates personalized response suggestions for leads with WhatsApp integration
+  - **ChatbotWidget**: Floating AI assistant for FAQ and general customer inquiries
+  - **AdGeneratorMulti**: Creates optimized ads for multiple platforms (Instagram, Facebook, OLX, WhatsApp)
+  - **SellerAnalysisDialog**: AI-powered seller performance analysis with recommendations
+  - **CoachingCard**: Provides daily coaching tips for sellers based on their performance
+  - Price suggestions based on vehicle characteristics
+  - Ad text generation in multiple styles
 - **FIPE API**: Free proxy integration (Parallelum API) for real-time vehicle pricing data.
+
+### AI Components (November 2025)
+Frontend components for AI features:
+- `client/src/components/LeadAssistant.tsx` - Response suggestions for leads
+- `client/src/components/ChatbotWidget.tsx` - Floating chatbot widget (visible when logged in)
+- `client/src/components/AdGeneratorMulti.tsx` - Multi-platform ad generator
+- `client/src/components/SellerAnalysisDialog.tsx` - Seller performance analysis
+- `client/src/components/CoachingCard.tsx` - Daily coaching tips
+
+Backend AI routes:
+- `server/routes/ai.ts` - All AI endpoints consolidated
+- `server/utils/openai.ts` - OpenAI integration utilities
 
 ### Third-Party Services
 - **Google Fonts**: For typography.

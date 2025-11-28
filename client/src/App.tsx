@@ -32,6 +32,7 @@ import { useCurrentCompany } from "@/hooks/use-company";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/use-permissions";
+import { ChatbotWidget } from "@/components/ChatbotWidget";
 
 function MainAppRouter() {
   const { isMotorista } = usePermissions();
@@ -131,6 +132,7 @@ function AppContent() {
           </main>
         </div>
       </div>
+      <ChatbotWidget />
     </SidebarProvider>
   );
 }
