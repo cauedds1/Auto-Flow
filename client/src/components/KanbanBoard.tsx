@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, memo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { KanbanColumn } from "./KanbanColumn";
 import { VehicleCard, VehicleCardProps } from "./VehicleCard";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,7 @@ interface KanbanBoardProps {
   vehicles: VehicleCardProps[];
 }
 
-function KanbanBoardComponent({ vehicles }: KanbanBoardProps) {
+export function KanbanBoard({ vehicles }: KanbanBoardProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
@@ -94,5 +94,3 @@ function KanbanBoardComponent({ vehicles }: KanbanBoardProps) {
     </div>
   );
 }
-
-export const KanbanBoard = memo(KanbanBoardComponent);
