@@ -331,10 +331,13 @@ Retorne um JSON com: { "analysis": "texto da análise", "recommendations": ["rec
           .join(" ")
           .toLowerCase();
         
-        // 1. Procurar por nome de veículo mencionado (ex: "chevrolet onix", "ford fiesta")
+        // 1. Procurar por nome de veículo mencionado (ex: "chevrolet onix", "compass", "ford fiesta")
+        // Primeiro tenta "brand + model", depois só "model"
         for (const vehicle of allVehicles) {
-          const searchText = `${vehicle.brand} ${vehicle.model}`.toLowerCase();
-          if (recentText.includes(searchText)) {
+          const fullName = `${vehicle.brand} ${vehicle.model}`.toLowerCase();
+          const modelOnly = vehicle.model.toLowerCase();
+          
+          if (recentText.includes(fullName) || recentText.includes(modelOnly)) {
             vehicleInContext = {
               id: vehicle.id,
               brand: vehicle.brand,
