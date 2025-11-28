@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Phone, Mail, User, TrendingUp, Calendar, Edit, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { LeadAssistant } from "@/components/LeadAssistant";
 
 type Lead = {
   id: string;
