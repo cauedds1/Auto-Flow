@@ -178,7 +178,12 @@ export function EditVehicleDialog({ vehicleId, vehicle, open, onOpenChange }: Ed
     // Carregar versões em background
     const loadVersions = async () => {
       try {
-        const result = await versionsMutation.mutateAsync();
+        const yearNum = typeof year === "string" ? parseInt(year) : year;
+        const result = await versionsMutation.mutateAsync({ 
+          brand, 
+          model, 
+          year: yearNum
+        });
         setFipeVersions(result.versions);
         setFipeMetadata({ brandId: result.brandId });
       } catch (error: any) {

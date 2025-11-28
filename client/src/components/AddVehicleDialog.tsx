@@ -131,10 +131,11 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
     const loadVersions = async () => {
       try {
         const fipeVehicleType = vehicleTypeMap[currentVehicleType] || "carros";
+        const yearNum = typeof year === "string" ? parseInt(year) : year;
         const result = await versionsMutation.mutateAsync({ 
           brand, 
           model, 
-          year,
+          year: yearNum,
           vehicleType: fipeVehicleType
         });
         setFipeVersions(result.versions);
