@@ -63,14 +63,6 @@ export default function Reports() {
   const { user } = useAuth();
   const { can, isFinanceiro, isProprietario, isVendedor } = usePermissions();
   const hasFinancialAccess = can.viewFinancialReports; // Proprietário e Financeiro
-  const queryClient = useQueryClient();
-
-  // Quando o dialog de média de dias abre, invalidar e refetch dos dados
-  useEffect(() => {
-    if (avgDaysDialogOpen) {
-      queryClient.invalidateQueries({ queryKey: ["/api/vehicles"] });
-    }
-  }, [avgDaysDialogOpen, queryClient]);
 
   const getPeriodFromFilter = () => {
     const now = new Date();
@@ -94,7 +86,7 @@ export default function Reports() {
 
   const periodParams = getPeriodFromFilter();
 
-  const { data: vehicles = [], isLoading: isLoadingVehicles } = useQuery<any[]>({
+  const { data: vehicles = [], isLoading: isLoadingVehicles, refetch: refetchVehicles } = useQuery<any[]>({
     queryKey: ["/api/vehicles"],
   });
 
@@ -105,6 +97,13 @@ export default function Reports() {
   const { data: observations = [] } = useQuery<any[]>({
     queryKey: ["/api/store-observations"],
   });
+
+  // Quando o dialog de média de dias abre, fazer refetch dos dados
+  useEffect(() => {
+    if (avgDaysDialogOpen) {
+      refetchVehicles();
+    }
+  }, [avgDaysDialogOpen, refetchVehicles]);
 
   // Construir query string manualmente para passar parâmetros corretamente
   const buildMetricsUrl = () => {
