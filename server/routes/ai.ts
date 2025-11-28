@@ -340,7 +340,7 @@ Retorne um JSON com: { "analysis": "texto da análise", "recommendations": ["rec
       }
 
       // 5. Veículos em estoque
-      const inStock = allVehicles.filter(v => v.status === "Entrada" || v.status === "Disponível");
+      const inStock = allVehicles.filter(v => v.status === "Entrada" || v.status === "Pronto para Venda");
       const vehiclesContext = inStock.length > 0 ? `\n## ESTOQUE DISPONÍVEL (${inStock.length} veículos):\n${inStock.slice(0, 15).map(v => 
         `- ${v.brand} ${v.model} ${v.year} (${v.color}) | Placa: ${v.plate} | Local: ${v.location || "N/A"}`
       ).join("\n")}` : "\n## ESTOQUE: Vazio";
@@ -353,15 +353,15 @@ Retorne um JSON com: { "analysis": "texto da análise", "recommendations": ["rec
         return `- ${v.brand} ${v.model} ${v.year} | Vendedor: ${v.vendedorNome || "N/A"} | ${dataStr} | ${valor}`;
       }).join("\n")}` : "\n## VENDAS: Nenhuma venda registrada";
 
-      // 7. Custos de veículos
+      // 7. Custos de veículos (limitado aos primeiros 15)
       const vehicleCostsList = await db.select({
         vehicleId: vehicleCosts.vehicleId,
-        descricao: vehicleCosts.descricao,
-        valor: vehicleCosts.valor,
-      }).from(vehicleCosts).where(eq(vehicleCosts.empresaId, userCompany.empresaId)).limit(15);
+        description: vehicleCosts.description,
+        value: vehicleCosts.value,
+      }).from(vehicleCosts).limit(15);
 
       const costsContext = vehicleCostsList.length > 0 ? `\n## CUSTOS REGISTRADOS:\n${vehicleCostsList.map(c => 
-        `- Custo: ${c.descricao} | R$ ${Number(c.valor).toFixed(2)}`
+        `- Custo: ${c.description} | R$ ${Number(c.value).toFixed(2)}`
       ).join("\n")}` : "\n## CUSTOS: Nenhum custo registrado";
 
       const observationsContext = pendingObservations.length > 0 ? `\n## OBSERVAÇÕES PENDENTES:\n${pendingObservations.map(o => 
