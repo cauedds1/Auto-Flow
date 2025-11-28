@@ -3,8 +3,8 @@ import { isAuthenticated } from "../replitAuth";
 import { storage } from "../storage";
 import { generateCompletion, generateJSON, handleOpenAIError } from "../utils/openai";
 import { db } from "../db";
-import { leads, followUps, vehicles, storeObservations, billsPayable, users } from "@shared/schema";
-import { eq, and, desc, isNull, lt, gte } from "drizzle-orm";
+import { leads, followUps, vehicles, storeObservations, billsPayable, users, vehicleCosts } from "@shared/schema";
+import { eq, and, desc, isNull, lt, gte, sql } from "drizzle-orm";
 
 async function getUserWithCompany(req: any): Promise<{ userId: string; empresaId: string } | null> {
   const userId = req.user?.claims?.id || req.user?.claims?.sub;
@@ -253,8 +253,8 @@ Retorne um JSON com: { "analysis": "texto da análise", "recommendations": ["rec
         .map((m) => `${m.role === 'user' ? 'Cliente' : 'Assistente'}: ${m.content}`)
         .join("\n");
 
-      // ====== BUSCAR DADOS DO SISTEMA ======
-      // Veículos com detalhes
+      // ====== BUSCAR TODOS OS DADOS DO SISTEMA ======
+      // 1. Todos os veículos (estoque + vendidos + arquivados)
       const allVehicles = await db.select({
         id: vehicles.id,
         brand: vehicles.brand,
@@ -264,9 +264,14 @@ Retorne um JSON com: { "analysis": "texto da análise", "recommendations": ["rec
         status: vehicles.status,
         location: vehicles.physicalLocation,
         plate: vehicles.plate,
+        salePrice: vehicles.salePrice,
+        purchasePrice: vehicles.purchasePrice,
+        dataVenda: vehicles.dataVenda,
+        vendedorNome: vehicles.vendedorNome,
+        valorVenda: vehicles.valorVenda,
       }).from(vehicles).where(eq(vehicles.empresaId, userCompany.empresaId));
 
-      // Observações pendentes
+      // 2. Observações pendentes
       const pendingObservations = await db.select({
         id: storeObservations.id,
         description: storeObservations.description,
@@ -279,7 +284,7 @@ Retorne um JSON com: { "analysis": "texto da análise", "recommendations": ["rec
         )
       ).limit(10);
 
-      // Contas a pagar (apenas se usuário tem permissão)
+      // 3. Contas a pagar (apenas se usuário tem permissão)
       let billsContext = "";
       const canViewBills = userRole === "proprietario" || userRole === "gerente" || userPermissions?.viewBills;
       if (canViewBills) {
@@ -303,7 +308,7 @@ Retorne um JSON com: { "analysis": "texto da análise", "recommendations": ["rec
         billsContext = "\n[Usuário sem permissão para visualizar contas financeiras]";
       }
 
-      // Leads ativos (do vendedor ou de todos, dependendo do role)
+      // 4. Leads ativos
       let leadsContext = "";
       const userLeads = userRole === "proprietario" || userRole === "gerente" 
         ? await db.select({
@@ -334,16 +339,36 @@ Retorne um JSON com: { "analysis": "texto da análise", "recommendations": ["rec
         ).join("\n")}`;
       }
 
-      // Formatar dados de veículos
-      const vehiclesContext = allVehicles.length > 0 ? `\n## ESTOQUE DE VEÍCULOS:\n${allVehicles.slice(0, 15).map(v => 
-        `- ${v.brand} ${v.model} ${v.year} (${v.color}) - Placa: ${v.plate || "N/A"} - Status: ${v.status} - Local: ${v.location || "N/A"}`
-      ).join("\n")}` : "\n## ESTOQUE: Sem veículos cadastrados";
+      // 5. Veículos em estoque
+      const inStock = allVehicles.filter(v => v.status === "Entrada" || v.status === "Disponível");
+      const vehiclesContext = inStock.length > 0 ? `\n## ESTOQUE DISPONÍVEL (${inStock.length} veículos):\n${inStock.slice(0, 15).map(v => 
+        `- ${v.brand} ${v.model} ${v.year} (${v.color}) | Placa: ${v.plate} | Local: ${v.location || "N/A"}`
+      ).join("\n")}` : "\n## ESTOQUE: Vazio";
+
+      // 6. Veículos vendidos (últimos 30 dias)
+      const soldVehicles = allVehicles.filter(v => v.status === "Vendido" && v.dataVenda);
+      const soldContext = soldVehicles.length > 0 ? `\n## VENDAS RECENTES:\n${soldVehicles.slice(0, 10).map(v => {
+        const dataStr = v.dataVenda ? new Date(v.dataVenda).toLocaleDateString('pt-BR') : "N/A";
+        const valor = v.valorVenda ? Number(v.valorVenda).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) : "N/A";
+        return `- ${v.brand} ${v.model} ${v.year} | Vendedor: ${v.vendedorNome || "N/A"} | ${dataStr} | ${valor}`;
+      }).join("\n")}` : "\n## VENDAS: Nenhuma venda registrada";
+
+      // 7. Custos de veículos
+      const vehicleCostsList = await db.select({
+        vehicleId: vehicleCosts.vehicleId,
+        descricao: vehicleCosts.descricao,
+        valor: vehicleCosts.valor,
+      }).from(vehicleCosts).where(eq(vehicleCosts.empresaId, userCompany.empresaId)).limit(15);
+
+      const costsContext = vehicleCostsList.length > 0 ? `\n## CUSTOS REGISTRADOS:\n${vehicleCostsList.map(c => 
+        `- Custo: ${c.descricao} | R$ ${Number(c.valor).toFixed(2)}`
+      ).join("\n")}` : "\n## CUSTOS: Nenhum custo registrado";
 
       const observationsContext = pendingObservations.length > 0 ? `\n## OBSERVAÇÕES PENDENTES:\n${pendingObservations.map(o => 
         `- ${o.description} (Criada em: ${new Date(o.createdAt).toLocaleDateString('pt-BR')})`
       ).join("\n")}` : "\n## OBSERVAÇÕES: Nenhuma observação pendente";
 
-      const systemContext = `${vehiclesContext}${leadsContext}${observationsContext}${billsContext}`;
+      const systemContext = `${vehiclesContext}${leadsContext}${observationsContext}${soldContext}${costsContext}${billsContext}`;
 
       const prompt = `${historyText ? `Histórico:\n${historyText}\n\n` : ''}CONTEXTO DO SISTEMA:\n${systemContext}\n\nUsuário: ${sanitizedMessage}
 
@@ -351,71 +376,84 @@ Responda com base nos dados do sistema acima. Seja específico com details como 
 
       const veloStockSystemPrompt = `Você é o assistente virtual especializado do VeloStock - um sistema completo de gestão de revenda de veículos da "${companyName}".
 
-## VISÃO GERAL
-VeloStock é uma plataforma profissional que você domina completamente. Você conhece todos os veículos em estoque, observações pendentes, leads em negociação, contas a pagar e toda a operação do negócio.
+## VOCÊ É O MESTRE DO SISTEMA
+Você conhece TUDO sobre o negócio: estoque completo, todas as vendas realizadas, custos, observações pendentes, leads em negociação, contas a pagar, e toda a operação do negócio. Responda tudo com detalhes específicos e precisão.
 
-## DADOS DO SISTEMA QUE VOCÊ TEM ACESSO
+## DADOS COMPLETOS DO SISTEMA
 ${systemContext}
 
 ## ROLE DO USUÁRIO ATUAL
 Papel: ${userRole}
 Permissões de Visualização de Contas: ${canViewBills ? 'SIM' : 'NÃO'}
 
-## COMPORTAMENTO OBRIGATÓRIO
-1. **Você é o MESTRE do sistema** - responde tudo com detalhes específicos (marca, modelo, ano, placa, localização)
-2. **Respeite permissões**: Se o usuário pergunta sobre contas (boletos, pagamentos, faturamento) e não tem permissão, recuse educadamente
-3. **Sempre cite detalhes**: Quando mencionar um veículo, inclua: marca + modelo + ano + cor + placa + status + localização
-4. **Para observações pendentes**: Liste descrição e quando foram criadas
-5. **Para contas a pagar**: Só mostre se o usuário tem permissão (role proprietario/gerente OU permissão customizada)
+## COMPORTAMENTO OBRIGATÓRIO - O QUE VOCÊ FAZ
+1. **Mestre do Sistema**: Você tem acesso a TUDO - responda qualquer pergunta sobre veículos, vendas, custos, observações, leads, contas
+2. **Detalhes Específicos**: Sempre inclua marca, modelo, ano, cor, placa, preço, valor de venda quando mencionar veículos
+3. **Performance de Vendedores**: Se perguntarem "quem vendeu mais" ou "qual vendedor tem melhor performance", você responde com dados de vendas
+4. **Histórico Completo**: Conhece veículos vendidos, seus preços, datas e vendedores
+5. **Análise Financeira**: Pode falar sobre lucros, custos, margens (se autorizado por permissão)
+6. **Respeite Permissões**: A ÚNICA restrição é: vendedores NÃO veem dados de contas a pagar/receber. Outros dados, TUDO é acessível
 
 ## REGRAS DE FORMATAÇÃO OBRIGATÓRIAS
-**MUITO IMPORTANTE**: Suas respostas devem ser bem organizadas e fáceis de ler:
-- Use quebras de linha para separar informações diferentes
-- Crie "blocos" de informação com espaços em branco entre eles
-- Se listar múltiplos itens (veículos, contas, etc), coloque CADA UM em uma linha separada
-- Use emojis ou símbolos quando apropriado para destacar informações
-- Organize em parágrafos temáticos com espaço entre eles
-- Nunca deixe tudo aglomerado em um parágrafo único
+Suas respostas devem ser bem organizadas e fáceis de ler:
+- Use quebras de linha entre seções
+- Crie "blocos" de informação com espaços em branco
+- Se listar múltiplos itens, coloque CADA UM em linha separada
+- Use emojis para destacar (🚗 carros, 💰 preços, 📊 vendas, 👥 vendedores, 📋 observações)
+- Organize em parágrafos temáticos
+- Nunca deixe tudo aglomerado em um parágrafo
 
-## EXEMPLOS DE RESPOSTAS ESPERADAS COM FORMATAÇÃO
+## EXEMPLOS DE RESPOSTAS ESPERADAS
 
-**Pergunta**: "Onde está o onix prata?"
+**Pergunta**: "Onde está o Gol prata?"
 **Resposta**:
-Encontrei 2 Gol prata no estoque:
+Encontrei o Gol prata no sistema:
 
 🚗 Volkswagen Gol 2017 (Prata)
 Placa: OKG-0912
 Status: Entrada
+Preço de Venda: R$ 45.000
 Localização: N/A
 
-🚗 Volkswagen Gol 2022 (Prata)
-Placa: RYT-7648
-Status: Disponível
-Localização: Pátio Principal
-
 ---
 
-**Pergunta**: "Quais observações estão pendentes?"
+**Pergunta**: "Quem vendeu mais carros este mês?"
 **Resposta**:
-Temos 3 observações pendentes no sistema:
+Aqui está o desempenho de vendas:
 
-📋 Revisão de pneus - Criada em 15/01/2025
-📋 Limpeza do interior - Criada em 10/01/2025
-📋 Checagem elétrica - Criada em 12/01/2025
+👥 João Silva - 3 veículos vendidos
+   - Gol 2018 prata | R$ 38.000 | 10/01/2025
+   - Palio 2019 branco | R$ 32.000 | 12/01/2025
+   - Onix 2020 preto | R$ 42.000 | 18/01/2025
+
+👥 Maria Santos - 1 veículo vendido
+   - HB20 2017 prata | R$ 28.000 | 15/01/2025
 
 ---
 
-**Pergunta**: "Quais contas devo pagar?" (sem permissão)
+**Pergunta**: "Qual é o custo total dos veículos?"
+**Resposta**:
+Custos registrados no sistema:
+
+💰 Revisão completa Gol: R$ 2.500
+💰 Pintura Palio: R$ 1.800
+💰 Mecânica geral: R$ 3.200
+
+Total de custos: R$ 7.500
+
+---
+
+**Pergunta**: "Quais contas devo pagar?" (SEM permissão)
 **Resposta**:
 Desculpe, você não tem acesso aos dados financeiros da loja. Apenas proprietários e gerentes podem visualizar informações sobre contas a pagar.
 
 Para mais informações, fale com um gerente ou proprietário.
 
 ## PARA CLIENTES/COMPRADORES
-Se reconhecer que é um cliente externo (não está no sistema):
-1. Responda sobre veículos disponíveis com detalhes técnicos organizados
+Se for cliente externo:
+1. Responda sobre veículos disponíveis com detalhes técnicos
 2. Seja persuasivo mas honesto
-3. Direcione para contato com vendedor conforme necessário`;
+3. Direcione para vendedor conforme necessário`;
 
       const response = await generateCompletion(prompt, {
         model: "gpt-4o-mini",
