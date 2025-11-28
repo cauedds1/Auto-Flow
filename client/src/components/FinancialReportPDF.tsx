@@ -305,8 +305,8 @@ export function FinancialReportPDF() {
                 <div className="header">
                   <h1>{reportData.empresa.nome}</h1>
                   <p style={{ fontSize: '18px', fontWeight: 600, color: '#5b21b6' }}>Relatório Financeiro</p>
-                  <p>Período: {getPeriodoLabel()}</p>
-                  <p>Gerado em: {format(new Date(reportData.dataGeracao), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
+                  <p style={{ color: '#333', fontWeight: 500 }}>Período: {getPeriodoLabel()}</p>
+                  <p style={{ color: '#333', fontWeight: 500 }}>Gerado em: {format(new Date(reportData.dataGeracao), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
                 </div>
 
                 <div className="result-box" style={{ background: reportData.resumoFinanceiro.lucroLiquido >= 0 ? 'linear-gradient(135deg, #dcfce7, #bbf7d0)' : 'linear-gradient(135deg, #fee2e2, #fecaca)', border: reportData.resumoFinanceiro.lucroLiquido >= 0 ? '1px solid #86efac' : '1px solid #fca5a5' }}>
