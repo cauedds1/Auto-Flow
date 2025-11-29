@@ -730,21 +730,32 @@ Retorne um JSON com: { "analysis": "texto da análise", "recommendations": ["rec
         }
       }
 
-      // Adicionar contexto do veículo se estiver sendo discutido
+      // HISTÓRICO COMPLETO E CRONOLÓGICO DO VEÍCULO
       let vehicleContextInfo = "";
-      let repairHistoryContext = "";
+      let completeVehicleHistoryContext = "";
       if (vehicleInContext) {
         const vehicleData = allVehicles.find(v => v.id === vehicleInContext.id);
         if (vehicleData) {
           // Calcular dias no estoque
           const entryDate = vehicleData.createdAt ? new Date(vehicleData.createdAt) : new Date();
           const daysInStock = Math.floor((Date.now() - entryDate.getTime()) / (1000 * 60 * 60 * 24));
-          vehicleContextInfo = `\n## VEÍCULO EM DISCUSSÃO: ${vehicleData.brand} ${vehicleData.model} ${vehicleData.year}\nPlaca: ${vehicleData.plate}\nStatus: ${vehicleData.status}\nLocalização: ${vehicleData.location || "N/A"}\nPreço de Venda: R$ ${vehicleData.salePrice || "N/A"}\nDias no estoque: ${daysInStock} dias`;
+          vehicleContextInfo = `\n## VEÍCULO EM DISCUSSÃO: ${vehicleData.brand} ${vehicleData.model} ${vehicleData.year}\nPlaca: ${vehicleData.plate}\nStatus: ${vehicleData.status}\nLocalização: ${vehicleData.physicalLocation || "N/A"}\nPreço de Venda: R$ ${vehicleData.salePrice || "N/A"}\nDias no estoque: ${daysInStock} dias\nData de Entrada: ${entryDate.toLocaleDateString('pt-BR')}`;
         }
 
-        // Buscar histórico de movimentação por localização (sempre, não só para status/preparação)
-        const history = await db.select({
-          id: vehicleHistory.id,
+        // Montar histórico completo e cronológico
+        const completeHistory: Array<{ date: Date; type: string; detail: string }> = [];
+
+        // 1. Entrada do carro
+        if (vehicleData && vehicleData.createdAt) {
+          completeHistory.push({
+            date: new Date(vehicleData.createdAt),
+            type: "ENTRADA",
+            detail: `Veículo entrou no estoque`
+          });
+        }
+
+        // 2. Histórico de movimentação (status + localização)
+        const movementHistory = await db.select({
           toPhysicalLocation: vehicleHistory.toPhysicalLocation,
           movedAt: vehicleHistory.movedAt,
           toStatus: vehicleHistory.toStatus,
@@ -752,37 +763,92 @@ Retorne um JSON com: { "analysis": "texto da análise", "recommendations": ["rec
           .where(eq(vehicleHistory.vehicleId, vehicleInContext.id))
           .orderBy(vehicleHistory.movedAt);
 
-        if (history.length > 0) {
-          // Calcular dias em cada localização
-          const locationData: { [key: string]: { days: number; entries: number } } = {};
-          for (let i = 0; i < history.length; i++) {
-            const current = history[i];
-            const next = history[i + 1];
-            const location = current.toPhysicalLocation || current.toStatus || "Sem localização";
-            const startDate = new Date(current.movedAt);
-            const endDate = next ? new Date(next.movedAt) : new Date();
-            const days = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-            
-            if (!locationData[location]) {
-              locationData[location] = { days: 0, entries: 0 };
-            }
-            locationData[location].days += days;
-            locationData[location].entries += 1;
+        movementHistory.forEach(move => {
+          let detail = "";
+          if (move.toStatus) detail += `Status: ${move.toStatus}`;
+          if (move.toPhysicalLocation) detail += `${detail ? " | " : ""}Local: ${move.toPhysicalLocation}`;
+          if (detail) {
+            completeHistory.push({
+              date: new Date(move.movedAt),
+              type: "MOVIMENTAÇÃO",
+              detail: detail
+            });
           }
+        });
 
-          // Formatar histórico de reparos com tempo em cada local
-          const repairDetails = Object.entries(locationData)
-            .filter(([location]) => location !== "Sem localização")
-            .map(([location, data]) => `${location}: ${data.days} dias`)
-            .join(" | ");
+        // 3. Histórico de custos
+        const costHistory = await db.select({
+          categoria: vehicleCosts.categoria,
+          descricao: vehicleCosts.descricao,
+          valor: vehicleCosts.valor,
+          createdAt: vehicleCosts.createdAt,
+        }).from(vehicleCosts)
+          .where(eq(vehicleCosts.vehicleId, vehicleInContext.id));
 
-          if (repairDetails) {
-            repairHistoryContext = `\n## TEMPO EM CADA ETAPA (${vehicleInContext.brand.toUpperCase()} ${vehicleInContext.model.toUpperCase()}):\n${repairDetails}`;
-          }
+        costHistory.forEach(cost => {
+          completeHistory.push({
+            date: new Date(cost.createdAt),
+            type: "CUSTO",
+            detail: `${cost.categoria}: ${cost.descricao} - R$ ${Number(cost.valor).toFixed(2)}`
+          });
+        });
+
+        // 4. Histórico de documentos
+        const docsHistory = await db.select({
+          documentType: vehicleDocuments.documentType,
+          uploadedAt: vehicleDocuments.uploadedAt,
+        }).from(vehicleDocuments)
+          .where(eq(vehicleDocuments.vehicleId, vehicleInContext.id));
+
+        docsHistory.forEach(doc => {
+          completeHistory.push({
+            date: new Date(doc.uploadedAt),
+            type: "DOCUMENTO",
+            detail: `Documento: ${doc.documentType}`
+          });
+        });
+
+        // 5. Histórico de observações do carro
+        const obsHistory = await db.select({
+          category: storeObservations.category,
+          description: storeObservations.description,
+          createdAt: storeObservations.createdAt,
+        }).from(storeObservations)
+          .where(eq(storeObservations.vehicleId, vehicleInContext.id));
+
+        obsHistory.forEach(obs => {
+          completeHistory.push({
+            date: new Date(obs.createdAt),
+            type: "OBSERVAÇÃO",
+            detail: `[${obs.category}] ${obs.description}`
+          });
+        });
+
+        // 6. Venda (se houver)
+        if (vehicleData && vehicleData.status === "Vendido" && vehicleData.dataVenda) {
+          completeHistory.push({
+            date: new Date(vehicleData.dataVenda),
+            type: "VENDA",
+            detail: `Vendido para: ${vehicleData.repassadoPara || "Cliente"} | Valor: R$ ${vehicleData.valorVenda ? Number(vehicleData.valorVenda).toFixed(2) : "N/A"} | Vendedor: ${vehicleData.vendedorNome || "N/A"}`
+          });
+        }
+
+        // Ordenar cronologicamente
+        completeHistory.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+        // Formatar e limitar a últimas 30 movimentações
+        if (completeHistory.length > 0) {
+          const relevantHistory = completeHistory.slice(-30);
+          const historyText = relevantHistory.map(h => {
+            const dateStr = new Date(h.date).toLocaleDateString('pt-BR');
+            return `${dateStr} | ${h.type}: ${h.detail}`;
+          }).join("\n");
+
+          completeVehicleHistoryContext = `\n## HISTÓRICO COMPLETO (${vehicleInContext.brand.toUpperCase()} ${vehicleInContext.model.toUpperCase()}) - Últimos ${relevantHistory.length} eventos:\n${historyText}`;
         }
       }
 
-      const systemContext = `${vehiclesContext}${repairContext}${leadsContext}${observationsContext}${soldContext}${costsContext}${billsContext}${commissionsContext}${followUpsContext}${remindersContext}${costApprovalsContext}${operationalExpensesContext}${sellersMetricsContext}${activityLogContext}${vehicleContextInfo}${repairHistoryContext}${documentsContext}`;
+      const systemContext = `${vehiclesContext}${repairContext}${leadsContext}${observationsContext}${soldContext}${costsContext}${billsContext}${commissionsContext}${followUpsContext}${remindersContext}${costApprovalsContext}${operationalExpensesContext}${sellersMetricsContext}${activityLogContext}${vehicleContextInfo}${completeVehicleHistoryContext}${documentsContext}`;
 
       const contextSummary = `CONTEXTO DA CONVERSA:\n- Tópico: ${conversationTopic}${vehicleInContext ? `\n- Veículo em foco: ${vehicleInContext.brand} ${vehicleInContext.model} ${vehicleInContext.year}` : ""}`;
 

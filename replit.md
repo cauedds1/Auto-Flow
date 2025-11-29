@@ -125,8 +125,27 @@ Frontend components for AI features:
 - `client/src/components/CoachingCard.tsx` - Daily coaching tips
 
 Backend AI routes:
-- `server/routes/ai.ts` - All AI endpoints consolidated
+- `server/routes/ai.ts` - All AI endpoints consolidated with VeloBot omniscient context
 - `server/utils/openai.ts` - OpenAI integration utilities
+
+### VeloBot - Omniscient AI Assistant (November 29, 2025)
+**VeloBot has access to 15+ comprehensive data contexts:**
+1. **Histórico Completo de Carros** - Timeline cronológico de TUDO: entrada, movimentação entre locais, custos, documentos, observações, comissões, vendas (últimas 30 eventos)
+2. Follow-ups & Reminders (filtro por role - vendedores veem só seus)
+3. Cost Approvals & Operational Expenses (proprietários/gerentes)
+4. Seller Performance Metrics (vendas, leads ativos, convertidos)
+5. Document Status (verificação de documentação completa por veículo)
+6. Activity Log (últimas 15 atividades do sistema)
+7. Vehicle Context Awareness (detecta marca/modelo mencionados)
+8. Topic Detection (10+ tópicos: custos, localização, comissões, documentos, etc)
+9. Intelligent Response Formatting (quantitativas vs qualitativas)
+10. Role-Based Access Control (dados financeiros protegidos por permissões)
+
+**Key Features:**
+- **Histórico Cronológico Completo**: Quando carro foi ENTRADA → ONDE foi (com datas) → QUANTO custou (cada custo adicionado) → Quanto TEMPO ficou em cada lugar → QUANDO foi vendido
+- **Context-Aware Responses**: VeloBot entende do que você está falando (marca/modelo mencionados) e responde APENAS sobre esse carro específico
+- **Adaptive Formatting**: Respostas quantitativas retornam APENAS números; qualitativas retornam listas bem organizadas
+- **Role-Based Filtering**: Vendedores veem seus follow-ups; gerentes veem tudo; dados financeiros protegidos
 
 ### Third-Party Services
 - **Google Fonts**: For typography.
