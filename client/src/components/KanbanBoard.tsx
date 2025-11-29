@@ -1,5 +1,4 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import { FixedSizeList as List } from "react-window";
 import { KanbanColumn } from "./KanbanColumn";
 import { VehicleCard, VehicleCardProps } from "./VehicleCard";
 import { Input } from "@/components/ui/input";
@@ -23,8 +22,6 @@ const STATUS_COLUMNS = [
 const INITIAL_LIMIT = 50;
 const LOAD_MORE_INCREMENT = 25;
 const DEBOUNCE_DELAY = 300;
-const VEHICLE_CARD_HEIGHT = 220;
-const VIRTUALIZATION_THRESHOLD = 10;
 
 interface KanbanBoardProps {
   vehicles: VehicleCardProps[];
@@ -46,49 +43,10 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-interface VirtualizedColumnProps {
-  vehicles: VehicleCardProps[];
-  height: number;
-}
-
-function VirtualizedColumn({ vehicles, height }: VirtualizedColumnProps) {
-  const Row = useCallback(({ index, style }: { index: number; style: React.CSSProperties }) => {
-    const vehicle = vehicles[index];
-    return (
-      <div style={{ ...style, paddingBottom: 12 }}>
-        <VehicleCard key={vehicle.id} {...vehicle} />
-      </div>
-    );
-  }, [vehicles]);
-
-  if (vehicles.length <= VIRTUALIZATION_THRESHOLD) {
-    return (
-      <div className="space-y-3">
-        {vehicles.map((vehicle) => (
-          <VehicleCard key={vehicle.id} {...vehicle} />
-        ))}
-      </div>
-    );
-  }
-
-  return (
-    <List
-      height={height}
-      itemCount={vehicles.length}
-      itemSize={VEHICLE_CARD_HEIGHT}
-      width="100%"
-    >
-      {Row}
-    </List>
-  );
-}
-
 export function KanbanBoard({ vehicles }: KanbanBoardProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [displayLimit, setDisplayLimit] = useState(INITIAL_LIMIT);
-  const [columnHeight, setColumnHeight] = useState(500);
-  const containerRef = useRef<HTMLDivElement>(null);
   
   const debouncedSearchTerm = useDebounce(searchTerm, DEBOUNCE_DELAY);
   
@@ -99,18 +57,6 @@ export function KanbanBoard({ vehicles }: KanbanBoardProps) {
       prevVehiclesLength.current = vehicles.length;
     }
   }, [vehicles.length]);
-
-  useEffect(() => {
-    const updateHeight = () => {
-      if (containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        setColumnHeight(Math.max(300, rect.height - 60));
-      }
-    };
-    updateHeight();
-    window.addEventListener('resize', updateHeight);
-    return () => window.removeEventListener('resize', updateHeight);
-  }, []);
 
   const filteredVehicles = useMemo(() => {
     const searchLower = debouncedSearchTerm.toLowerCase();
@@ -140,20 +86,12 @@ export function KanbanBoard({ vehicles }: KanbanBoardProps) {
     setDisplayLimit(prev => prev + LOAD_MORE_INCREMENT);
   }, []);
 
-  const vehiclesByStatus = useMemo(() => {
-    const result: Record<string, VehicleCardProps[]> = {};
-    for (const status of STATUS_COLUMNS) {
-      result[status] = limitedVehicles.filter((v) => (v as any).status === status);
-    }
-    return result;
+  const getVehiclesByStatus = useCallback((status: string) => {
+    return limitedVehicles.filter((v) => (v as any).status === status);
   }, [limitedVehicles]);
 
-  const totalCountByStatus = useMemo(() => {
-    const result: Record<string, number> = {};
-    for (const status of STATUS_COLUMNS) {
-      result[status] = filteredVehicles.filter((v) => (v as any).status === status).length;
-    }
-    return result;
+  const getTotalCountByStatus = useCallback((status: string) => {
+    return filteredVehicles.filter((v) => (v as any).status === status).length;
   }, [filteredVehicles]);
 
   return (
@@ -189,21 +127,22 @@ export function KanbanBoard({ vehicles }: KanbanBoardProps) {
         )}
       </div>
 
-      <div className="flex-1 overflow-x-auto" ref={containerRef}>
+      <div className="flex-1 overflow-x-auto">
         <div className="flex h-full gap-4 pb-4">
           {STATUS_COLUMNS.map((status) => {
-            const vehiclesInStatus = vehiclesByStatus[status] || [];
-            const totalInStatus = totalCountByStatus[status] || 0;
+            const vehiclesInStatus = getVehiclesByStatus(status);
+            const totalInStatus = getTotalCountByStatus(status);
             return (
               <KanbanColumn
                 key={status}
                 title={status}
                 count={totalInStatus}
               >
-                <VirtualizedColumn 
-                  vehicles={vehiclesInStatus}
-                  height={columnHeight}
-                />
+                <div className="space-y-3">
+                  {vehiclesInStatus.map((vehicle) => (
+                    <VehicleCard key={vehicle.id} {...vehicle} />
+                  ))}
+                </div>
                 {vehiclesInStatus.length < totalInStatus && (
                   <div className="text-center text-xs text-muted-foreground py-2">
                     +{totalInStatus - vehiclesInStatus.length} mais
