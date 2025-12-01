@@ -32,6 +32,17 @@ export function getDatabaseUrl(): string {
     databaseUrl = process.env.DATABASE_URL;
   }
   
+  // 3. Tentar construir a URL a partir das variáveis PG* (Replit provisioned DB)
+  if (!databaseUrl && process.env.PGHOST && process.env.PGUSER && process.env.PGPASSWORD && process.env.PGDATABASE) {
+    const host = process.env.PGHOST;
+    const port = process.env.PGPORT || '5432';
+    const user = process.env.PGUSER;
+    const password = process.env.PGPASSWORD;
+    const database = process.env.PGDATABASE;
+    databaseUrl = `postgresql://${user}:${password}@${host}:${port}/${database}`;
+    console.log('[Database] ✓ Built DATABASE_URL from PG* environment variables');
+  }
+  
   if (!databaseUrl) {
     throw new Error(
       '[Database] DATABASE_URL não encontrada! ' +
