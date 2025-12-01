@@ -1901,6 +1901,279 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
     }
   });
 
+  // ===== PROFILE ENDPOINTS =====
+
+  // PATCH /api/profile - Atualizar perfil do usuário (nome, sobrenome)
+  app.patch("/api/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims?.sub || req.user.claims?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Usuário não autenticado" });
+      }
+
+      const { firstName, lastName } = req.body;
+      
+      const updates: any = {};
+      if (firstName !== undefined) {
+        if (firstName.length < 2) {
+          return res.status(400).json({ error: "Nome deve ter pelo menos 2 caracteres" });
+        }
+        updates.firstName = firstName;
+      }
+      if (lastName !== undefined) {
+        if (lastName.length < 2) {
+          return res.status(400).json({ error: "Sobrenome deve ter pelo menos 2 caracteres" });
+        }
+        updates.lastName = lastName;
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ error: "Nenhum dado para atualizar" });
+      }
+
+      const updatedUser = await storage.updateUser(userId, updates);
+      if (!updatedUser) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+
+      console.log(`[PROFILE] Perfil atualizado para usuário ${userId}`);
+      
+      res.json({
+        id: updatedUser.id,
+        email: updatedUser.email,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        profileImageUrl: updatedUser.profileImageUrl,
+      });
+    } catch (error) {
+      console.error("Erro ao atualizar perfil:", error);
+      res.status(500).json({ error: "Erro ao atualizar perfil" });
+    }
+  });
+
+  // PATCH /api/profile/email - Alterar email do usuário
+  app.patch("/api/profile/email", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims?.sub || req.user.claims?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Usuário não autenticado" });
+      }
+
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ error: "Email é obrigatório" });
+      }
+
+      // Validar formato do email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: "Email inválido" });
+      }
+
+      // Verificar se email já está em uso por outro usuário
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser && existingUser.id !== userId) {
+        return res.status(400).json({ error: "Este email já está em uso" });
+      }
+
+      const updatedUser = await storage.updateUser(userId, { email });
+      if (!updatedUser) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+
+      console.log(`[PROFILE] Email alterado para usuário ${userId}: ${email}`);
+      
+      res.json({
+        id: updatedUser.id,
+        email: updatedUser.email,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        profileImageUrl: updatedUser.profileImageUrl,
+      });
+    } catch (error) {
+      console.error("Erro ao alterar email:", error);
+      res.status(500).json({ error: "Erro ao alterar email" });
+    }
+  });
+
+  // PATCH /api/profile/password - Alterar senha via perfil
+  // Reutiliza o mesmo rate limiting de alteração de senha
+  app.patch("/api/profile/password", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims?.sub || req.user.claims?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Usuário não autenticado" });
+      }
+
+      // Rate limiting check (reutiliza o mesmo Map do change-password)
+      const now = Date.now();
+      const attempts = passwordChangeAttempts.get(userId);
+      if (attempts) {
+        if (now < attempts.resetAt) {
+          if (attempts.count >= 5) {
+            const waitSeconds = Math.ceil((attempts.resetAt - now) / 1000);
+            return res.status(429).json({ 
+              error: `Muitas tentativas. Aguarde ${waitSeconds} segundos.` 
+            });
+          }
+        } else {
+          passwordChangeAttempts.delete(userId);
+        }
+      }
+
+      const { currentPassword, newPassword } = req.body;
+      
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: "Senha atual e nova senha são obrigatórias" });
+      }
+
+      // Validações de força da senha
+      if (newPassword.length < 8) {
+        return res.status(400).json({ error: "A nova senha deve ter pelo menos 8 caracteres" });
+      }
+      
+      if (!/[A-Z]/.test(newPassword)) {
+        return res.status(400).json({ error: "A senha deve conter pelo menos uma letra maiúscula" });
+      }
+      
+      if (!/[a-z]/.test(newPassword)) {
+        return res.status(400).json({ error: "A senha deve conter pelo menos uma letra minúscula" });
+      }
+      
+      if (!/[0-9]/.test(newPassword)) {
+        return res.status(400).json({ error: "A senha deve conter pelo menos um número" });
+      }
+
+      const user = await storage.getUser(userId) as any;
+      if (!user) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+
+      if (!user.passwordHash) {
+        return res.status(400).json({ 
+          error: "Este usuário usa autenticação externa. Não é possível alterar a senha aqui." 
+        });
+      }
+
+      // Verificar senha atual
+      const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!isValid) {
+        // Incrementar tentativas falhas
+        const currentAttempts = passwordChangeAttempts.get(userId);
+        if (currentAttempts && now < currentAttempts.resetAt) {
+          currentAttempts.count++;
+        } else {
+          passwordChangeAttempts.set(userId, { count: 1, resetAt: now + 60000 }); // 1 minuto
+        }
+        return res.status(400).json({ error: "Senha atual incorreta" });
+      }
+
+      // Hash da nova senha com custo maior para mais segurança
+      const hashedPassword = await bcrypt.hash(newPassword, 12);
+      await storage.updateUser(userId, { passwordHash: hashedPassword });
+
+      // SECURITY: Invalidar todas as outras sessões deste usuário
+      await storage.invalidateUserSessions(userId);
+      
+      // Limpar tentativas após sucesso
+      passwordChangeAttempts.delete(userId);
+
+      console.log(`[SECURITY] Senha alterada via perfil para usuário ${userId}`);
+      
+      res.json({ success: true, message: "Senha alterada com sucesso" });
+    } catch (error) {
+      console.error("Erro ao alterar senha:", error);
+      res.status(500).json({ error: "Erro ao alterar senha" });
+    }
+  });
+
+  // Configurar multer para upload de foto de perfil
+  const profilePhotoStorage = multer.memoryStorage();
+  const profilePhotoUpload = multer({
+    storage: profilePhotoStorage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+    fileFilter: (req, file, cb) => {
+      if (file.mimetype.startsWith("image/")) {
+        cb(null, true);
+      } else {
+        cb(new Error("Apenas imagens são permitidas"));
+      }
+    },
+  });
+
+  // POST /api/profile/photo - Upload de foto de perfil
+  app.post("/api/profile/photo", isAuthenticated, profilePhotoUpload.single("photo"), async (req: any, res) => {
+    try {
+      const userId = req.user.claims?.sub || req.user.claims?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Usuário não autenticado" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: "Nenhuma imagem enviada" });
+      }
+
+      // Validar tipo de arquivo (já validado pelo multer, mas reforçamos)
+      const allowedMimeTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+      if (!allowedMimeTypes.includes(req.file.mimetype)) {
+        return res.status(400).json({ error: "Tipo de arquivo não permitido. Use JPEG, PNG, GIF ou WebP." });
+      }
+
+      // Validar tamanho (máximo 2MB para fotos de perfil para evitar banco muito grande)
+      const maxSize = 2 * 1024 * 1024; // 2MB
+      if (req.file.size > maxSize) {
+        return res.status(400).json({ error: "A imagem deve ter no máximo 2MB" });
+      }
+
+      // Converter para base64 para armazenar no banco
+      const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
+      
+      const updatedUser = await storage.updateUser(userId, { 
+        profileImageUrl: base64Image 
+      });
+      
+      if (!updatedUser) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+
+      console.log(`[PROFILE] Foto de perfil atualizada para usuário ${userId}`);
+      
+      res.json({
+        id: updatedUser.id,
+        profileImageUrl: updatedUser.profileImageUrl,
+      });
+    } catch (error) {
+      console.error("Erro ao fazer upload da foto:", error);
+      res.status(500).json({ error: "Erro ao fazer upload da foto de perfil" });
+    }
+  });
+
+  // DELETE /api/profile/photo - Remover foto de perfil
+  app.delete("/api/profile/photo", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims?.sub || req.user.claims?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Usuário não autenticado" });
+      }
+
+      const updatedUser = await storage.updateUser(userId, { 
+        profileImageUrl: null 
+      });
+      
+      if (!updatedUser) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+
+      console.log(`[PROFILE] Foto de perfil removida para usuário ${userId}`);
+      
+      res.json({ success: true, message: "Foto removida com sucesso" });
+    } catch (error) {
+      console.error("Erro ao remover foto:", error);
+      res.status(500).json({ error: "Erro ao remover foto de perfil" });
+    }
+  });
+
   // Vehicle Documents endpoints
   
   // GET /api/vehicles/:id/documents - Listar documentos do veículo

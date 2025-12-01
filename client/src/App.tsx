@@ -5,9 +5,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
-import { Button } from "@/components/ui/button";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { ModeToggle } from "@/components/ModeToggle";
+import { ProfileDropdown } from "@/components/ProfileDropdown";
 import Dashboard from "@/pages/Dashboard";
 import DriverDashboard from "@/pages/DriverDashboard";
 import VehicleDetails from "@/pages/VehicleDetails";
@@ -118,14 +118,7 @@ function AppContent() {
                   alt={companyName} 
                   className="h-6 sm:h-10 w-auto object-contain max-w-[80px] sm:max-w-none"
                 />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => window.location.href = '/api/logout'}
-                  className="text-muted-foreground hover:text-foreground text-xs sm:text-sm px-2 sm:px-3"
-                >
-                  Sair
-                </Button>
+                <ProfileDropdown />
               </div>
             </header>
             <main className="flex-1 overflow-auto">
