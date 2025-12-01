@@ -18,7 +18,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   readyForSaleAlerts: true,
 };
 
-const STORAGE_KEY = 'autoflow-settings';
+const STORAGE_KEY = 'velostock-settings';
 
 export function useSettings() {
   const [settings, setSettings] = useState<AppSettings>(() => {
