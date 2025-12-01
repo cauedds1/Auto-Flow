@@ -107,9 +107,11 @@ export async function setupAuth(app: Express) {
         email: email,
         skipVerification: true
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("[Signup] Erro no signup:", error);
-      return res.status(500).json({ message: "Erro ao criar conta" });
+      console.error("[Signup] Stack:", error?.stack);
+      console.error("[Signup] Message:", error?.message);
+      return res.status(500).json({ message: "Erro ao criar conta", details: error?.message });
     }
   });
 
