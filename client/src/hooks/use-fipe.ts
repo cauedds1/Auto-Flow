@@ -227,7 +227,8 @@ export function useFipeVehicleVersions() {
         throw new Error(`Modelo "${model}" nao encontrado para a marca ${matchedBrand.nome}`);
       }
 
-      const limitedModels = candidateModels.slice(0, 15);
+      // Aumentar limite para 50 modelos para incluir todas as versoes (LTZ, LT, LS, etc)
+      const limitedModels = candidateModels.slice(0, 50);
       
       const allVersions: FipeVersion[] = [];
       
