@@ -199,13 +199,25 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
         vehicleType: fipeVehicleType
       });
       
+      // Log para debug
+      console.log("Resposta FIPE:", result);
+      
       // Extrair valor de forma defensiva - FIPE pode retornar "Valor" ou "valor"
       const resultAny = result as any;
+      
+      // Verificar se a API retornou um erro
+      if (resultAny.error || resultAny.erro || resultAny.message) {
+        const errorMsg = resultAny.error || resultAny.erro || resultAny.message;
+        throw new Error(`API FIPE: ${errorMsg}`);
+      }
+      
       const valorField = result.Valor || resultAny.valor || '';
       const priceValue = (valorField || '').toString().replace("R$", "").replace("R$ ", "").trim();
       
       if (!priceValue) {
-        throw new Error("Não foi possível extrair o valor FIPE da resposta");
+        // Mostrar mais detalhes do que a API retornou
+        console.error("Resposta FIPE sem valor:", result);
+        throw new Error("API FIPE não retornou o preço. Tente novamente em alguns segundos.");
       }
       
       form.setValue("fipeReferencePrice", priceValue);
