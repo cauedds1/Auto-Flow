@@ -1803,21 +1803,57 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
   });
 
   // POST /api/auth/change-password - Alterar senha do usuário
+  // Rate limiting simples: máximo 5 tentativas por minuto por usuário
+  const passwordChangeAttempts = new Map<string, { count: number; resetAt: number }>();
+  
   app.post("/api/auth/change-password", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims?.sub || req.user.claims?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Usuário não autenticado" });
+      }
+      
+      // Rate limiting check
+      const now = Date.now();
+      const attempts = passwordChangeAttempts.get(userId);
+      if (attempts) {
+        if (now < attempts.resetAt) {
+          if (attempts.count >= 5) {
+            const waitSeconds = Math.ceil((attempts.resetAt - now) / 1000);
+            return res.status(429).json({ 
+              error: `Muitas tentativas. Aguarde ${waitSeconds} segundos.` 
+            });
+          }
+        } else {
+          passwordChangeAttempts.delete(userId);
+        }
+      }
+      
       const { currentPassword, newPassword } = req.body;
       
       if (!currentPassword || !newPassword) {
         return res.status(400).json({ error: "Senha atual e nova senha são obrigatórias" });
       }
       
-      if (newPassword.length < 6) {
-        return res.status(400).json({ error: "A nova senha deve ter pelo menos 6 caracteres" });
+      // Validações de força da senha
+      if (newPassword.length < 8) {
+        return res.status(400).json({ error: "A nova senha deve ter pelo menos 8 caracteres" });
       }
       
-      const userId = req.user?.id;
-      if (!userId) {
-        return res.status(401).json({ error: "Usuário não autenticado" });
+      if (!/[A-Z]/.test(newPassword)) {
+        return res.status(400).json({ error: "A senha deve conter pelo menos uma letra maiúscula" });
+      }
+      
+      if (!/[a-z]/.test(newPassword)) {
+        return res.status(400).json({ error: "A senha deve conter pelo menos uma letra minúscula" });
+      }
+      
+      if (!/[0-9]/.test(newPassword)) {
+        return res.status(400).json({ error: "A senha deve conter pelo menos um número" });
+      }
+      
+      if (currentPassword === newPassword) {
+        return res.status(400).json({ error: "A nova senha deve ser diferente da senha atual" });
       }
       
       const user = await storage.getUser(userId as string) as any;
@@ -1825,16 +1861,34 @@ Gere APENAS o texto do anúncio, sem títulos ou formatação extra.`;
         return res.status(404).json({ error: "Usuário não encontrado" });
       }
       
+      // Verificar se o usuário tem senha definida (autenticação local)
+      if (!user.passwordHash) {
+        return res.status(400).json({ 
+          error: "Este usuário usa autenticação externa. Não é possível alterar a senha aqui." 
+        });
+      }
+      
       // Verificar senha atual
-      const bcrypt = require("bcrypt");
       const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
       if (!isValid) {
+        // Incrementar tentativas falhas
+        const currentAttempts = passwordChangeAttempts.get(userId);
+        if (currentAttempts && now < currentAttempts.resetAt) {
+          currentAttempts.count++;
+        } else {
+          passwordChangeAttempts.set(userId, { count: 1, resetAt: now + 60000 }); // 1 minuto
+        }
         return res.status(400).json({ error: "Senha atual incorreta" });
       }
       
-      // Hash da nova senha e atualizar
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      // Hash da nova senha com custo maior para mais segurança
+      const hashedPassword = await bcrypt.hash(newPassword, 12);
       await storage.updateUser(userId as string, { passwordHash: hashedPassword });
+      
+      // Limpar tentativas após sucesso
+      passwordChangeAttempts.delete(userId);
+      
+      console.log(`[SECURITY] Senha alterada com sucesso para usuário ${userId}`);
       
       res.json({ success: true, message: "Senha alterada com sucesso" });
     } catch (error) {

@@ -1234,12 +1234,22 @@ export default function Settings() {
       </Tabs>
 
       {/* Dialog: Alterar Senha */}
-      <Dialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen}>
-        <DialogContent>
+      <Dialog open={changePasswordOpen} onOpenChange={(open) => {
+        setChangePasswordOpen(open);
+        if (!open) {
+          setCurrentPassword("");
+          setNewPassword("");
+          setConfirmPassword("");
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Alterar Senha</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5 text-red-500" />
+              Alterar Senha
+            </DialogTitle>
             <DialogDescription>
-              Digite sua senha atual e a nova senha para alterar.
+              Para sua segurança, confirme sua senha atual antes de definir uma nova.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -1248,45 +1258,86 @@ export default function Settings() {
               <Input
                 id="current-password"
                 type="password"
+                placeholder="Digite sua senha atual"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 data-testid="input-current-password"
               />
             </div>
+            <Separator />
             <div className="space-y-2">
               <Label htmlFor="new-password">Nova senha</Label>
               <Input
                 id="new-password"
                 type="password"
+                placeholder="Digite a nova senha"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 data-testid="input-new-password"
               />
+              <div className="space-y-1 mt-2">
+                <p className="text-xs text-muted-foreground font-medium">Requisitos da senha:</p>
+                <ul className="text-xs space-y-0.5">
+                  <li className={`flex items-center gap-1 ${newPassword.length >= 8 ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}`}>
+                    {newPassword.length >= 8 ? <Check className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
+                    Mínimo 8 caracteres
+                  </li>
+                  <li className={`flex items-center gap-1 ${/[A-Z]/.test(newPassword) ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}`}>
+                    {/[A-Z]/.test(newPassword) ? <Check className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
+                    Uma letra maiúscula
+                  </li>
+                  <li className={`flex items-center gap-1 ${/[a-z]/.test(newPassword) ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}`}>
+                    {/[a-z]/.test(newPassword) ? <Check className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
+                    Uma letra minúscula
+                  </li>
+                  <li className={`flex items-center gap-1 ${/[0-9]/.test(newPassword) ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}`}>
+                    {/[0-9]/.test(newPassword) ? <Check className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
+                    Um número
+                  </li>
+                </ul>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirm-password">Confirmar nova senha</Label>
               <Input
                 id="confirm-password"
                 type="password"
+                placeholder="Confirme a nova senha"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 data-testid="input-confirm-password"
               />
+              {confirmPassword && newPassword !== confirmPassword && (
+                <p className="text-xs text-red-500 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  As senhas não coincidem
+                </p>
+              )}
+              {confirmPassword && newPassword === confirmPassword && newPassword.length > 0 && (
+                <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                  <Check className="h-3 w-3" />
+                  Senhas coincidem
+                </p>
+              )}
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setChangePasswordOpen(false)}>
               Cancelar
             </Button>
             <Button
               data-testid="button-save-password"
+              disabled={
+                !currentPassword ||
+                newPassword.length < 8 ||
+                !/[A-Z]/.test(newPassword) ||
+                !/[a-z]/.test(newPassword) ||
+                !/[0-9]/.test(newPassword) ||
+                newPassword !== confirmPassword
+              }
               onClick={async () => {
                 if (newPassword !== confirmPassword) {
                   toast({ title: "As senhas não coincidem", variant: "destructive" });
-                  return;
-                }
-                if (newPassword.length < 6) {
-                  toast({ title: "A nova senha deve ter pelo menos 6 caracteres", variant: "destructive" });
                   return;
                 }
                 try {
@@ -1297,7 +1348,7 @@ export default function Settings() {
                     body: JSON.stringify({ currentPassword, newPassword }),
                   });
                   if (res.ok) {
-                    toast({ title: "Senha alterada com sucesso!" });
+                    toast({ title: "Senha alterada com sucesso!", description: "Sua nova senha está ativa." });
                     setChangePasswordOpen(false);
                     setCurrentPassword("");
                     setNewPassword("");
