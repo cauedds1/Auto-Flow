@@ -1,197 +1,319 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, Building2, CreditCard, DollarSign, TrendingUp, LogOut } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
-import { useLocation } from "wouter";
-import AdminLogin from "./AdminLogin";
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import { Server as SocketIOServer } from "socket.io";
+import { storage } from "./storage";
+import { setupAuth, isAuthenticated } from "./replitAuth";
+import multer from "multer";
+import { z } from "zod";
+import { insertVehicleSchema, insertVehicleCostSchema, insertStoreObservationSchema, updateVehicleHistorySchema, insertCommissionPaymentSchema, insertReminderSchema, commissionsConfig, commissionPayments, users, companies, storeObservations, operationalExpenses } from "@shared/schema";
+import { isNotNull } from "drizzle-orm";
+import OpenAI from "openai";
+import path from "path";
+import fs from "fs/promises";
+import { existsSync, createReadStream } from "fs";
+import { createBackup, listBackups, getBackupPath } from "./backup";
+import { requireProprietario, requireProprietarioOrGerente, requireFinancialAccess, PERMISSIONS } from "./middleware/roleCheck";
+import bcrypt from "bcrypt";
+import financialRoutes from "./routes/financial";
+import leadsRoutes from "./routes/leads";
+import followupsRoutes from "./routes/followups";
+import activityLogRoutes from "./routes/activityLog";
+import costApprovalsRoutes from "./routes/costApprovals";
+import billsRoutes from "./routes/bills";
+import { registerAIRoutes } from "./routes/ai";
+import { registerAdminRoutes } from "./routes/admin";
+import { db } from "./db";
+import { eq, and } from "drizzle-orm";
+import { generateVerificationCode, getVerificationCodeExpiry } from "./utils/verificationCode";
+import { sendEmail } from "./utils/replitmail";
 
-interface Stats {
-  totalClientes: number;
-  clientesAtivos: number;
-  clientesTeste: number;
-  totalVeiculos: number;
-  totalUsuarios: number;
-  pagamentosPendentes: number;
-  valorPendente: number;
-}
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
 
-interface Cliente {
-  empresaId: string;
-  nomeFantasia: string;
-  cnpj: string;
-  telefone: string;
-  email: string;
-  subscriptionStatus: string;
-  plano: string;
-  dataProximoPagamento: string;
-}
-
-export default function AdminPanel() {
-  const [isAuth, setIsAuth] = useState<boolean | null>(null);
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [, setLocation] = useLocation();
-
-  useEffect(() => {
-    fetch("/api/admin/me").then(r => setIsAuth(r.ok)).catch(() => setIsAuth(false));
-  }, []);
-
-  const { data: stats } = useQuery<Stats>({ queryKey: ["/api/admin/dashboard"], enabled: isAuth === true });
-  const { data: clientes = [], isLoading } = useQuery<Cliente[]>({
-    queryKey: ["/api/admin/clientes", statusFilter],
-    queryFn: async () => {
-      const url = statusFilter === "all" ? "/api/admin/clientes" : `/api/admin/clientes?status=${statusFilter}`;
-      return fetch(url).then(r => r.json());
+const documentUpload = multer({
+  storage: multer.diskStorage({
+    destination: async (req, file, cb) => {
+      const vehicleId = req.params.id;
+      const uploadDir = path.join(process.cwd(), "uploads", "vehicles", vehicleId);
+      
+      if (!existsSync(uploadDir)) {
+        await fs.mkdir(uploadDir, { recursive: true });
+      }
+      
+      cb(null, uploadDir);
     },
-    enabled: isAuth === true,
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === "application/pdf") {
+      cb(null, true);
+    } else {
+      cb(new Error("Apenas arquivos PDF são permitidos"), false);
+    }
+  },
+});
+
+export function createExpressServer(): Server {
+  const app = require("express")();
+  const httpServer = createServer(app);
+  const io = new SocketIOServer(httpServer, {
+    cors: {
+      origin: "*",
+    },
   });
 
-  if (isAuth === null) return <div className="flex h-screen items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" /></div>;
-  if (!isAuth) return <AdminLogin />;
+  // Middleware
+  setupAuth(app);
+  app.use(require("express").json());
 
-  const filteredClientes = clientes.filter(c =>
-    c.nomeFantasia.toLowerCase().includes(searchTerm.toLowerCase()) || c.cnpj?.includes(searchTerm) || c.email?.includes(searchTerm)
-  );
+  // ============================================
+  // HEALTH CHECK
+  // ============================================
+  app.get("/api/health", (req: any, res) => {
+    res.json({ status: "ok" });
+  });
 
-  const handleLogout = async () => {
-    await fetch("/api/admin/logout", { method: "POST" });
-    setLocation("/");
+  // ============================================
+  // COMPANIES
+  // ============================================
+  
+  app.post("/api/companies", isAuthenticated, async (req: any, res) => {
+    try {
+      const userCompany = await getUserWithCompany(req);
+      if (!userCompany) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+
+      // Sanitizar e validar comissãoFixaGlobal rigorosamente
+      const companyData = { ...req.body };
+      if ('comissaoFixaGlobal' in companyData) {
+        if (companyData.comissaoFixaGlobal === null || companyData.comissaoFixaGlobal === '') {
+          companyData.comissaoFixaGlobal = null;
+        } else {
+          const valor = Number(companyData.comissaoFixaGlobal);
+          if (!Number.isFinite(valor) || valor < 0 || valor > 999999.99) {
+            return res.status(400).json({ error: "Comissão fixa global deve ser um número válido entre 0 e R$ 999.999,99" });
+          }
+          companyData.comissaoFixaGlobal = valor;
+        }
+      }
+
+      const company = await storage.createCompany(companyData);
+      
+      // Criar usuário de proprietário automaticamente
+      const firstUser = await storage.createUser({
+        empresaId: company.id,
+        email: req.body.email || `admin@${company.id}`,
+        firstName: req.user.firstName || "Admin",
+        lastName: req.user.lastName || "",
+        passwordHash: req.user.passwordHash,
+        role: "proprietario",
+      });
+      
+      io.emit("company:created", company);
+      res.status(201).json(company);
+    } catch (error) {
+      console.error("Erro ao criar empresa:", error);
+      res.status(500).json({ error: "Erro ao criar empresa" });
+    }
+  });
+
+  // PATCH /api/companies/:id - Atualizar empresa (COM VALIDAÇÃO DE PROPRIETÁRIO)
+  app.patch("/api/companies/:id", isAuthenticated, requireProprietario, async (req: any, res) => {
+    try {
+      const userCompany = await getUserWithCompany(req);
+      if (!userCompany) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+
+      // Validar que o usuário está editando sua própria empresa
+      if (req.params.id !== userCompany.empresaId) {
+        return res.status(403).json({ error: "Acesso negado. Você não pode editar outra empresa." });
+      }
+
+      // Sanitizar e validar comissãoFixaGlobal rigorosamente
+      const updateData = { ...req.body };
+      if ('comissaoFixaGlobal' in updateData) {
+        if (updateData.comissaoFixaGlobal === null || updateData.comissaoFixaGlobal === '') {
+          updateData.comissaoFixaGlobal = null;
+        } else {
+          const valor = Number(updateData.comissaoFixaGlobal);
+          // Validação robusta: rejeita NaN, Infinity, -Infinity, negativos e valores extremos
+          if (!Number.isFinite(valor) || valor < 0 || valor > 999999.99) {
+            return res.status(400).json({ error: "Comissão fixa global deve ser um número válido entre 0 e R$ 999.999,99" });
+          }
+          // Armazenar como número, não string
+          updateData.comissaoFixaGlobal = valor;
+        }
+      }
+
+      const company = await storage.updateCompany(req.params.id, updateData);
+      if (!company) {
+        return res.status(404).json({ error: "Empresa não encontrada" });
+      }
+      
+      console.log("[COMPANY] Empresa atualizada:", {
+        id: company.id,
+        nome: company.nomeFantasia,
+        corPrimaria: company.corPrimaria,
+        corSecundaria: company.corSecundaria,
+      });
+      
+      io.emit("company:updated", company);
+      res.json(company);
+    } catch (error) {
+      console.error("Erro ao atualizar empresa:", error);
+      res.status(500).json({ error: "Erro ao atualizar empresa" });
+    }
+  });
+
+  // Buscar empresa do usuário autenticado
+  app.get("/api/me/company", isAuthenticated, async (req: any, res) => {
+    try {
+      const userCompany = await getUserWithCompany(req);
+      if (!userCompany) {
+        return res.status(404).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+
+      const company = await storage.getCompany(userCompany.empresaId);
+      res.json(company);
+    } catch (error) {
+      console.error("Erro ao buscar empresa:", error);
+      res.status(500).json({ error: "Erro ao buscar empresa" });
+    }
+  });
+
+  // ============================================
+  // FINANCIAL ROUTES
+  // ============================================
+  app.use("/api/financial", isAuthenticated, financialRoutes);
+
+  // ============================================
+  // LEADS E CRM
+  // ============================================
+  app.use("/api/leads", isAuthenticated, leadsRoutes);
+
+  // ============================================
+  // FOLLOW-UPS
+  // ============================================
+  app.use("/api/followups", isAuthenticated, followupsRoutes);
+
+  // ============================================
+  // ACTIVITY LOG (AUDITORIA)
+  // ============================================
+  app.use("/api/activity", isAuthenticated, activityLogRoutes);
+
+  // ============================================
+  // APROVAÇÕES DE CUSTOS
+  // ============================================
+  app.use("/api/approvals", isAuthenticated, costApprovalsRoutes);
+
+  // ============================================
+  // CONTAS A PAGAR E A RECEBER (Proprietário e Financeiro)
+  // ============================================
+  app.use("/api/bills", isAuthenticated, requireFinancialAccess, billsRoutes);
+
+  // AI Routes
+  registerAIRoutes(app);
+
+  // Admin Routes
+  registerAdminRoutes(app);
+
+  // ============================================
+  // GERENCIAR ACESSOS (Permissões Customizadas - Proprietário apenas)
+  // ============================================
+  
+  // Buscar permissões de um usuário
+  app.get("/api/users/:userId/permissions", isAuthenticated, requireProprietario, async (req: any, res) => {
+    try {
+      const userInfo = await getUserWithCompany(req);
+      if (!userInfo) {
+        return res.status(403).json({ error: "Usuário não está vinculado a uma empresa" });
+      }
+      const { empresaId } = userInfo;
+      const { userId } = req.params;
+
+      const permissions = await storage.getUserPermissions(userId, empresaId);
+      
+      res.json(permissions || {
+        // Valores padrão se não houver permissões customizadas
+        userId,
+        empresaId,
+        acessarDashboard: "true",
+        acessarVeiculos: "true",
+        acessarCustos: "true",
+        acessarAlerts: "true",
+        acessarObservacoes: "true",
+        acessarConfiguracoes: "false",
+        acessarUsuarios: "false",
+        acessarFinanceiro: "false",
+        acessarDashboardFinanceiro: "false",
+        acessarComissoes: "false",
+        acessarDespesas: "false",
+        acessarRelatorios: "false",
+        criarVeiculos: "true",
+        editarVeiculos: "true",
+        deletarVeiculos: "false",
+        verCustosVeiculos: "true",
+        editarCustosVeiculos: "true",
+        verMargensLucro: "false",
+        usarSugestaoPreco: "true",
+        usarGeracaoAnuncios: "true",
+      });
+    } catch (error) {
+      console.error("Erro ao buscar permissões do usuário:", error);
+      res.status(500).json({ error: "Erro ao buscar permissões" });
+    }
+  });
+
+  // Atualizar permissões de um usuário
+  app.put("/api/users/:userId/permissions", isAuthenticated, requireProprietario, async (req: any, res) => {
+    try {
+      const userInfo = await getUserWithCompany(req);
+      if (!userInfo) {
+        return res.status(403).json({ error: "Usuário não está vinculado a uma empresa" });
+      }
+      const { empresaId, userId: proprietarioId } = userInfo;
+      const { userId } = req.params;
+      const permissions = req.body;
+
+      // Validar que o usuário pertence à mesma empresa
+      const targetUser = await storage.getUser(userId);
+      if (!targetUser || targetUser.empresaId !== empresaId) {
+        return res.status(403).json({ error: "Usuário não pertence a esta empresa" });
+      }
+
+      const updated = await storage.updateUserPermissions(userId, empresaId, {
+        ...permissions,
+        criadoPor: proprietarioId,
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Erro ao atualizar permissões do usuário:", error);
+      res.status(500).json({ error: "Erro ao atualizar permissões" });
+    }
+  });
+
+  return httpServer;
+}
+
+// Função auxiliar para obter usuário e empresa
+async function getUserWithCompany(req: any) {
+  if (!req.user || !req.user.id) return null;
+  
+  const user = await storage.getUser(req.user.id);
+  if (!user) return null;
+  
+  return {
+    userId: user.id,
+    empresaId: user.empresaId,
+    role: user.role,
   };
-
-  const handleStatusChange = async (empresaId: string, novoStatus: string) => {
-    await fetch(`/api/admin/clientes/${empresaId}/status`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: novoStatus }),
-    });
-    queryClient.invalidateQueries({ queryKey: ["/api/admin/clientes"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/admin/dashboard"] });
-  };
-
-  const getStatusBadge = (status: string) => {
-    const config: any = { ativo: { variant: "default", label: "Ativo" }, teste_gratis: { variant: "outline", label: "Teste" }, suspenso: { variant: "destructive", label: "Suspenso" }, cancelado: { variant: "secondary", label: "Cancelado" } };
-    const cfg = config[status] || config.ativo;
-    return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
-  };
-
-  return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <div className="flex justify-between items-start">
-          <div className="space-y-2">
-            <h1 className="text-4xl font-bold">Painel Administrativo</h1>
-            <p className="text-muted-foreground">Gestão de clientes e pagamentos</p>
-          </div>
-          <Button onClick={handleLogout} variant="destructive" size="sm" className="gap-2">
-            <LogOut className="w-4 h-4" /> Sair
-          </Button>
-        </div>
-
-        <div className="grid md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Clientes</CardTitle>
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalClientes || 0}</div>
-              <p className="text-xs text-muted-foreground">{stats?.clientesAtivos || 0} ativos</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Teste</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.clientesTeste || 0}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pagtos Pendentes</CardTitle>
-              <CreditCard className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.pagamentosPendentes || 0}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Valor Aberto</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">R$ {(Number(stats?.valorPendente) / 100).toFixed(2)}</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Clientes</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-4">
-              <Input placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} data-testid="input-search" />
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="ativo">Ativo</SelectItem>
-                  <SelectItem value="teste_gratis">Teste</SelectItem>
-                  <SelectItem value="suspenso">Suspenso</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {isLoading ? <div className="animate-pulse h-32 bg-muted rounded" /> : (
-              <div className="border rounded-lg overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted border-b">
-                    <tr>
-                      <th className="px-4 py-3 text-left">Empresa</th>
-                      <th className="px-4 py-3 text-left">Email</th>
-                      <th className="px-4 py-3 text-left">Status</th>
-                      <th className="px-4 py-3 text-left">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredClientes.map((c) => (
-                      <tr key={c.empresaId} className="border-b hover:bg-muted/50">
-                        <td className="px-4 py-3">{c.nomeFantasia}</td>
-                        <td className="px-4 py-3">{c.email}</td>
-                        <td className="px-4 py-3">{getStatusBadge(c.subscriptionStatus)}</td>
-                        <td className="px-4 py-3">
-                          <Select defaultValue={c.subscriptionStatus} onValueChange={(s) => handleStatusChange(c.empresaId, s)}>
-                            <SelectTrigger className="w-32">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="ativo">Ativar</SelectItem>
-                              <SelectItem value="suspenso">Suspender</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
 }
