@@ -245,6 +245,158 @@ router.get("/report/complete", requireFinancialOrManagerAccess, async (req, res)
     const totalContasReceber = contasReceber.reduce((sum, c) => sum + Number(c.valor || 0), 0);
     const contasPagarVencidas = contasPagar.filter(c => new Date(c.dataVencimento) < new Date() && c.status !== "pago");
     const contasReceberVencidas = contasReceber.filter(c => new Date(c.dataVencimento) < new Date() && c.status !== "pago");
+    const contasPagas = contasPagar.filter(c => c.status === "pago");
+    const contasRecebidas = contasReceber.filter(c => c.status === "pago");
+
+    // ========== NOVOS DADOS DETALHADOS ==========
+    
+    // 1. Lista detalhada de veículos vendidos com custos individuais
+    const veiculosVendidosDetalhados = await Promise.all(vendasPeriodo.map(async (veiculo) => {
+      // Buscar custos deste veículo específico
+      const custosVeiculo = await db
+        .select()
+        .from(vehicleCosts)
+        .where(eq(vehicleCosts.vehicleId, veiculo.id));
+      
+      const custoTotalVeiculo = custosVeiculo.reduce((sum, c) => sum + Number(c.value || 0), 0);
+      const precoCompra = Number(veiculo.purchasePrice || 0);
+      const precoVenda = Number(veiculo.salePrice || 0);
+      const lucroVeiculo = precoVenda - precoCompra - custoTotalVeiculo;
+      const margemVeiculo = precoVenda > 0 ? (lucroVeiculo / precoVenda) * 100 : 0;
+      
+      // Buscar nome do vendedor
+      let vendedorNome = "Não informado";
+      if (veiculo.vendedorId) {
+        const [vendedor] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, veiculo.vendedorId))
+          .limit(1);
+        vendedorNome = vendedor ? `${vendedor.firstName || ""} ${vendedor.lastName || ""}`.trim() : "Não informado";
+      }
+      
+      return {
+        id: veiculo.id,
+        placa: veiculo.plate,
+        marca: veiculo.brand,
+        modelo: veiculo.model,
+        ano: veiculo.year,
+        cor: veiculo.color,
+        precoCompra,
+        precoVenda,
+        custoTotal: custoTotalVeiculo,
+        lucro: lucroVeiculo,
+        margem: margemVeiculo,
+        vendedorNome,
+        dataVenda: veiculo.dataVenda,
+        repassado: (veiculo as any).repassado === "true",
+        custosDetalhados: custosVeiculo.map(c => ({
+          categoria: c.category,
+          descricao: c.description,
+          valor: Number(c.value || 0)
+        }))
+      };
+    }));
+
+    // 2. Ranking de veículos por custo (qual carro teve mais gasto)
+    const veiculosPorCusto = [...veiculosVendidosDetalhados]
+      .sort((a, b) => b.custoTotal - a.custoTotal)
+      .slice(0, 10);
+
+    // 3. Ranking de veículos por lucro
+    const veiculosPorLucro = [...veiculosVendidosDetalhados]
+      .sort((a, b) => b.lucro - a.lucro)
+      .slice(0, 10);
+
+    // 4. Maior venda do período
+    const maiorVenda = veiculosVendidosDetalhados.reduce((max, v) => 
+      v.precoVenda > (max?.precoVenda || 0) ? v : max, veiculosVendidosDetalhados[0]);
+
+    // 5. Estatísticas de contas
+    const estatisticasContas = {
+      pagar: {
+        total: contasPagar.length,
+        pagas: contasPagas.length,
+        pendentes: contasPagar.length - contasPagas.length,
+        vencidas: contasPagarVencidas.length,
+        valorTotal: totalContasPagar,
+        valorPago: contasPagas.reduce((sum, c) => sum + Number(c.valor || 0), 0),
+        valorPendente: contasPagar.filter(c => c.status !== "pago").reduce((sum, c) => sum + Number(c.valor || 0), 0),
+        valorVencido: contasPagarVencidas.reduce((sum, c) => sum + Number(c.valor || 0), 0),
+      },
+      receber: {
+        total: contasReceber.length,
+        recebidas: contasRecebidas.length,
+        pendentes: contasReceber.length - contasRecebidas.length,
+        vencidas: contasReceberVencidas.length,
+        valorTotal: totalContasReceber,
+        valorRecebido: contasRecebidas.reduce((sum, c) => sum + Number(c.valor || 0), 0),
+        valorPendente: contasReceber.filter(c => c.status !== "pago").reduce((sum, c) => sum + Number(c.valor || 0), 0),
+        valorVencido: contasReceberVencidas.reduce((sum, c) => sum + Number(c.valor || 0), 0),
+      }
+    };
+
+    // 6. Comissões detalhadas por vendedor (usando vendedorId como chave)
+    const comissoesDetalhadas: any[] = [];
+    const vendedoresEntries = Array.from(vendedoresMap.entries());
+    for (let i = 0; i < vendedoresEntries.length; i++) {
+      const [vendedorId, vendedorData] = vendedoresEntries[i];
+      const comissoesVendedor = comissoesPeriodo.filter(c => c.vendedorId === vendedorId);
+      const comissoesPagasVendedor = comissoesVendedor.filter(c => c.status === "Paga");
+      const comissoesAPagarVendedor = comissoesVendedor.filter(c => c.status === "A Pagar");
+      
+      comissoesDetalhadas.push({
+        vendedorId,
+        nome: vendedorData.nome,
+        email: vendedorData.email,
+        vendas: vendedorData.vendas,
+        receita: vendedorData.receita,
+        comissaoTotal: comissoesVendedor.reduce((sum, c) => sum + Number(c.valorComissao || 0), 0),
+        comissaoPaga: comissoesPagasVendedor.reduce((sum, c) => sum + Number(c.valorComissao || 0), 0),
+        comissaoAPagar: comissoesAPagarVendedor.reduce((sum, c) => sum + Number(c.valorComissao || 0), 0),
+        quantidadeComissoes: comissoesVendedor.length,
+      });
+    }
+    comissoesDetalhadas.sort((a, b) => b.receita - a.receita);
+
+    // 7. Despesas operacionais detalhadas agrupadas por categoria
+    const despesasPorTipo = despesasPeriodo.reduce((acc: any[], d) => {
+      const existing = acc.find(x => x.tipo === d.categoria);
+      if (existing) {
+        existing.total += Number(d.valor || 0);
+        existing.quantidade += 1;
+      } else {
+        acc.push({
+          tipo: d.categoria,
+          total: Number(d.valor || 0),
+          quantidade: 1
+        });
+      }
+      return acc;
+    }, []).sort((a, b) => b.total - a.total);
+
+    // 8. Highlights/Destaques
+    const highlights = {
+      maiorVenda: maiorVenda ? {
+        veiculo: `${maiorVenda.marca} ${maiorVenda.modelo}`,
+        placa: maiorVenda.placa,
+        valor: maiorVenda.precoVenda,
+        vendedor: maiorVenda.vendedorNome,
+      } : null,
+      veiculoMaisCustoso: veiculosPorCusto[0] ? {
+        veiculo: `${veiculosPorCusto[0].marca} ${veiculosPorCusto[0].modelo}`,
+        placa: veiculosPorCusto[0].placa,
+        custoTotal: veiculosPorCusto[0].custoTotal,
+      } : null,
+      veiculoMaiorLucro: veiculosPorLucro[0] ? {
+        veiculo: `${veiculosPorLucro[0].marca} ${veiculosPorLucro[0].modelo}`,
+        placa: veiculosPorLucro[0].placa,
+        lucro: veiculosPorLucro[0].lucro,
+        margem: veiculosPorLucro[0].margem,
+      } : null,
+      melhorVendedor: rankingVendedores[0] || null,
+      contasVencidasAlerta: contasPagarVencidas.length + contasReceberVencidas.length,
+    };
 
     res.json({
       empresa: {
@@ -277,6 +429,7 @@ router.get("/report/complete", requireFinancialOrManagerAccess, async (req, res)
         total: comissoesTotal,
         pagas: comissoesPeriodo.filter(c => c.status === "Paga").reduce((sum, c) => sum + Number(c.valorComissao || 0), 0),
         aPagar: comissoesPeriodo.filter(c => c.status === "A Pagar").reduce((sum, c) => sum + Number(c.valorComissao || 0), 0),
+        quantidade: comissoesPeriodo.length,
       },
       contasPagar: {
         lista: contasPagar,
@@ -298,6 +451,15 @@ router.get("/report/complete", requireFinancialOrManagerAccess, async (req, res)
       rankingVendedores,
       observacoesPendentes: observacoesPendentes.length,
       dataGeracao: new Date().toISOString(),
+      
+      // ========== NOVOS DADOS DETALHADOS ==========
+      veiculosVendidos: veiculosVendidosDetalhados,
+      veiculosPorCusto,
+      veiculosPorLucro,
+      estatisticasContas,
+      comissoesDetalhadas,
+      despesasPorTipo,
+      highlights,
     });
   } catch (error) {
     console.error("Erro ao gerar relatório completo:", error);
