@@ -67,27 +67,34 @@ export async function registerAdminRoutes(app: Express) {
 
       const status = (req.query.status as string) || "all";
 
-      let baseQuery = db
-        .select({
-          empresaId: companies.id,
-          nomeFantasia: companies.nomeFantasia,
-          cnpj: companies.cnpj,
-          telefone: companies.telefone,
-          email: companies.email,
-          subscriptionStatus: subscriptions.status,
-          plano: subscriptions.plano,
-          dataInicio: subscriptions.dataInicio,
-          dataProximoPagamento: subscriptions.dataProximoPagamento,
-          valorMensal: subscriptions.valorMensalR$,
-        })
-        .from(companies)
-        .leftJoin(subscriptions, eq(companies.id, subscriptions.companyId));
+      const selectFields = {
+        empresaId: companies.id,
+        nomeFantasia: companies.nomeFantasia,
+        cnpj: companies.cnpj,
+        telefone: companies.telefone,
+        email: companies.email,
+        subscriptionStatus: subscriptions.status,
+        plano: subscriptions.plano,
+        dataInicio: subscriptions.dataInicio,
+        dataProximoPagamento: subscriptions.dataProximoPagamento,
+        valorMensal: subscriptions.valorMensalR$,
+      };
 
+      let clientes;
       if (status !== "all") {
-        baseQuery = baseQuery.where(eq(subscriptions.status, status as any));
+        clientes = await db
+          .select(selectFields)
+          .from(companies)
+          .leftJoin(subscriptions, eq(companies.id, subscriptions.companyId))
+          .where(eq(subscriptions.status, status as "ativo" | "teste_gratis" | "suspenso" | "cancelado"))
+          .orderBy(desc(companies.createdAt));
+      } else {
+        clientes = await db
+          .select(selectFields)
+          .from(companies)
+          .leftJoin(subscriptions, eq(companies.id, subscriptions.companyId))
+          .orderBy(desc(companies.createdAt));
       }
-
-      const clientes = await baseQuery.orderBy(desc(companies.createdAt));
       res.json(clientes);
     } catch (error) {
       console.error("Erro ao listar clientes:", error);
