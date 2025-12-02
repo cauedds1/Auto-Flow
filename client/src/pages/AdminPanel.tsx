@@ -55,8 +55,8 @@ interface Pagamento {
   status: string;
   dataVencimento: string;
   dataPagamento: string | null;
-  metodoPagamento: string | null;
-  referencia: string;
+  metodo: string | null;
+  descricao: string | null;
   createdAt: string;
 }
 
@@ -538,8 +538,7 @@ function NovoPagamentoDialog({ clientes, onSuccess }: { clientes: Cliente[]; onS
     companyId: "",
     valor: "",
     dataVencimento: "",
-    referencia: "",
-    observacoes: "",
+    descricao: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -569,8 +568,7 @@ function NovoPagamentoDialog({ clientes, onSuccess }: { clientes: Cliente[]; onS
         companyId: "",
         valor: "",
         dataVencimento: "",
-        referencia: "",
-        observacoes: "",
+        descricao: "",
       });
       onSuccess();
     } catch (err) {
@@ -640,13 +638,13 @@ function NovoPagamentoDialog({ clientes, onSuccess }: { clientes: Cliente[]; onS
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="referencia">Referência</Label>
+            <Label htmlFor="descricao">Descrição</Label>
             <Input
-              id="referencia"
-              value={formData.referencia}
-              onChange={(e) => setFormData({ ...formData, referencia: e.target.value })}
+              id="descricao"
+              value={formData.descricao}
+              onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
               placeholder="Ex: Mensalidade Dezembro/2025"
-              data-testid="input-referencia-pagamento"
+              data-testid="input-descricao-pagamento"
             />
           </div>
 
@@ -1254,7 +1252,7 @@ export default function AdminPanel() {
                           <tr>
                             <th className="px-4 py-3 text-left font-medium">Empresa</th>
                             <th className="px-4 py-3 text-left font-medium">Valor</th>
-                            <th className="px-4 py-3 text-left font-medium hidden sm:table-cell">Referência</th>
+                            <th className="px-4 py-3 text-left font-medium hidden sm:table-cell">Descrição</th>
                             <th className="px-4 py-3 text-left font-medium hidden md:table-cell">Vencimento</th>
                             <th className="px-4 py-3 text-left font-medium">Status</th>
                             <th className="px-4 py-3 text-left font-medium">Ações</th>
@@ -1269,7 +1267,7 @@ export default function AdminPanel() {
                               <td className="px-4 py-3">
                                 R$ {Number(pag.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                               </td>
-                              <td className="px-4 py-3 hidden sm:table-cell">{pag.referencia || "-"}</td>
+                              <td className="px-4 py-3 hidden sm:table-cell">{pag.descricao || "-"}</td>
                               <td className="px-4 py-3 hidden md:table-cell">
                                 {pag.dataVencimento
                                   ? new Date(pag.dataVencimento).toLocaleDateString("pt-BR")

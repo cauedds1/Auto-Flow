@@ -587,38 +587,22 @@ export async function registerAdminRoutes(app: Express) {
       const status = req.query.status as string;
       const limit = parseInt(req.query.limit as string) || 50;
 
-      let query = db
-        .select({
-          id: payments.id,
-          companyId: payments.companyId,
-          nomeEmpresa: companies.nomeFantasia,
-          valor: payments.valor,
-          status: payments.status,
-          dataVencimento: payments.dataVencimento,
-          dataPagamento: payments.dataPagamento,
-          metodoPagamento: payments.metodoPagamento,
-          referencia: payments.referencia,
-          createdAt: payments.createdAt,
-        })
-        .from(payments)
-        .leftJoin(companies, eq(payments.companyId, companies.id))
-        .orderBy(desc(payments.createdAt))
-        .limit(limit);
+      const selectFields = {
+        id: payments.id,
+        companyId: payments.companyId,
+        nomeEmpresa: companies.nomeFantasia,
+        valor: payments.valor,
+        status: payments.status,
+        dataVencimento: payments.dataVencimento,
+        dataPagamento: payments.dataPagamento,
+        metodo: payments.metodo,
+        descricao: payments.descricao,
+        createdAt: payments.createdAt,
+      };
 
       if (status && status !== "all") {
         const pagamentos = await db
-          .select({
-            id: payments.id,
-            companyId: payments.companyId,
-            nomeEmpresa: companies.nomeFantasia,
-            valor: payments.valor,
-            status: payments.status,
-            dataVencimento: payments.dataVencimento,
-            dataPagamento: payments.dataPagamento,
-            metodoPagamento: payments.metodoPagamento,
-            referencia: payments.referencia,
-            createdAt: payments.createdAt,
-          })
+          .select(selectFields)
           .from(payments)
           .leftJoin(companies, eq(payments.companyId, companies.id))
           .where(eq(payments.status, status as "pendente" | "pago" | "atrasado" | "cancelado"))
@@ -627,7 +611,13 @@ export async function registerAdminRoutes(app: Express) {
         return res.json(pagamentos);
       }
 
-      const pagamentos = await query;
+      const pagamentos = await db
+        .select(selectFields)
+        .from(payments)
+        .leftJoin(companies, eq(payments.companyId, companies.id))
+        .orderBy(desc(payments.createdAt))
+        .limit(limit);
+
       res.json(pagamentos);
     } catch (error) {
       console.error("Erro ao listar pagamentos:", error);
@@ -640,21 +630,25 @@ export async function registerAdminRoutes(app: Express) {
   // ============================================
   app.post("/api/admin/pagamentos", requireAdminAuth, async (req: any, res) => {
     try {
-      const { companyId, valor, dataVencimento, referencia, observacoes } = req.body;
+      const { companyId, valor, dataVencimento, descricao, metodo } = req.body;
 
       if (!companyId || !valor || !dataVencimento) {
         return res.status(400).json({ error: "Empresa, valor e data de vencimento são obrigatórios" });
       }
 
+      const empresa = await db.select().from(subscriptions).where(eq(subscriptions.companyId, companyId)).limit(1);
+      const subscriptionId = empresa[0]?.id || companyId;
+
       const novoPagamento = await db
         .insert(payments)
         .values({
+          subscriptionId,
           companyId,
           valor: String(valor),
           status: "pendente",
           dataVencimento: new Date(dataVencimento),
-          referencia: referencia || `FAT-${Date.now()}`,
-          observacoes,
+          descricao: descricao || `Cobrança ${new Date().toLocaleDateString('pt-BR')}`,
+          metodo: metodo || null,
         })
         .returning();
 
@@ -671,13 +665,13 @@ export async function registerAdminRoutes(app: Express) {
   app.patch("/api/admin/pagamentos/:paymentId", requireAdminAuth, async (req: any, res) => {
     try {
       const { paymentId } = req.params;
-      const { status, dataPagamento, metodoPagamento, observacoes } = req.body;
+      const { status, dataPagamento, metodo, descricao } = req.body;
 
       const updates: any = { updatedAt: new Date() };
       if (status) updates.status = status;
       if (dataPagamento) updates.dataPagamento = new Date(dataPagamento);
-      if (metodoPagamento) updates.metodoPagamento = metodoPagamento;
-      if (observacoes !== undefined) updates.observacoes = observacoes;
+      if (metodo) updates.metodo = metodo;
+      if (descricao !== undefined) updates.descricao = descricao;
 
       const atualizado = await db
         .update(payments)
@@ -784,9 +778,10 @@ export async function registerAdminRoutes(app: Express) {
         .select({
           id: users.id,
           email: users.email,
-          nome: users.nome,
+          firstName: users.firstName,
+          lastName: users.lastName,
           role: users.role,
-          ativo: users.ativo,
+          isActive: users.isActive,
           createdAt: users.createdAt,
         })
         .from(users)
