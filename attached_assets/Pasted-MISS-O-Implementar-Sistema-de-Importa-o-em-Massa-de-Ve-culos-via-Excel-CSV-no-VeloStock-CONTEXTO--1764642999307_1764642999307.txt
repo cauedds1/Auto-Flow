@@ -1,0 +1,148 @@
+MISSÃO: Implementar Sistema de Importação em Massa de Veículos via Excel/CSV no VeloStock
+CONTEXTO:
+O usuário cadastrou 36 veículos manualmente e levou quase 2 horas. Isso é extremamente cansativo e pode desencorajar novos clientes com estoques grandes. Precisamos implementar importação em massa via planilha Excel/CSV para reduzir esse tempo de ~108 minutos para ~22 minutos (redução de 80%).
+OBJETIVO:
+Criar funcionalidade completa de importação de veículos via arquivo Excel (.xlsx) ou CSV (.csv) com:
+1. Interface para upload de arquivo
+2. Validação robusta dos dados
+3. Preview dos dados antes de importar
+4. Feedback de progresso durante importação
+5. Relatório de sucesso/erros ao final
+6. Template de planilha para download
+ARQUITETURA ATUAL RELEVANTE:
+- Frontend: React + TypeScript + Vite
+- Backend: Node.js + Express
+- Banco: PostgreSQL com Drizzle ORM
+- Schema do veículo está em: `shared/schema.ts` (tabela `vehicles`)
+- Componente de adição de veículo: `client/src/components/AddVehicleDialog.tsx`
+- Página de veículos: `client/src/pages/Vehicles.tsx`
+- API de veículos: `server/routes.ts` (endpoint POST /api/vehicles)
+CAMPOS OBRIGATÓRIOS DO VEÍCULO (conforme schema):
+- brand (Marca) - texto
+- model (Modelo) - texto
+- year (Ano) - número inteiro
+- color (Cor) - texto
+- plate (Placa) - texto único, formato ABC-1234
+- vehicleType (Tipo) - enum: "Carro" ou "Moto"
+- status (Status) - enum: "Entrada", "Em Reparos", "Em Higienização", "Pronto para Venda"
+CAMPOS OPCIONAIS:
+- purchasePrice (Preço de Aquisição) - decimal
+- salePrice (Preço de Venda) - decimal
+- kmOdometer (Quilometragem) - inteiro
+- fuelType (Combustível) - texto: "Gasolina", "Etanol", "Flex", "Diesel", "Elétrico", "Híbrido"
+- physicalLocation (Localização Física) - texto
+- physicalLocationDetail (Detalhe da Localização) - texto
+- notes (Observações) - texto
+IMPLEMENTAÇÃO PASSO A PASSO:
+1. BACKEND - Criar endpoint de importação:
+   - Adicionar em `server/routes.ts`:
+     * POST /api/vehicles/import
+     * Usar multer para upload de arquivo
+     * Aceitar .xlsx e .csv (biblioteca: xlsx para parsing)
+     * Validar TODOS os dados antes de inserir no banco
+     * Retornar array com: { success: boolean, data: vehicle[], errors: string[] }
+2. BACKEND - Validação robusta:
+   - Validar formato da placa (Regex: /^[A-Z]{3}-?\d{4}$/)
+   - Verificar duplicatas de placa (tanto no arquivo quanto no banco)
+   - Validar ano (1900 <= ano <= ano atual + 1)
+   - Validar tipos de veículo e status (usar enums)
+   - Validar valores numéricos (preços, km)
+   - Registrar erros linha por linha com mensagens claras
+3. FRONTEND - Componente ImportVehiclesDialog:
+   - Criar `client/src/components/ImportVehiclesDialog.tsx`
+   - Usar shadcn/ui Dialog, Button, Progress
+   - Interface com 3 etapas:
+     * Etapa 1: Upload do arquivo (drag & drop ou clique)
+     * Etapa 2: Preview dos dados com validação visual (tabela)
+     * Etapa 3: Importação com barra de progresso
+     * Etapa 4: Relatório final (X sucessos, Y erros)
+4. FRONTEND - Template de planilha:
+   - Criar função para gerar arquivo Excel de exemplo
+   - Botão "Baixar Template" que gera .xlsx com:
+     * Cabeçalhos corretos em PT-BR
+     * 3 linhas de exemplo preenchidas
+     * Comentários explicando cada coluna
+   - Formato das colunas: Marca, Modelo, Ano, Cor, Placa, Tipo, Status, Preço Compra, Preço Venda, KM, Combustível, Localização, Detalhes Localização, Observações
+5. FRONTEND - Adicionar botão na página Veículos:
+   - Em `client/src/pages/Vehicles.tsx`
+   - Adicionar botão "Importar Planilha" ao lado de "Adicionar Veículo"
+   - Ícone: FileSpreadsheet do lucide-react
+6. VALIDAÇÃO VISUAL NO PREVIEW:
+   - Mostrar tabela com cores:
+     * Verde: dados válidos
+     * Amarelo: avisos (ex: preço muito baixo)
+     * Vermelho: erros (bloqueiam importação)
+   - Permitir edição inline antes de confirmar
+   - Checkbox para selecionar quais linhas importar
+7. TRATAMENTO DE ERROS:
+   - Se arquivo inválido: mostrar erro claro
+   - Se nenhuma linha válida: não permitir importar
+   - Se algumas linhas com erro: permitir importar apenas as válidas
+   - Se placa duplicada: mostrar qual linha e qual placa
+   - Relatório final em formato:
+     ```
+     ✅ 28 veículos importados com sucesso
+     ❌ 8 linhas com erros:
+     - Linha 5: Placa ABC-1234 já existe no sistema
+     - Linha 12: Ano inválido (1850)
+     - Linha 18: Status "Vendido" não é permitido na importação
+     ```
+8. DEPENDÊNCIAS NECESSÁRIAS:
+   - Backend: `npm install xlsx multer @types/multer`
+   - Frontend: `npm install react-dropzone` (para drag & drop)
+9. SEGURANÇA E PERFORMANCE:
+   - Limitar tamanho do arquivo (máx 5MB)
+   - Limitar número de linhas (máx 500 veículos por vez)
+   - Validar empresaId do usuário logado
+   - Usar transações no banco (rollback se erro crítico)
+   - Upload assíncrono com feedback de progresso
+10. UX/UI CONSIDERAÇÕES:
+    - Botão destacado mas não mais que "Adicionar Veículo"
+    - Dialog responsivo (mobile-friendly)
+    - Animações suaves nas transições de etapas
+    - Permitir cancelar a qualquer momento
+    - Toast de confirmação ao final
+ARQUIVOS A CRIAR/EDITAR:
+CRIAR:
+- `client/src/components/ImportVehiclesDialog.tsx` (componente principal)
+- `client/src/hooks/use-vehicle-import.ts` (lógica de importação)
+EDITAR:
+- `client/src/pages/Vehicles.tsx` (adicionar botão)
+- `server/routes.ts` (adicionar endpoint POST /api/vehicles/import)
+EXEMPLO DE FORMATO DO EXCEL/CSV:
+Marca,Modelo,Ano,Cor,Placa,Tipo,Status,Preço Compra,Preço Venda,KM,Combustível,Localização,Detalhes,Observações
+Toyota,Corolla,2021,Prata,ABC-1234,Carro,Entrada,85000,98000,35000,Flex,Matriz,,Revisão em dia
+Honda,CB 500,2022,Vermelho,DEF-5678,Moto,Pronto para Venda,25000,32000,8000,Gasolina,Loja,Vitrine,
+Chevrolet,Onix,2020,Branco,GHI-9012,Carro,Em Reparos,52000,65000,48000,Flex,Oficina,Box 3,Troca de pneus
+
+VALIDAÇÕES CRÍTICAS:
+1. Placa única (rejeitar duplicatas)
+2. Ano entre 1900 e ano atual + 1
+3. Tipo: apenas "Carro" ou "Moto"
+4. Status: apenas "Entrada", "Em Reparos", "Em Higienização", "Pronto para Venda" (NÃO permitir "Vendido" ou "Arquivado" na importação)
+5. Preços: se fornecidos, devem ser > 0
+6. KM: se fornecido, deve ser >= 0
+RESULTADO ESPERADO:
+- Usuário clica em "Importar Planilha"
+- Baixa template (opcional)
+- Preenche planilha com 50 veículos
+- Faz upload
+- Vê preview com validações
+- Corrige erros se necessário
+- Confirma importação
+- Aguarda barra de progresso
+- Recebe relatório: "45 importados, 5 com erros"
+- Tempo total: ~5 minutos vs ~2h30min manual
+IMPORTANTE:
+- Mantenha consistência com o design atual (shadcn/ui)
+- Respeite permissões de usuário (verificar can.createVehicles)
+- Registre atividade no log (ActivityLog)
+- Invalide cache de veículos após importação
+- Emita evento WebSocket para atualizar dashboard em tempo real
+COMECE IMPLEMENTANDO:
+1. Endpoint backend primeiro (validação completa)
+2. Depois componente frontend (UI/UX)
+3. Teste com arquivo de 10 veículos
+4. Depois teste com 100 veículos
+5. Trate todos os edge cases
+Implemente AGORA essa funcionalidade COMPLETA, seguindo TODAS as diretrizes acima. Não pule nenhuma validação ou tratamento de erro. O código deve estar PRONTO PARA PRODUÇÃO.
