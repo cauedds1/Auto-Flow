@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, Building2, CreditCard, DollarSign, TrendingUp, LogOut, Lock, Mail, User } from "lucide-react";
+import { Users, Building2, CreditCard, DollarSign, TrendingUp, LogOut, Lock, Mail, User, Shield } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 
@@ -38,10 +38,11 @@ interface Admin {
   nome: string;
 }
 
-function AdminLogin({ onLogin, needsSetup }: { onLogin: (admin: Admin) => void; needsSetup: boolean }) {
+function AdminLogin({ onLogin, needsSetup, setupTokenConfigured }: { onLogin: (admin: Admin) => void; needsSetup: boolean; setupTokenConfigured: boolean }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nome, setNome] = useState("");
+  const [setupToken, setSetupToken] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [isSetup, setIsSetup] = useState(needsSetup);
@@ -53,11 +54,14 @@ function AdminLogin({ onLogin, needsSetup }: { onLogin: (admin: Admin) => void; 
 
     try {
       const endpoint = isSetup ? "/api/admin/setup" : "/api/admin/login";
-      const body = isSetup ? { email, password, nome } : { email, password };
+      const body = isSetup ? { email, password, nome, setupToken } : { email, password };
 
       const res = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(isSetup && setupToken ? { "x-admin-setup-token": setupToken } : {})
+        },
         body: JSON.stringify(body),
       });
 
@@ -74,6 +78,7 @@ function AdminLogin({ onLogin, needsSetup }: { onLogin: (admin: Admin) => void; 
         setEmail("");
         setPassword("");
         setNome("");
+        setSetupToken("");
         return;
       }
 
@@ -153,6 +158,28 @@ function AdminLogin({ onLogin, needsSetup }: { onLogin: (admin: Admin) => void; 
               </div>
             </div>
 
+            {isSetup && (
+              <div className="space-y-2">
+                <Label htmlFor="setupToken">Token de Configuração</Label>
+                <div className="relative">
+                  <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="setupToken"
+                    type="password"
+                    placeholder="Token secreto fornecido pelo desenvolvedor"
+                    value={setupToken}
+                    onChange={(e) => setSetupToken(e.target.value)}
+                    className="pl-10"
+                    required
+                    data-testid="input-admin-setup-token"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Este token é definido no servidor e protege a criação do primeiro admin.
+                </p>
+              </div>
+            )}
+
             {error && (
               <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 rounded-md">
                 {error}
@@ -173,6 +200,7 @@ export default function AdminPanel() {
   const [admin, setAdmin] = useState<Admin | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [needsSetup, setNeedsSetup] = useState(false);
+  const [setupTokenConfigured, setSetupTokenConfigured] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -184,6 +212,7 @@ export default function AdminPanel() {
         
         if (setupData.needsSetup) {
           setNeedsSetup(true);
+          setSetupTokenConfigured(setupData.setupTokenConfigured || false);
           setAuthChecked(true);
           return;
         }
@@ -288,7 +317,7 @@ export default function AdminPanel() {
   }
 
   if (!admin) {
-    return <AdminLogin onLogin={setAdmin} needsSetup={needsSetup} />;
+    return <AdminLogin onLogin={setAdmin} needsSetup={needsSetup} setupTokenConfigured={setupTokenConfigured} />;
   }
 
   return (

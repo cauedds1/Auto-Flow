@@ -142,12 +142,46 @@ export async function registerAdminRoutes(app: Express) {
     res.json(admin[0]);
   });
 
+  const setupAttempts = new Map<string, { count: number; lastAttempt: number }>();
+  const MAX_SETUP_ATTEMPTS = 3;
+  const SETUP_LOCKOUT_TIME = 30 * 60 * 1000; // 30 minutos
+
   app.post("/api/admin/setup", async (req: any, res) => {
     try {
+      const clientIp = req.ip || req.connection.remoteAddress || "unknown";
+      
+      // Rate limiting para setup
+      const attempts = setupAttempts.get(clientIp);
+      if (attempts && attempts.count >= MAX_SETUP_ATTEMPTS) {
+        const timeSinceLastAttempt = Date.now() - attempts.lastAttempt;
+        if (timeSinceLastAttempt < SETUP_LOCKOUT_TIME) {
+          console.warn(`[SECURITY] Setup bloqueado por rate limit - IP: ${clientIp}`);
+          return res.status(429).json({ error: "Muitas tentativas. Tente mais tarde." });
+        } else {
+          setupAttempts.delete(clientIp);
+        }
+      }
+
       const existingAdmins = await db.select().from(adminCredentials).limit(1);
       
       if (existingAdmins.length > 0) {
         return res.status(400).json({ error: "Admin já configurado. Use login." });
+      }
+
+      // Validar token secreto
+      const SETUP_TOKEN = process.env.ADMIN_SETUP_TOKEN;
+      if (!SETUP_TOKEN) {
+        console.error("[SECURITY] ADMIN_SETUP_TOKEN não configurado no ambiente");
+        return res.status(503).json({ error: "Setup não disponível. Configure o token no servidor." });
+      }
+
+      const providedToken = req.headers["x-admin-setup-token"] || req.body.setupToken;
+      
+      if (!providedToken || providedToken !== SETUP_TOKEN) {
+        const current = setupAttempts.get(clientIp) || { count: 0, lastAttempt: 0 };
+        setupAttempts.set(clientIp, { count: current.count + 1, lastAttempt: Date.now() });
+        console.warn(`[SECURITY] Tentativa de setup com token inválido - IP: ${clientIp}, Tentativas: ${current.count + 1}`);
+        return res.status(403).json({ error: "Token de configuração inválido" });
       }
 
       const { email, password, nome } = req.body;
@@ -168,6 +202,9 @@ export async function registerAdminRoutes(app: Express) {
         })
         .returning();
 
+      setupAttempts.delete(clientIp);
+      console.log(`[ADMIN] Primeiro admin criado: ${email}`);
+
       res.json({
         message: "Admin criado com sucesso",
         admin: {
@@ -184,7 +221,9 @@ export async function registerAdminRoutes(app: Express) {
 
   app.get("/api/admin/needs-setup", async (req: any, res) => {
     const existingAdmins = await db.select().from(adminCredentials).limit(1);
-    res.json({ needsSetup: existingAdmins.length === 0 });
+    const needsSetup = existingAdmins.length === 0;
+    const setupTokenConfigured = !!process.env.ADMIN_SETUP_TOKEN;
+    res.json({ needsSetup, setupTokenConfigured });
   });
 
   // ============================================

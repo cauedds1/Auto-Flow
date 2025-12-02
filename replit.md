@@ -46,6 +46,36 @@ VeloStock is a universal multi-tenant SaaS platform for comprehensive vehicle de
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Admin Panel (Painel Administrativo SaaS)
+
+### Acesso
+- **URL**: `/admin` (totalmente separado do sistema dos clientes)
+- **Autenticação independente**: O painel admin tem seu próprio sistema de login, separado dos usuários VeloStock
+
+### Configuração Inicial (Primeiro Admin)
+1. Acesse `/admin` no navegador
+2. Será exibida a tela "Configurar Admin" pedindo:
+   - Nome
+   - Email  
+   - Senha
+   - **Token de Configuração** (obrigatório)
+3. O token está na variável de ambiente `ADMIN_SETUP_TOKEN`
+4. Após criar o admin, a tela de setup nunca mais aparece
+
+### Segurança
+- **Token obrigatório**: Sem o token, ninguém pode criar o primeiro admin
+- **Rate limiting no setup**: Máximo 3 tentativas, lockout de 30 minutos
+- **Rate limiting no login**: Máximo 5 tentativas, lockout de 15 minutos  
+- **Session regeneration**: Previne ataques de session fixation
+- **Session destroy no logout**: Cookie limpo completamente
+- **Logs de segurança**: Todas as tentativas inválidas são registradas
+
+### Funcionalidades do Painel
+- Dashboard com métricas gerais (clientes, veículos, pagamentos)
+- Lista de clientes/empresas com filtros por status
+- Gestão de assinaturas e planos
+- Controle de pagamentos
+
 ## Authentication System
 
 ### Email Verification & Recovery (November 27, 2025)
