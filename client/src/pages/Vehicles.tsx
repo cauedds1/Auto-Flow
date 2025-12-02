@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Search, ArrowUpDown, ArrowLeft } from "lucide-react";
 import { AddVehicleDialog } from "@/components/AddVehicleDialog";
 import { FipeSearchDialog } from "@/components/FipeSearchDialog";
+import { ImportVehiclesDialog } from "@/components/ImportVehiclesDialog";
 import { Link } from "wouter";
 import { usePermissions } from "@/hooks/use-permissions";
 import {
@@ -203,6 +204,7 @@ export default function Vehicles() {
           </p>
         </div>
         <div className="flex gap-2 sm:gap-3 flex-wrap">
+          <ImportVehiclesDialog />
           <FipeSearchDialog />
           <AddVehicleDialog />
         </div>

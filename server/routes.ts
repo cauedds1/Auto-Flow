@@ -654,6 +654,290 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/vehicles/import - Importar veículos em massa via Excel/CSV
+  app.post("/api/vehicles/import", isAuthenticated, upload.single("file"), async (req: any, res) => {
+    try {
+      const userId = req.user.claims?.id || req.user.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ error: "Usuário não autenticado" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user?.empresaId) {
+        return res.status(403).json({ error: "Usuário não vinculado a uma empresa" });
+      }
+
+      const empresaId = user.empresaId;
+      const file = req.file;
+
+      if (!file) {
+        return res.status(400).json({ error: "Nenhum arquivo enviado" });
+      }
+
+      // Verificar tamanho do arquivo (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        return res.status(400).json({ error: "Arquivo muito grande. Máximo 5MB" });
+      }
+
+      // Importar xlsx dinamicamente
+      const XLSX = await import("xlsx");
+      
+      // Ler o arquivo
+      const workbook = XLSX.read(file.buffer, { type: "buffer" });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      
+      // Converter para JSON
+      const rawData: any[] = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+      
+      if (rawData.length === 0) {
+        return res.status(400).json({ error: "Planilha vazia" });
+      }
+
+      if (rawData.length > 500) {
+        return res.status(400).json({ error: "Máximo de 500 veículos por importação" });
+      }
+
+      // Mapeamento de colunas PT-BR para campos do sistema
+      const columnMapping: Record<string, string> = {
+        "Marca": "brand",
+        "marca": "brand",
+        "MARCA": "brand",
+        "Modelo": "model",
+        "modelo": "model",
+        "MODELO": "model",
+        "Ano": "year",
+        "ano": "year",
+        "ANO": "year",
+        "Cor": "color",
+        "cor": "color",
+        "COR": "color",
+        "Placa": "plate",
+        "placa": "plate",
+        "PLACA": "plate",
+        "Tipo": "vehicleType",
+        "tipo": "vehicleType",
+        "TIPO": "vehicleType",
+        "Status": "status",
+        "status": "status",
+        "STATUS": "status",
+        "Preço Compra": "purchasePrice",
+        "Preco Compra": "purchasePrice",
+        "preco compra": "purchasePrice",
+        "Preço de Compra": "purchasePrice",
+        "Preço Venda": "salePrice",
+        "Preco Venda": "salePrice",
+        "preco venda": "salePrice",
+        "Preço de Venda": "salePrice",
+        "KM": "kmOdometer",
+        "km": "kmOdometer",
+        "Quilometragem": "kmOdometer",
+        "quilometragem": "kmOdometer",
+        "Combustível": "fuelType",
+        "Combustivel": "fuelType",
+        "combustivel": "fuelType",
+        "Localização": "physicalLocation",
+        "Localizacao": "physicalLocation",
+        "localizacao": "physicalLocation",
+        "Detalhes": "physicalLocationDetail",
+        "detalhes": "physicalLocationDetail",
+        "Detalhes Localização": "physicalLocationDetail",
+        "Observações": "notes",
+        "Observacoes": "notes",
+        "observacoes": "notes",
+        "Notas": "notes",
+      };
+
+      // Validar formato de placa (aceita com ou sem hífen)
+      const plateRegex = /^[A-Z]{3}-?\d[A-Z0-9]\d{2}$/i;
+
+      // Status permitidos na importação
+      const allowedStatuses = ["Entrada", "Em Reparos", "Em Higienização", "Pronto para Venda"];
+      
+      // Tipos de veículo permitidos
+      const allowedTypes = ["Carro", "Moto"];
+
+      // Combustíveis permitidos
+      const allowedFuelTypes = ["Gasolina", "Etanol", "Flex", "Diesel", "Elétrico", "Híbrido", "GNV", ""];
+
+      const currentYear = new Date().getFullYear();
+      const results: { success: boolean; line: number; data?: any; error?: string }[] = [];
+      const importedVehicles: any[] = [];
+      const seenPlates = new Set<string>();
+
+      // Buscar placas existentes no banco
+      const existingVehicles = await storage.getAllVehicles(empresaId);
+      const existingPlates = new Set(existingVehicles.map(v => v.plate.toUpperCase().replace("-", "")));
+
+      // Processar cada linha
+      for (let i = 0; i < rawData.length; i++) {
+        const row = rawData[i];
+        const lineNumber = i + 2; // +2 porque Excel começa em 1 e tem cabeçalho
+        
+        // Mapear colunas para campos
+        const mappedRow: Record<string, any> = {};
+        for (const [key, value] of Object.entries(row)) {
+          const mappedKey = columnMapping[key] || key;
+          mappedRow[mappedKey] = value;
+        }
+
+        const errors: string[] = [];
+
+        // Validar campos obrigatórios
+        if (!mappedRow.brand || String(mappedRow.brand).trim() === "") {
+          errors.push("Marca é obrigatória");
+        }
+        if (!mappedRow.model || String(mappedRow.model).trim() === "") {
+          errors.push("Modelo é obrigatório");
+        }
+        if (!mappedRow.year) {
+          errors.push("Ano é obrigatório");
+        }
+        if (!mappedRow.color || String(mappedRow.color).trim() === "") {
+          errors.push("Cor é obrigatória");
+        }
+        if (!mappedRow.plate || String(mappedRow.plate).trim() === "") {
+          errors.push("Placa é obrigatória");
+        }
+
+        // Validar formato da placa
+        const plate = String(mappedRow.plate || "").toUpperCase().trim();
+        if (plate && !plateRegex.test(plate)) {
+          errors.push(`Formato de placa inválido: ${plate}`);
+        }
+
+        // Verificar duplicata de placa no arquivo
+        const normalizedPlate = plate.replace("-", "");
+        if (seenPlates.has(normalizedPlate)) {
+          errors.push(`Placa ${plate} duplicada no arquivo`);
+        }
+        seenPlates.add(normalizedPlate);
+
+        // Verificar duplicata de placa no banco
+        if (existingPlates.has(normalizedPlate)) {
+          errors.push(`Placa ${plate} já existe no sistema`);
+        }
+
+        // Validar ano
+        const year = parseInt(String(mappedRow.year));
+        if (isNaN(year) || year < 1900 || year > currentYear + 1) {
+          errors.push(`Ano inválido: ${mappedRow.year} (deve estar entre 1900 e ${currentYear + 1})`);
+        }
+
+        // Validar tipo de veículo
+        const vehicleType = String(mappedRow.vehicleType || "Carro").trim();
+        if (vehicleType && !allowedTypes.includes(vehicleType)) {
+          errors.push(`Tipo inválido: ${vehicleType} (use: ${allowedTypes.join(", ")})`);
+        }
+
+        // Validar status
+        const status = String(mappedRow.status || "Entrada").trim();
+        if (status && !allowedStatuses.includes(status)) {
+          errors.push(`Status inválido: ${status} (use: ${allowedStatuses.join(", ")})`);
+        }
+
+        // Validar preços
+        if (mappedRow.purchasePrice) {
+          const price = parseFloat(String(mappedRow.purchasePrice).replace(/[^\d.,]/g, "").replace(",", "."));
+          if (isNaN(price) || price < 0) {
+            errors.push(`Preço de compra inválido: ${mappedRow.purchasePrice}`);
+          }
+        }
+        if (mappedRow.salePrice) {
+          const price = parseFloat(String(mappedRow.salePrice).replace(/[^\d.,]/g, "").replace(",", "."));
+          if (isNaN(price) || price < 0) {
+            errors.push(`Preço de venda inválido: ${mappedRow.salePrice}`);
+          }
+        }
+
+        // Validar KM
+        if (mappedRow.kmOdometer) {
+          const km = parseInt(String(mappedRow.kmOdometer).replace(/\D/g, ""));
+          if (isNaN(km) || km < 0) {
+            errors.push(`Quilometragem inválida: ${mappedRow.kmOdometer}`);
+          }
+        }
+
+        // Validar combustível
+        const fuelType = String(mappedRow.fuelType || "").trim();
+        if (fuelType && !allowedFuelTypes.includes(fuelType)) {
+          errors.push(`Combustível inválido: ${fuelType}`);
+        }
+
+        if (errors.length > 0) {
+          results.push({
+            success: false,
+            line: lineNumber,
+            error: errors.join("; "),
+          });
+        } else {
+          // Preparar dados para inserção
+          const vehicleData = {
+            empresaId,
+            brand: String(mappedRow.brand).trim(),
+            model: String(mappedRow.model).trim(),
+            year: parseInt(String(mappedRow.year)),
+            color: String(mappedRow.color).trim(),
+            plate: plate.includes("-") ? plate : `${plate.slice(0, 3)}-${plate.slice(3)}`,
+            vehicleType: vehicleType || "Carro",
+            status: status || "Entrada",
+            physicalLocation: mappedRow.physicalLocation ? String(mappedRow.physicalLocation).trim() : null,
+            physicalLocationDetail: mappedRow.physicalLocationDetail ? String(mappedRow.physicalLocationDetail).trim() : null,
+            purchasePrice: mappedRow.purchasePrice ? parseFloat(String(mappedRow.purchasePrice).replace(/[^\d.,]/g, "").replace(",", ".")) : null,
+            salePrice: mappedRow.salePrice ? parseFloat(String(mappedRow.salePrice).replace(/[^\d.,]/g, "").replace(",", ".")) : null,
+            kmOdometer: mappedRow.kmOdometer ? parseInt(String(mappedRow.kmOdometer).replace(/\D/g, "")) : null,
+            fuelType: fuelType || null,
+            notes: mappedRow.notes ? String(mappedRow.notes).trim() : null,
+          };
+
+          try {
+            const vehicle = await storage.createVehicle(vehicleData as any);
+            importedVehicles.push(vehicle);
+            existingPlates.add(normalizedPlate); // Adicionar à lista para evitar duplicatas
+            results.push({
+              success: true,
+              line: lineNumber,
+              data: vehicle,
+            });
+          } catch (err: any) {
+            if (err.code === '23505') {
+              results.push({
+                success: false,
+                line: lineNumber,
+                error: `Placa ${plate} já existe no sistema`,
+              });
+            } else {
+              results.push({
+                success: false,
+                line: lineNumber,
+                error: `Erro ao inserir: ${err.message}`,
+              });
+            }
+          }
+        }
+      }
+
+      // Emitir eventos WebSocket para veículos criados
+      for (const vehicle of importedVehicles) {
+        io.emit("vehicle:created", vehicle);
+      }
+
+      const successCount = results.filter(r => r.success).length;
+      const errorCount = results.filter(r => !r.success).length;
+
+      res.json({
+        success: true,
+        message: `${successCount} veículos importados com sucesso. ${errorCount} erros.`,
+        imported: successCount,
+        errors: errorCount,
+        details: results,
+      });
+    } catch (error: any) {
+      console.error("Erro ao importar veículos:", error);
+      res.status(500).json({ error: `Erro ao processar arquivo: ${error.message}` });
+    }
+  });
+
   // PATCH /api/vehicles/:id - Atualizar veículo (COM VALIDAÇÃO DE EMPRESA)
   app.patch("/api/vehicles/:id", isAuthenticated, async (req: any, res) => {
     try {
