@@ -101,9 +101,9 @@ function AppContent() {
     "--sidebar-width-icon": "3rem",
   };
 
-  // Show admin panel without sidebar (independent interface)
+  // Show admin panel without sidebar (independent interface with its own auth)
   if (location.startsWith("/admin")) {
-    return isAuthenticated ? <AdminPanel /> : <Login />;
+    return <AdminPanel />;
   }
 
   // Show login/signup/password recovery pages without auth check

@@ -1,18 +1,197 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { db } from "../db";
-import { companies, users, subscriptions, payments, vehicles } from "@shared/schema";
+import { companies, users, subscriptions, payments, vehicles, adminCredentials } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
+import bcrypt from "bcrypt";
+
+declare module 'express-session' {
+  interface SessionData {
+    adminId?: string;
+    adminEmail?: string;
+    isAdminSession?: boolean;
+  }
+}
+
+function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
+  if (!req.session?.isAdminSession || !req.session?.adminId) {
+    return res.status(401).json({ error: "Sessão admin inválida" });
+  }
+  next();
+}
 
 export async function registerAdminRoutes(app: Express) {
   // ============================================
+  // AUTENTICAÇÃO ADMIN - SISTEMA SEPARADO
+  // ============================================
+  
+  const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
+  const MAX_LOGIN_ATTEMPTS = 5;
+  const LOCKOUT_TIME = 15 * 60 * 1000;
+
+  app.post("/api/admin/login", async (req: any, res) => {
+    try {
+      const { email, password } = req.body;
+      const clientIp = req.ip || req.connection.remoteAddress || "unknown";
+      
+      if (!email || !password) {
+        return res.status(400).json({ error: "Email e senha são obrigatórios" });
+      }
+
+      const attempts = loginAttempts.get(clientIp);
+      if (attempts && attempts.count >= MAX_LOGIN_ATTEMPTS) {
+        const timeSinceLastAttempt = Date.now() - attempts.lastAttempt;
+        if (timeSinceLastAttempt < LOCKOUT_TIME) {
+          const minutesLeft = Math.ceil((LOCKOUT_TIME - timeSinceLastAttempt) / 60000);
+          return res.status(429).json({ 
+            error: `Muitas tentativas. Tente novamente em ${minutesLeft} minutos.` 
+          });
+        } else {
+          loginAttempts.delete(clientIp);
+        }
+      }
+
+      const admin = await db
+        .select()
+        .from(adminCredentials)
+        .where(eq(adminCredentials.email, email))
+        .limit(1);
+
+      if (admin.length === 0) {
+        const current = loginAttempts.get(clientIp) || { count: 0, lastAttempt: 0 };
+        loginAttempts.set(clientIp, { count: current.count + 1, lastAttempt: Date.now() });
+        return res.status(401).json({ error: "Credenciais inválidas" });
+      }
+
+      const isValidPassword = await bcrypt.compare(password, admin[0].passwordHash);
+      if (!isValidPassword) {
+        const current = loginAttempts.get(clientIp) || { count: 0, lastAttempt: 0 };
+        loginAttempts.set(clientIp, { count: current.count + 1, lastAttempt: Date.now() });
+        return res.status(401).json({ error: "Credenciais inválidas" });
+      }
+
+      if (admin[0].ativo !== "true") {
+        return res.status(403).json({ error: "Conta admin desativada" });
+      }
+
+      loginAttempts.delete(clientIp);
+
+      await db
+        .update(adminCredentials)
+        .set({ ultimoLogin: new Date() })
+        .where(eq(adminCredentials.id, admin[0].id));
+
+      req.session.regenerate((err: any) => {
+        if (err) {
+          console.error("Erro ao regenerar sessão:", err);
+          return res.status(500).json({ error: "Erro no login" });
+        }
+        
+        req.session.adminId = admin[0].id;
+        req.session.adminEmail = admin[0].email;
+        req.session.isAdminSession = true;
+
+        req.session.save((saveErr: any) => {
+          if (saveErr) {
+            console.error("Erro ao salvar sessão:", saveErr);
+            return res.status(500).json({ error: "Erro no login" });
+          }
+          
+          res.json({
+            id: admin[0].id,
+            email: admin[0].email,
+            nome: admin[0].nome,
+          });
+        });
+      });
+    } catch (error) {
+      console.error("Erro no login admin:", error);
+      res.status(500).json({ error: "Erro no login" });
+    }
+  });
+
+  app.post("/api/admin/logout", async (req: any, res) => {
+    req.session.destroy((err: any) => {
+      if (err) {
+        console.error("Erro ao destruir sessão:", err);
+        return res.status(500).json({ error: "Erro no logout" });
+      }
+      res.clearCookie("connect.sid");
+      res.json({ message: "Logout realizado com sucesso" });
+    });
+  });
+
+  app.get("/api/admin/me", async (req: any, res) => {
+    if (!req.session?.isAdminSession || !req.session?.adminId) {
+      return res.status(401).json({ error: "Não autenticado" });
+    }
+
+    const admin = await db
+      .select({
+        id: adminCredentials.id,
+        email: adminCredentials.email,
+        nome: adminCredentials.nome,
+      })
+      .from(adminCredentials)
+      .where(eq(adminCredentials.id, req.session.adminId))
+      .limit(1);
+
+    if (admin.length === 0) {
+      return res.status(401).json({ error: "Admin não encontrado" });
+    }
+
+    res.json(admin[0]);
+  });
+
+  app.post("/api/admin/setup", async (req: any, res) => {
+    try {
+      const existingAdmins = await db.select().from(adminCredentials).limit(1);
+      
+      if (existingAdmins.length > 0) {
+        return res.status(400).json({ error: "Admin já configurado. Use login." });
+      }
+
+      const { email, password, nome } = req.body;
+      
+      if (!email || !password || !nome) {
+        return res.status(400).json({ error: "Email, senha e nome são obrigatórios" });
+      }
+
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      const newAdmin = await db
+        .insert(adminCredentials)
+        .values({
+          email,
+          passwordHash,
+          nome,
+          ativo: "true",
+        })
+        .returning();
+
+      res.json({
+        message: "Admin criado com sucesso",
+        admin: {
+          id: newAdmin[0].id,
+          email: newAdmin[0].email,
+          nome: newAdmin[0].nome,
+        },
+      });
+    } catch (error) {
+      console.error("Erro ao criar admin:", error);
+      res.status(500).json({ error: "Erro ao criar admin" });
+    }
+  });
+
+  app.get("/api/admin/needs-setup", async (req: any, res) => {
+    const existingAdmins = await db.select().from(adminCredentials).limit(1);
+    res.json({ needsSetup: existingAdmins.length === 0 });
+  });
+
+  // ============================================
   // DASHBOARD - ESTATÍSTICAS GERAIS
   // ============================================
-  app.get("/api/admin/dashboard", async (req: any, res) => {
+  app.get("/api/admin/dashboard", requireAdminAuth, async (req: any, res) => {
     try {
-      // Verificar autenticação admin (por enquanto qualquer um com adminToken)
-      if (req.user?.role !== "proprietario" || req.user?.isAdmin !== true) {
-        return res.status(403).json({ error: "Acesso negado" });
-      }
 
       const totalCompanies = await db
         .select({ count: sql`count(*)` })
@@ -59,12 +238,8 @@ export async function registerAdminRoutes(app: Express) {
   // ============================================
   // LISTAR CLIENTES (EMPRESAS)
   // ============================================
-  app.get("/api/admin/clientes", async (req: any, res) => {
+  app.get("/api/admin/clientes", requireAdminAuth, async (req: any, res) => {
     try {
-      if (req.user?.role !== "proprietario" || req.user?.isAdmin !== true) {
-        return res.status(403).json({ error: "Acesso negado" });
-      }
-
       const status = (req.query.status as string) || "all";
 
       const selectFields = {
@@ -105,12 +280,8 @@ export async function registerAdminRoutes(app: Express) {
   // ============================================
   // CRIAR/ATUALIZAR SUBSCRIPTION DE CLIENTE
   // ============================================
-  app.post("/api/admin/clientes/:companyId/subscription", async (req: any, res) => {
+  app.post("/api/admin/clientes/:companyId/subscription", requireAdminAuth, async (req: any, res) => {
     try {
-      if (req.user?.role !== "proprietario" || req.user?.isAdmin !== true) {
-        return res.status(403).json({ error: "Acesso negado" });
-      }
-
       const { companyId } = req.params;
       const { status, plano, valorMensal, diasTestGratis, observacoes } = req.body;
 
@@ -158,12 +329,8 @@ export async function registerAdminRoutes(app: Express) {
   // ============================================
   // LISTAR PAGAMENTOS DE CLIENTE
   // ============================================
-  app.get("/api/admin/clientes/:companyId/pagamentos", async (req: any, res) => {
+  app.get("/api/admin/clientes/:companyId/pagamentos", requireAdminAuth, async (req: any, res) => {
     try {
-      if (req.user?.role !== "proprietario" || req.user?.isAdmin !== true) {
-        return res.status(403).json({ error: "Acesso negado" });
-      }
-
       const { companyId } = req.params;
 
       const pagamentos = await db
@@ -182,12 +349,8 @@ export async function registerAdminRoutes(app: Express) {
   // ============================================
   // REGISTRAR PAGAMENTO
   // ============================================
-  app.post("/api/admin/clientes/:companyId/pagamentos", async (req: any, res) => {
+  app.post("/api/admin/clientes/:companyId/pagamentos", requireAdminAuth, async (req: any, res) => {
     try {
-      if (req.user?.role !== "proprietario" || req.user?.isAdmin !== true) {
-        return res.status(403).json({ error: "Acesso negado" });
-      }
-
       const { companyId } = req.params;
       const { valor, status, dataPagamento, dataVencimento, metodo, descricao } = req.body;
 
@@ -225,12 +388,8 @@ export async function registerAdminRoutes(app: Express) {
   // ============================================
   // BLOQUEAR/DESBLOQUEAR CLIENTE
   // ============================================
-  app.patch("/api/admin/clientes/:companyId/status", async (req: any, res) => {
+  app.patch("/api/admin/clientes/:companyId/status", requireAdminAuth, async (req: any, res) => {
     try {
-      if (req.user?.role !== "proprietario" || req.user?.isAdmin !== true) {
-        return res.status(403).json({ error: "Acesso negado" });
-      }
-
       const { companyId } = req.params;
       const { status } = req.body;
 
@@ -257,12 +416,8 @@ export async function registerAdminRoutes(app: Express) {
   // ============================================
   // CRIAR NOVA EMPRESA E CONTA PROPRIETÁRIO
   // ============================================
-  app.post("/api/admin/clientes/criar", async (req: any, res) => {
+  app.post("/api/admin/clientes/criar", requireAdminAuth, async (req: any, res) => {
     try {
-      if (req.user?.role !== "proprietario" || req.user?.isAdmin !== true) {
-        return res.status(403).json({ error: "Acesso negado" });
-      }
-
       const {
         nomeFantasia,
         razaoSocial,
@@ -311,12 +466,8 @@ export async function registerAdminRoutes(app: Express) {
   // ============================================
   // BUSCAR ESTATÍSTICAS DE CLIENTE
   // ============================================
-  app.get("/api/admin/clientes/:companyId/stats", async (req: any, res) => {
+  app.get("/api/admin/clientes/:companyId/stats", requireAdminAuth, async (req: any, res) => {
     try {
-      if (req.user?.role !== "proprietario" || req.user?.isAdmin !== true) {
-        return res.status(403).json({ error: "Acesso negado" });
-      }
-
       const { companyId } = req.params;
 
       const totalVeiculos = await db
