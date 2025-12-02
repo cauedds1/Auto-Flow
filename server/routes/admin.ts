@@ -67,7 +67,7 @@ export async function registerAdminRoutes(app: Express) {
 
       const status = (req.query.status as string) || "all";
 
-      let query = db
+      let baseQuery = db
         .select({
           empresaId: companies.id,
           nomeFantasia: companies.nomeFantasia,
@@ -84,12 +84,10 @@ export async function registerAdminRoutes(app: Express) {
         .leftJoin(subscriptions, eq(companies.id, subscriptions.companyId));
 
       if (status !== "all") {
-        query = query.where(eq(subscriptions.status, status as any));
+        baseQuery = baseQuery.where(eq(subscriptions.status, status as any));
       }
 
-      query = query.orderBy(desc(companies.createdAt));
-
-      const clientes = await query;
+      const clientes = await baseQuery.orderBy(desc(companies.createdAt));
       res.json(clientes);
     } catch (error) {
       console.error("Erro ao listar clientes:", error);
@@ -199,10 +197,10 @@ export async function registerAdminRoutes(app: Express) {
       const created = await db
         .insert(payments)
         .values({
-          subscriptionId: subscription[0].id,
+          subscriptionId: subscription[0].id as string,
           companyId,
-          valor: Number(valor),
-          status: status || "pendente",
+          valor: String(valor),
+          status: (status || "pendente") as any,
           dataPagamento: dataPagamento ? new Date(dataPagamento) : undefined,
           dataVencimento: new Date(dataVencimento),
           metodo,
