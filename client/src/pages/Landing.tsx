@@ -99,10 +99,10 @@ export default function Landing() {
             <Button 
               size="lg" 
               className="bg-white text-purple-700 hover:bg-purple-50 font-semibold px-8 py-6 text-lg rounded-xl shadow-2xl w-full hover-elevate transition-all"
-              onClick={() => window.location.href = '/signup'}
-              data-testid="button-criar-conta"
+              onClick={() => window.open('https://wa.me/5548999186426', '_blank')}
+              data-testid="button-solicitar-demonstracao"
             >
-              Criar Conta Grátis
+              Solicitar Demonstração
             </Button>
             
             <div className="text-center">
