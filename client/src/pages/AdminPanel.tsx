@@ -64,6 +64,19 @@ interface Admin {
   id: string;
   email: string;
   nome: string;
+  isMaster?: boolean;
+  token?: string;
+}
+
+interface AdminUser {
+  id: string;
+  email: string;
+  nome: string;
+  token: string | null;
+  isMaster: boolean;
+  ativo: boolean;
+  ultimoLogin: string | null;
+  createdAt: string;
 }
 
 interface BugReport {
@@ -277,11 +290,11 @@ function AdminSetup({ accessToken, onSetupComplete }: { accessToken: string; onS
   );
 }
 
-function AdminLogin({ onLogin, accessToken, onShowAddAdmin }: { 
-  onLogin: (admin: Admin) => void; 
-  accessToken: string;
-  onShowAddAdmin: () => void;
+function AdminLogin({ onLogin }: { 
+  onLogin: (admin: Admin & { isMaster?: boolean }) => void; 
 }) {
+  const [loginMethod, setLoginMethod] = useState<"token" | "email">("token");
+  const [token, setToken] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -293,11 +306,15 @@ function AdminLogin({ onLogin, accessToken, onShowAddAdmin }: {
     setLoading(true);
 
     try {
+      const body = loginMethod === "token" 
+        ? { token } 
+        : { email, password };
+
       const res = await fetch("/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(body),
       });
 
       const data = await res.json();
@@ -319,77 +336,98 @@ function AdminLogin({ onLogin, accessToken, onShowAddAdmin }: {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 to-green-500 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
+          <div className="mx-auto w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mb-4">
+            <Shield className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+          </div>
           <CardTitle className="text-2xl">Painel Administrativo</CardTitle>
           <CardDescription>
-            Acesse o painel de gestão de clientes
+            Acesse o painel de gestão VeloStock
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="admin@velostock.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
-                  required
-                  data-testid="input-admin-email"
-                />
-              </div>
-            </div>
+          <Tabs value={loginMethod} onValueChange={(v) => setLoginMethod(v as "token" | "email")} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="token" className="gap-2" data-testid="tab-login-token">
+                <KeyRound className="h-4 w-4" />
+                Token
+              </TabsTrigger>
+              <TabsTrigger value="email" className="gap-2" data-testid="tab-login-email">
+                <Mail className="h-4 w-4" />
+                Email
+              </TabsTrigger>
+            </TabsList>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="********"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
-                  required
-                  data-testid="input-admin-password"
-                />
-              </div>
-            </div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <TabsContent value="token" className="space-y-4 mt-0">
+                <div className="space-y-2">
+                  <Label htmlFor="token">Token de Acesso</Label>
+                  <div className="relative">
+                    <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="token"
+                      type="password"
+                      placeholder="Digite seu token"
+                      value={token}
+                      onChange={(e) => setToken(e.target.value)}
+                      className="pl-10"
+                      required={loginMethod === "token"}
+                      autoFocus={loginMethod === "token"}
+                      data-testid="input-admin-token"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Use o token fornecido pelo administrador master
+                  </p>
+                </div>
+              </TabsContent>
 
-            {error && (
-              <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 rounded-md">
-                {error}
-              </div>
-            )}
+              <TabsContent value="email" className="space-y-4 mt-0">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="admin@velostock.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="pl-10"
+                      required={loginMethod === "email"}
+                      data-testid="input-admin-email"
+                    />
+                  </div>
+                </div>
 
-            <Button type="submit" className="w-full" disabled={loading} data-testid="button-admin-login">
-              {loading ? "Entrando..." : "Entrar"}
-            </Button>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Senha</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="********"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pl-10"
+                      required={loginMethod === "email"}
+                      data-testid="input-admin-password"
+                    />
+                  </div>
+                </div>
+              </TabsContent>
 
-            <div className="relative my-4">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">ou</span>
-              </div>
-            </div>
+              {error && (
+                <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 rounded-md">
+                  {error}
+                </div>
+              )}
 
-            <Button 
-              type="button" 
-              variant="outline" 
-              className="w-full gap-2" 
-              onClick={onShowAddAdmin}
-              data-testid="button-show-add-admin"
-            >
-              <UserPlus className="h-4 w-4" />
-              Adicionar Administrador
-            </Button>
-          </form>
+              <Button type="submit" className="w-full" disabled={loading} data-testid="button-admin-login">
+                {loading ? "Entrando..." : "Entrar"}
+              </Button>
+            </form>
+          </Tabs>
         </CardContent>
       </Card>
     </div>
@@ -1003,13 +1041,7 @@ export default function AdminPanel() {
   }
 
   if (!admin) {
-    return (
-      <AdminLogin 
-        onLogin={setAdmin} 
-        accessToken={accessToken}
-        onShowAddAdmin={() => setShowAddAdmin(true)}
-      />
-    );
+    return <AdminLogin onLogin={setAdmin} />;
   }
 
   return (
@@ -1037,7 +1069,7 @@ export default function AdminPanel() {
 
       <main className="max-w-7xl mx-auto p-4 sm:p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+          <TabsList className={`grid w-full lg:w-auto lg:inline-grid ${admin.isMaster ? 'grid-cols-6' : 'grid-cols-5'}`}>
             <TabsTrigger value="dashboard" className="gap-2" data-testid="tab-dashboard">
               <BarChart3 className="h-4 w-4 hidden sm:inline" />
               Dashboard
@@ -1058,6 +1090,12 @@ export default function AdminPanel() {
               <Bug className="h-4 w-4 hidden sm:inline" />
               Bugs
             </TabsTrigger>
+            {admin.isMaster && (
+              <TabsTrigger value="usuarios" className="gap-2" data-testid="tab-usuarios">
+                <UserPlus className="h-4 w-4 hidden sm:inline" />
+                Usuários
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
@@ -1560,8 +1598,288 @@ export default function AdminPanel() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {admin.isMaster && (
+            <TabsContent value="usuarios" className="space-y-6">
+              <UsuariosAdminTab />
+            </TabsContent>
+          )}
         </Tabs>
       </main>
+    </div>
+  );
+}
+
+function UsuariosAdminTab() {
+  const [admins, setAdmins] = useState<AdminUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newAdmin, setNewAdmin] = useState({ email: "", password: "", nome: "" });
+  const [createLoading, setCreateLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [copiedToken, setCopiedToken] = useState<string | null>(null);
+
+  const fetchAdmins = async () => {
+    try {
+      const res = await fetch("/api/admin/usuarios", { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setAdmins(data);
+      }
+    } catch (err) {
+      console.error("Erro ao carregar admins:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAdmins();
+  }, []);
+
+  const handleCreateAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateLoading(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/admin/usuarios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(newAdmin),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Erro ao criar usuário");
+        return;
+      }
+
+      setShowCreateForm(false);
+      setNewAdmin({ email: "", password: "", nome: "" });
+      fetchAdmins();
+    } catch (err) {
+      setError("Erro de conexão");
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
+  const handleToggleStatus = async (adminId: string, ativo: boolean) => {
+    try {
+      const res = await fetch(`/api/admin/usuarios/${adminId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ ativo: !ativo }),
+      });
+
+      if (res.ok) {
+        fetchAdmins();
+      }
+    } catch (err) {
+      console.error("Erro ao alterar status:", err);
+    }
+  };
+
+  const handleRegenerateToken = async (adminId: string) => {
+    try {
+      const res = await fetch(`/api/admin/usuarios/${adminId}/regenerar-token`, {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (res.ok) {
+        fetchAdmins();
+      }
+    } catch (err) {
+      console.error("Erro ao regenerar token:", err);
+    }
+  };
+
+  const copyToken = (token: string) => {
+    navigator.clipboard.writeText(token);
+    setCopiedToken(token);
+    setTimeout(() => setCopiedToken(null), 2000);
+  };
+
+  if (loading) {
+    return (
+      <div className="animate-pulse space-y-4">
+        <div className="h-32 bg-muted rounded-lg" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-semibold">Usuários Administradores</h2>
+          <p className="text-sm text-muted-foreground">Gerencie os administradores do sistema</p>
+        </div>
+        <Button onClick={() => setShowCreateForm(!showCreateForm)} className="gap-2" data-testid="button-criar-admin">
+          <UserPlus className="h-4 w-4" />
+          Criar Usuário
+        </Button>
+      </div>
+
+      {showCreateForm && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Criar Novo Administrador</CardTitle>
+            <CardDescription>O token será gerado automaticamente</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleCreateAdmin} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-nome">Nome</Label>
+                  <Input
+                    id="new-nome"
+                    value={newAdmin.nome}
+                    onChange={(e) => setNewAdmin({ ...newAdmin, nome: e.target.value })}
+                    placeholder="Nome do administrador"
+                    required
+                    data-testid="input-new-admin-nome"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-email">Email</Label>
+                  <Input
+                    id="new-email"
+                    type="email"
+                    value={newAdmin.email}
+                    onChange={(e) => setNewAdmin({ ...newAdmin, email: e.target.value })}
+                    placeholder="email@exemplo.com"
+                    required
+                    data-testid="input-new-admin-email"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">Senha</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    value={newAdmin.password}
+                    onChange={(e) => setNewAdmin({ ...newAdmin, password: e.target.value })}
+                    placeholder="Senha de acesso"
+                    required
+                    minLength={6}
+                    data-testid="input-new-admin-password"
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 rounded-md">
+                  {error}
+                </div>
+              )}
+
+              <div className="flex gap-2 justify-end">
+                <Button type="button" variant="outline" onClick={() => setShowCreateForm(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={createLoading} data-testid="button-submit-criar-admin">
+                  {createLoading ? "Criando..." : "Criar Administrador"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Lista de Administradores</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {admins.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">Nenhum administrador cadastrado</p>
+          ) : (
+            <div className="space-y-4">
+              {admins.map((a) => (
+                <div key={a.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg gap-4">
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{a.nome}</p>
+                      {a.isMaster && <Badge variant="default">Master</Badge>}
+                      {!a.ativo && <Badge variant="destructive">Desativado</Badge>}
+                    </div>
+                    <p className="text-sm text-muted-foreground">{a.email}</p>
+                    {a.token && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <code className="text-xs bg-muted px-2 py-1 rounded font-mono">
+                          {a.token.substring(0, 20)}...
+                        </code>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => copyToken(a.token!)}
+                          data-testid={`button-copy-token-${a.id}`}
+                        >
+                          {copiedToken === a.token ? (
+                            <Check className="h-3 w-3 text-green-500" />
+                          ) : (
+                            <Eye className="h-3 w-3" />
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                    {a.ultimoLogin && (
+                      <p className="text-xs text-muted-foreground">
+                        Último login: {new Date(a.ultimoLogin).toLocaleDateString("pt-BR", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit"
+                        })}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {!a.isMaster && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleRegenerateToken(a.id)}
+                          data-testid={`button-regenerate-token-${a.id}`}
+                        >
+                          <KeyRound className="h-4 w-4 mr-1" />
+                          Novo Token
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={a.ativo ? "destructive" : "default"}
+                          onClick={() => handleToggleStatus(a.id, a.ativo)}
+                          data-testid={`button-toggle-status-${a.id}`}
+                        >
+                          {a.ativo ? (
+                            <>
+                              <X className="h-4 w-4 mr-1" />
+                              Desativar
+                            </>
+                          ) : (
+                            <>
+                              <Check className="h-4 w-4 mr-1" />
+                              Ativar
+                            </>
+                          )}
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
