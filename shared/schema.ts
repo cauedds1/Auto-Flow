@@ -1135,6 +1135,8 @@ export const adminCredentials = pgTable("admin_credentials", {
   email: varchar("email").unique().notNull(),
   passwordHash: varchar("password_hash").notNull(),
   nome: varchar("nome").notNull(),
+  token: varchar("token").unique(), // Token único para login direto
+  isMaster: varchar("is_master").default("false"), // "true" para o admin principal
   ativo: varchar("ativo").default("true"), // "true" ou "false"
   ultimoLogin: timestamp("ultimo_login"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -1142,6 +1144,14 @@ export const adminCredentials = pgTable("admin_credentials", {
 });
 
 export type AdminCredential = typeof adminCredentials.$inferSelect;
+
+export const insertAdminCredentialSchema = createInsertSchema(adminCredentials).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAdminCredential = z.infer<typeof insertAdminCredentialSchema>;
 
 // ============================================
 // BUG REPORTS
