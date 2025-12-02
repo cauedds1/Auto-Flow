@@ -2,12 +2,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { 
   Car, TrendingUp, BarChart, Sparkles, Wrench, Gauge, Shield,
-  ChevronRight, Activity, DollarSign, CheckCircle2, Zap
+  ChevronRight, Activity, DollarSign, CheckCircle2, Zap, MessageCircle, Brain, Lightbulb
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import dashboardImg from "@assets/image_1764685751623.png";
 import metricsImg from "@assets/image_1764685752441.png";
 import reportsImg from "@assets/image_1764685874050.png";
+import veloBotImg from "@assets/image_1764686690039.png";
 
 export default function Landing() {
   const [activeFeature, setActiveFeature] = useState(0);
@@ -79,6 +80,29 @@ export default function Landing() {
       icon: Shield,
       title: "Seguro Multi-tenant",
       description: "Seus dados sempre protegidos e isolados"
+    }
+  ];
+
+  const veloBotPowers = [
+    {
+      icon: MessageCircle,
+      title: "Assistência 24/7",
+      description: "Respostas instantâneas para suas dúvidas e problemas"
+    },
+    {
+      icon: Brain,
+      title: "Inteligência Adaptativa",
+      description: "Aprende com seu negócio e oferece sugestões personalizadas"
+    },
+    {
+      icon: Lightbulb,
+      title: "Recomendações Inteligentes",
+      description: "Sugestões de preços otimizados e estratégias de vendas"
+    },
+    {
+      icon: Zap,
+      title: "Processamento Rápido",
+      description: "Análise instantânea de dados e geração de insights"
     }
   ];
 
@@ -295,6 +319,66 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* VeloBot Section */}
+      <section className="relative w-full py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* VeloBot Image */}
+            <div className="relative h-96 lg:h-full min-h-96">
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-400/30 to-blue-400/30 rounded-2xl blur-3xl" />
+              <img 
+                src={veloBotImg}
+                alt="VeloBot - Assistente IA"
+                className="relative z-10 w-full h-full object-contain animate-float-slow-reverse filter drop-shadow-2xl rounded-2xl"
+              />
+            </div>
+
+            {/* VeloBot Content */}
+            <div className="space-y-8">
+              <div>
+                <div className="inline-block px-4 py-2 bg-purple-100 dark:bg-purple-900/30 rounded-full border border-purple-300 dark:border-purple-700 mb-4">
+                  <span className="text-purple-700 dark:text-purple-300 text-sm font-semibold flex items-center gap-2">
+                    <Brain className="w-4 h-4" />
+                    Powered by AI
+                  </span>
+                </div>
+                <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+                  VeloBot: Seu Assistente IA
+                </h2>
+                <p className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
+                  Um assistente inteligente que funciona 24/7, ajudando você a resolver problemas, responder dúvidas e otimizar seu negócio em tempo real. O VeloBot é o diferencial que transforma sua revenda.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                {veloBotPowers.map((power, idx) => {
+                  const Icon = power.icon;
+                  return (
+                    <div key={idx} className="p-4 rounded-lg border border-purple-200 dark:border-purple-800 bg-white dark:bg-gray-900/50 hover:shadow-md transition-all group">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                          <Icon className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900 dark:text-white">{power.title}</h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{power.description}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="bg-purple-100 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-700 rounded-lg p-6">
+                <p className="text-purple-900 dark:text-purple-100 font-semibold">
+                  "Com o VeloBot, você tem um gestor IA na sua revenda, disponível a todo momento para ajudar a maximizar lucros e otimizar operações."
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Automation Features Grid */}
       <section className="relative w-full py-20 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-900/50">
         <div className="max-w-6xl mx-auto">
@@ -406,7 +490,7 @@ export default function Landing() {
             Pronto para revolucionar sua revenda?
           </h2>
           <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
-            Teste o VeloStock gratuitamente. Sem cartão de crédito. Sem compromisso.
+            Teste o VeloStock com VeloBot gratuitamente. Sem cartão de crédito. Sem compromisso.
           </p>
           <Button 
             size="lg"
