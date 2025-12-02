@@ -12,7 +12,7 @@ import path from "path";
 import fs from "fs/promises";
 import { existsSync, createReadStream } from "fs";
 import { createBackup, listBackups, getBackupPath } from "./backup";
-import { requireProprietario, requireProprietarioOrGerente, PERMISSIONS } from "./middleware/roleCheck";
+import { requireProprietario, requireProprietarioOrGerente, requireFinancialAccess, PERMISSIONS } from "./middleware/roleCheck";
 import bcrypt from "bcrypt";
 import financialRoutes from "./routes/financial";
 import leadsRoutes from "./routes/leads";
@@ -3776,9 +3776,9 @@ Retorne APENAS um JSON válido no formato:
   app.use("/api/approvals", isAuthenticated, costApprovalsRoutes);
 
   // ============================================
-  // CONTAS A PAGAR E A RECEBER
+  // CONTAS A PAGAR E A RECEBER (Proprietário e Financeiro)
   // ============================================
-  app.use("/api/bills", isAuthenticated, requireProprietario, billsRoutes);
+  app.use("/api/bills", isAuthenticated, requireFinancialAccess, billsRoutes);
 
   // AI Routes
   registerAIRoutes(app);

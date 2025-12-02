@@ -33,9 +33,10 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { ChatbotWidget } from "@/components/ChatbotWidget";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 function MainAppRouter() {
-  const { isMotorista } = usePermissions();
+  const { isMotorista, can } = usePermissions();
   
   return (
     <Switch>
@@ -43,13 +44,33 @@ function MainAppRouter() {
       <Route path="/veiculos" component={Vehicles} />
       <Route path="/veiculo/:id" component={VehicleDetails} />
       <Route path="/vehicles/:id" component={VehicleDetails} />
-      <Route path="/relatorios" component={Reports} />
+      <Route path="/relatorios">
+        <ProtectedRoute requiredPermissions={["viewFinancialReports", "viewOperationalReports"]}>
+          <Reports />
+        </ProtectedRoute>
+      </Route>
       <Route path="/anotacoes" component={Notes} />
       <Route path="/checklists" component={Checklists} />
-      <Route path="/leads" component={Leads} />
-      <Route path="/contas" component={Bills} />
-      <Route path="/usuarios" component={Users} />
-      <Route path="/configuracoes" component={Settings} />
+      <Route path="/leads">
+        <ProtectedRoute requiredPermission="viewLeads">
+          <Leads />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/contas">
+        <ProtectedRoute requiredPermission="viewBills">
+          <Bills />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/usuarios">
+        <ProtectedRoute requiredPermission="manageUsers">
+          <Users />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/configuracoes">
+        <ProtectedRoute requiredPermission="companySettings">
+          <Settings />
+        </ProtectedRoute>
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
