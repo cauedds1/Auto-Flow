@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -777,6 +777,7 @@ export default function AdminPanel() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [pagamentoFilter, setPagamentoFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const justLoggedInRef = useRef(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -790,13 +791,10 @@ export default function AdminPanel() {
           return;
         }
 
-        // Verifica se há sessão ativa, mas NÃO valida token automaticamente
-        // O token SEMPRE será solicitado ao acessar /admin
         const res = await fetch("/api/admin/me", { credentials: "include" });
         if (res.ok) {
           const data = await res.json();
           setAdmin(data);
-          // NÃO setar tokenValidated aqui - sempre pedir token primeiro
         }
       } catch (err) {
         console.error("Erro ao verificar autenticação:", err);
@@ -808,6 +806,14 @@ export default function AdminPanel() {
     checkAuth();
   }, []);
 
+  const handleLogin = (adminData: Admin) => {
+    justLoggedInRef.current = true;
+    setAdmin(adminData);
+    setTimeout(() => {
+      justLoggedInRef.current = false;
+    }, 3000);
+  };
+
   const handleLogout = async () => {
     await fetch("/api/admin/logout", { method: "POST", credentials: "include" });
     setAdmin(null);
@@ -816,6 +822,9 @@ export default function AdminPanel() {
   };
 
   const handleSessionExpired = () => {
+    if (justLoggedInRef.current) {
+      return;
+    }
     setAdmin(null);
     queryClient.clear();
   };
@@ -1001,7 +1010,7 @@ export default function AdminPanel() {
   }
 
   if (!admin) {
-    return <AdminLogin onLogin={setAdmin} />;
+    return <AdminLogin onLogin={handleLogin} />;
   }
 
   return (
