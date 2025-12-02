@@ -28,15 +28,13 @@ export async function registerAdminRoutes(app: Express) {
   const MAX_LOGIN_ATTEMPTS = 5;
   const LOCKOUT_TIME = 15 * 60 * 1000;
 
+  // Login híbrido: aceita token OU email+senha
   app.post("/api/admin/login", async (req: any, res) => {
     try {
-      const { email, password } = req.body;
+      const { email, password, token } = req.body;
       const clientIp = req.ip || req.connection.remoteAddress || "unknown";
       
-      if (!email || !password) {
-        return res.status(400).json({ error: "Email e senha são obrigatórios" });
-      }
-
+      // Verificar rate limiting
       const attempts = loginAttempts.get(clientIp);
       if (attempts && attempts.count >= MAX_LOGIN_ATTEMPTS) {
         const timeSinceLastAttempt = Date.now() - attempts.lastAttempt;
@@ -50,23 +48,44 @@ export async function registerAdminRoutes(app: Express) {
         }
       }
 
-      const admin = await db
-        .select()
-        .from(adminCredentials)
-        .where(eq(adminCredentials.email, email))
-        .limit(1);
+      let admin: any[] = [];
 
-      if (admin.length === 0) {
-        const current = loginAttempts.get(clientIp) || { count: 0, lastAttempt: 0 };
-        loginAttempts.set(clientIp, { count: current.count + 1, lastAttempt: Date.now() });
-        return res.status(401).json({ error: "Credenciais inválidas" });
+      // MÉTODO 1: Login por TOKEN
+      if (token) {
+        admin = await db
+          .select()
+          .from(adminCredentials)
+          .where(eq(adminCredentials.token, token))
+          .limit(1);
+
+        if (admin.length === 0) {
+          const current = loginAttempts.get(clientIp) || { count: 0, lastAttempt: 0 };
+          loginAttempts.set(clientIp, { count: current.count + 1, lastAttempt: Date.now() });
+          return res.status(401).json({ error: "Token inválido" });
+        }
       }
+      // MÉTODO 2: Login por EMAIL + SENHA
+      else if (email && password) {
+        admin = await db
+          .select()
+          .from(adminCredentials)
+          .where(eq(adminCredentials.email, email))
+          .limit(1);
 
-      const isValidPassword = await bcrypt.compare(password, admin[0].passwordHash);
-      if (!isValidPassword) {
-        const current = loginAttempts.get(clientIp) || { count: 0, lastAttempt: 0 };
-        loginAttempts.set(clientIp, { count: current.count + 1, lastAttempt: Date.now() });
-        return res.status(401).json({ error: "Credenciais inválidas" });
+        if (admin.length === 0) {
+          const current = loginAttempts.get(clientIp) || { count: 0, lastAttempt: 0 };
+          loginAttempts.set(clientIp, { count: current.count + 1, lastAttempt: Date.now() });
+          return res.status(401).json({ error: "Credenciais inválidas" });
+        }
+
+        const isValidPassword = await bcrypt.compare(password, admin[0].passwordHash);
+        if (!isValidPassword) {
+          const current = loginAttempts.get(clientIp) || { count: 0, lastAttempt: 0 };
+          loginAttempts.set(clientIp, { count: current.count + 1, lastAttempt: Date.now() });
+          return res.status(401).json({ error: "Credenciais inválidas" });
+        }
+      } else {
+        return res.status(400).json({ error: "Informe token OU email e senha" });
       }
 
       if (admin[0].ativo !== "true") {
@@ -100,6 +119,7 @@ export async function registerAdminRoutes(app: Express) {
             id: admin[0].id,
             email: admin[0].email,
             nome: admin[0].nome,
+            isMaster: admin[0].isMaster === "true",
           });
         });
       });
@@ -130,6 +150,8 @@ export async function registerAdminRoutes(app: Express) {
         id: adminCredentials.id,
         email: adminCredentials.email,
         nome: adminCredentials.nome,
+        isMaster: adminCredentials.isMaster,
+        token: adminCredentials.token,
       })
       .from(adminCredentials)
       .where(eq(adminCredentials.id, req.session.adminId))
@@ -139,7 +161,201 @@ export async function registerAdminRoutes(app: Express) {
       return res.status(401).json({ error: "Admin não encontrado" });
     }
 
-    res.json(admin[0]);
+    res.json({
+      ...admin[0],
+      isMaster: admin[0].isMaster === "true",
+    });
+  });
+
+  // ============================================
+  // GERENCIAMENTO DE USUÁRIOS ADMIN
+  // ============================================
+
+  // Listar todos os admins (apenas master pode ver)
+  app.get("/api/admin/usuarios", requireAdminAuth, async (req: any, res) => {
+    try {
+      const currentAdmin = await db
+        .select()
+        .from(adminCredentials)
+        .where(eq(adminCredentials.id, req.session.adminId))
+        .limit(1);
+
+      if (currentAdmin.length === 0 || currentAdmin[0].isMaster !== "true") {
+        return res.status(403).json({ error: "Apenas o admin master pode ver usuários" });
+      }
+
+      const admins = await db
+        .select({
+          id: adminCredentials.id,
+          email: adminCredentials.email,
+          nome: adminCredentials.nome,
+          token: adminCredentials.token,
+          isMaster: adminCredentials.isMaster,
+          ativo: adminCredentials.ativo,
+          ultimoLogin: adminCredentials.ultimoLogin,
+          createdAt: adminCredentials.createdAt,
+        })
+        .from(adminCredentials)
+        .orderBy(desc(adminCredentials.createdAt));
+
+      res.json(admins.map(a => ({
+        ...a,
+        isMaster: a.isMaster === "true",
+        ativo: a.ativo === "true",
+      })));
+    } catch (error) {
+      console.error("Erro ao listar admins:", error);
+      res.status(500).json({ error: "Erro ao listar usuários admin" });
+    }
+  });
+
+  // Criar novo usuário admin (apenas master pode criar)
+  app.post("/api/admin/usuarios", requireAdminAuth, async (req: any, res) => {
+    try {
+      const currentAdmin = await db
+        .select()
+        .from(adminCredentials)
+        .where(eq(adminCredentials.id, req.session.adminId))
+        .limit(1);
+
+      if (currentAdmin.length === 0 || currentAdmin[0].isMaster !== "true") {
+        return res.status(403).json({ error: "Apenas o admin master pode criar usuários" });
+      }
+
+      const { email, password, nome } = req.body;
+
+      if (!email || !password || !nome) {
+        return res.status(400).json({ error: "Email, senha e nome são obrigatórios" });
+      }
+
+      // Verificar se email já existe
+      const existingAdmin = await db
+        .select()
+        .from(adminCredentials)
+        .where(eq(adminCredentials.email, email))
+        .limit(1);
+
+      if (existingAdmin.length > 0) {
+        return res.status(400).json({ error: "Email já cadastrado" });
+      }
+
+      // Gerar token único
+      const crypto = await import("crypto");
+      const newToken = crypto.randomBytes(32).toString("hex");
+
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      const newAdmin = await db
+        .insert(adminCredentials)
+        .values({
+          email,
+          passwordHash,
+          nome,
+          token: newToken,
+          isMaster: "false",
+          ativo: "true",
+        })
+        .returning();
+
+      console.log(`[ADMIN] Novo usuário admin criado: ${email}`);
+
+      res.json({
+        id: newAdmin[0].id,
+        email: newAdmin[0].email,
+        nome: newAdmin[0].nome,
+        token: newAdmin[0].token,
+        isMaster: false,
+        ativo: true,
+      });
+    } catch (error) {
+      console.error("Erro ao criar admin:", error);
+      res.status(500).json({ error: "Erro ao criar usuário admin" });
+    }
+  });
+
+  // Desativar/Ativar usuário admin
+  app.patch("/api/admin/usuarios/:adminId/status", requireAdminAuth, async (req: any, res) => {
+    try {
+      const currentAdmin = await db
+        .select()
+        .from(adminCredentials)
+        .where(eq(adminCredentials.id, req.session.adminId))
+        .limit(1);
+
+      if (currentAdmin.length === 0 || currentAdmin[0].isMaster !== "true") {
+        return res.status(403).json({ error: "Apenas o admin master pode alterar status" });
+      }
+
+      const { adminId } = req.params;
+      const { ativo } = req.body;
+
+      // Não pode desativar a si mesmo
+      if (adminId === req.session.adminId) {
+        return res.status(400).json({ error: "Você não pode desativar sua própria conta" });
+      }
+
+      const updated = await db
+        .update(adminCredentials)
+        .set({ 
+          ativo: ativo ? "true" : "false",
+          updatedAt: new Date(),
+        })
+        .where(eq(adminCredentials.id, adminId))
+        .returning();
+
+      if (updated.length === 0) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+
+      res.json({
+        id: updated[0].id,
+        ativo: updated[0].ativo === "true",
+      });
+    } catch (error) {
+      console.error("Erro ao atualizar status:", error);
+      res.status(500).json({ error: "Erro ao atualizar status" });
+    }
+  });
+
+  // Regenerar token de usuário admin
+  app.post("/api/admin/usuarios/:adminId/regenerar-token", requireAdminAuth, async (req: any, res) => {
+    try {
+      const currentAdmin = await db
+        .select()
+        .from(adminCredentials)
+        .where(eq(adminCredentials.id, req.session.adminId))
+        .limit(1);
+
+      if (currentAdmin.length === 0 || currentAdmin[0].isMaster !== "true") {
+        return res.status(403).json({ error: "Apenas o admin master pode regenerar tokens" });
+      }
+
+      const { adminId } = req.params;
+
+      const crypto = await import("crypto");
+      const newToken = crypto.randomBytes(32).toString("hex");
+
+      const updated = await db
+        .update(adminCredentials)
+        .set({ 
+          token: newToken,
+          updatedAt: new Date(),
+        })
+        .where(eq(adminCredentials.id, adminId))
+        .returning();
+
+      if (updated.length === 0) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+
+      res.json({
+        id: updated[0].id,
+        token: updated[0].token,
+      });
+    } catch (error) {
+      console.error("Erro ao regenerar token:", error);
+      res.status(500).json({ error: "Erro ao regenerar token" });
+    }
   });
 
   const setupAttempts = new Map<string, { count: number; lastAttempt: number }>();
