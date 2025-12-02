@@ -678,8 +678,36 @@ export class DatabaseStorage implements IStorage {
     }
   }
   async createBugReport(report: InsertBugReport): Promise<BugReport> {
-    const [created] = await db.insert(bugReports).values(report as any).returning();
-    return created;
+    try {
+      // Garantir que os campos obrigatórios estão presentes
+      if (!report.userId || !report.message) {
+        throw new Error("userId e message são obrigatórios");
+      }
+
+      const insertData = {
+        userId: report.userId,
+        userName: report.userName || null,
+        userEmail: report.userEmail || null,
+        userPhotoUrl: report.userPhotoUrl || null,
+        message: report.message,
+        attachments: report.attachments && report.attachments.length > 0 ? report.attachments : [],
+        status: report.status || "novo",
+      };
+
+      console.log("[BUG STORAGE] Inserindo bug com dados:", {
+        userId: insertData.userId,
+        userName: insertData.userName,
+        messageLength: insertData.message.length,
+        attachmentsCount: insertData.attachments.length,
+        status: insertData.status,
+      });
+
+      const [created] = await db.insert(bugReports).values(insertData as any).returning();
+      return created;
+    } catch (error) {
+      console.error("[BUG STORAGE] Erro ao inserir bug:", error);
+      throw error;
+    }
   }
 
   async getAllBugReports(): Promise<BugReport[]> {

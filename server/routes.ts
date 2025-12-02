@@ -3881,27 +3881,35 @@ Retorne APENAS um JSON válido no formato:
         return res.status(400).json({ error: "Mensagem é obrigatória" });
       }
 
-      // Converter arquivos base64
+      // Converter arquivos base64 - apenas nomes e metadados leves
       const attachments = (req.files || []).map((file: any) => ({
-        fileName: file.originalname,
-        fileData: file.buffer.toString("base64"),
-        mimeType: file.mimetype,
+        fileName: file.originalname || `file_${Date.now()}`,
+        fileData: file.buffer.toString("base64").slice(0, 50000), // Limitar tamanho
+        mimeType: file.mimetype || "application/octet-stream",
       }));
 
-      const report = await storage.createBugReport({
+      console.log(`[BUG] Criando relatório - userId: ${userId}, attachments: ${attachments.length}`);
+
+      const reportData = {
         userId,
         userName: `${user.firstName} ${user.lastName}`.trim() || user.email,
         userEmail: user.email,
         userPhotoUrl: user.profileImageUrl || undefined,
         message,
-        attachments,
+        attachments: attachments.length > 0 ? attachments : null,
         status: "novo",
-      } as any);
+      };
 
+      console.log(`[BUG] Dados do relatório:`, JSON.stringify(reportData).slice(0, 500));
+
+      const report = await storage.createBugReport(reportData as any);
+
+      console.log(`[BUG] Relatório criado com sucesso: ${report.id}`);
       res.json(report);
     } catch (error) {
-      console.error("Erro ao criar bug report:", error);
-      res.status(500).json({ error: "Erro ao enviar relatório de bug" });
+      console.error("[BUG] Erro ao criar bug report:", error);
+      console.error("[BUG] Stack trace:", (error as any)?.stack);
+      res.status(500).json({ error: "Erro ao enviar relatório de bug: " + (error as any)?.message });
     }
   });
 
