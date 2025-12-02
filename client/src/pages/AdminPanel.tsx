@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { 
   Users, Building2, CreditCard, DollarSign, TrendingUp, LogOut, Lock, Mail, User, Shield, KeyRound,
-  Plus, Eye, Edit, Check, X, Calendar, Wallet, BarChart3, Settings, Clock, AlertTriangle, CheckCircle, Bug, Download
+  Plus, Eye, Edit, Check, X, Calendar, Wallet, BarChart3, Settings, Clock, AlertTriangle, CheckCircle, Bug, Download, UserPlus, ArrowLeft
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -277,7 +277,11 @@ function AdminSetup({ accessToken, onSetupComplete }: { accessToken: string; onS
   );
 }
 
-function AdminLogin({ onLogin }: { onLogin: (admin: Admin) => void }) {
+function AdminLogin({ onLogin, accessToken, onShowAddAdmin }: { 
+  onLogin: (admin: Admin) => void; 
+  accessToken: string;
+  onShowAddAdmin: () => void;
+}) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -292,6 +296,7 @@ function AdminLogin({ onLogin }: { onLogin: (admin: Admin) => void }) {
       const res = await fetch("/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email, password }),
       });
 
@@ -364,6 +369,26 @@ function AdminLogin({ onLogin }: { onLogin: (admin: Admin) => void }) {
             <Button type="submit" className="w-full" disabled={loading} data-testid="button-admin-login">
               {loading ? "Entrando..." : "Entrar"}
             </Button>
+
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">ou</span>
+              </div>
+            </div>
+
+            <Button 
+              type="button" 
+              variant="outline" 
+              className="w-full gap-2" 
+              onClick={onShowAddAdmin}
+              data-testid="button-show-add-admin"
+            >
+              <UserPlus className="h-4 w-4" />
+              Adicionar Administrador
+            </Button>
           </form>
         </CardContent>
       </Card>
@@ -395,6 +420,7 @@ function NovaEmpresaDialog({ onSuccess }: { onSuccess: () => void }) {
       const res = await fetch("/api/admin/clientes/criar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           ...formData,
           diasTestGratis: parseInt(formData.diasTestGratis),
@@ -583,6 +609,7 @@ function NovoPagamentoDialog({ clientes, onSuccess }: { clientes: Cliente[]; onS
       const res = await fetch("/api/admin/pagamentos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           ...formData,
           valor: parseFloat(formData.valor),
@@ -707,6 +734,7 @@ export default function AdminPanel() {
   const [needsSetup, setNeedsSetup] = useState(false);
   const [tokenValidated, setTokenValidated] = useState(false);
   const [accessToken, setAccessToken] = useState("");
+  const [showAddAdmin, setShowAddAdmin] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [statusFilter, setStatusFilter] = useState("all");
   const [pagamentoFilter, setPagamentoFilter] = useState("all");
@@ -726,7 +754,7 @@ export default function AdminPanel() {
 
         // Verifica se há sessão ativa, mas NÃO valida token automaticamente
         // O token SEMPRE será solicitado ao acessar /admin
-        const res = await fetch("/api/admin/me");
+        const res = await fetch("/api/admin/me", { credentials: "include" });
         if (res.ok) {
           const data = await res.json();
           setAdmin(data);
@@ -743,8 +771,9 @@ export default function AdminPanel() {
   }, []);
 
   const handleLogout = async () => {
-    await fetch("/api/admin/logout", { method: "POST" });
+    await fetch("/api/admin/logout", { method: "POST", credentials: "include" });
     setAdmin(null);
+    setTokenValidated(false);
     queryClient.clear();
   };
 
@@ -757,7 +786,7 @@ export default function AdminPanel() {
     queryKey: ["/api/admin/dashboard"],
     enabled: !!admin,
     queryFn: async () => {
-      const res = await fetch("/api/admin/dashboard");
+      const res = await fetch("/api/admin/dashboard", { credentials: "include" });
       if (res.status === 401) {
         handleSessionExpired();
         throw new Error("Sessão expirada");
@@ -771,7 +800,7 @@ export default function AdminPanel() {
     queryKey: ["/api/admin/financeiro/stats"],
     enabled: !!admin,
     queryFn: async () => {
-      const res = await fetch("/api/admin/financeiro/stats");
+      const res = await fetch("/api/admin/financeiro/stats", { credentials: "include" });
       if (res.status === 401) {
         handleSessionExpired();
         throw new Error("Sessão expirada");
@@ -787,7 +816,7 @@ export default function AdminPanel() {
       const url = statusFilter === "all"
         ? "/api/admin/clientes"
         : `/api/admin/clientes?status=${statusFilter}`;
-      const res = await fetch(url);
+      const res = await fetch(url, { credentials: "include" });
       if (res.status === 401) {
         handleSessionExpired();
         throw new Error("Sessão expirada");
@@ -804,7 +833,7 @@ export default function AdminPanel() {
       const url = pagamentoFilter === "all"
         ? "/api/admin/pagamentos"
         : `/api/admin/pagamentos?status=${pagamentoFilter}`;
-      const res = await fetch(url);
+      const res = await fetch(url, { credentials: "include" });
       if (res.status === 401) {
         handleSessionExpired();
         throw new Error("Sessão expirada");
@@ -818,7 +847,7 @@ export default function AdminPanel() {
   const { data: bugs = [], isLoading: bugsLoading } = useQuery<BugReport[]>({
     queryKey: ["/api/bug-reports"],
     queryFn: async () => {
-      const res = await fetch("/api/bug-reports");
+      const res = await fetch("/api/bug-reports", { credentials: "include" });
       if (res.status === 401) {
         handleSessionExpired();
         throw new Error("Sessão expirada");
@@ -868,6 +897,7 @@ export default function AdminPanel() {
       const res = await fetch(`/api/admin/clientes/${empresaId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ status: novoStatus }),
       });
 
@@ -889,6 +919,7 @@ export default function AdminPanel() {
 
       const res = await fetch(`/api/admin/pagamentos/${paymentId}`, {
         method: "PATCH",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
       });
@@ -908,6 +939,7 @@ export default function AdminPanel() {
       const res = await fetch(`/api/bug-reports/${bugId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ status: novoStatus }),
       });
 
@@ -942,21 +974,42 @@ export default function AdminPanel() {
     );
   }
 
-  if (needsSetup) {
+  if (needsSetup || showAddAdmin) {
     return (
-      <AdminSetup
-        accessToken={accessToken}
-        onSetupComplete={() => {
-          setNeedsSetup(false);
-          setTokenValidated(false);
-          setAccessToken("");
-        }}
-      />
+      <div className="relative">
+        {showAddAdmin && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="absolute top-4 left-4 gap-2 text-white hover:bg-white/20 z-10"
+            onClick={() => setShowAddAdmin(false)}
+            data-testid="button-back-to-login"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Voltar ao Login
+          </Button>
+        )}
+        <AdminSetup
+          accessToken={accessToken}
+          onSetupComplete={() => {
+            setNeedsSetup(false);
+            setShowAddAdmin(false);
+            setTokenValidated(false);
+            setAccessToken("");
+          }}
+        />
+      </div>
     );
   }
 
   if (!admin) {
-    return <AdminLogin onLogin={setAdmin} />;
+    return (
+      <AdminLogin 
+        onLogin={setAdmin} 
+        accessToken={accessToken}
+        onShowAddAdmin={() => setShowAddAdmin(true)}
+      />
+    );
   }
 
   return (
