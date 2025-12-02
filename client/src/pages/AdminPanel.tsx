@@ -724,11 +724,13 @@ export default function AdminPanel() {
           return;
         }
 
+        // Verifica se há sessão ativa, mas NÃO valida token automaticamente
+        // O token SEMPRE será solicitado ao acessar /admin
         const res = await fetch("/api/admin/me");
         if (res.ok) {
           const data = await res.json();
           setAdmin(data);
-          setTokenValidated(true);
+          // NÃO setar tokenValidated aqui - sempre pedir token primeiro
         }
       } catch (err) {
         console.error("Erro ao verificar autenticação:", err);
@@ -928,17 +930,19 @@ export default function AdminPanel() {
     );
   }
 
+  // SEMPRE solicitar token primeiro ao acessar /admin
+  if (!tokenValidated) {
+    return (
+      <TokenGate
+        onValidToken={(token) => {
+          setAccessToken(token);
+          setTokenValidated(true);
+        }}
+      />
+    );
+  }
+
   if (needsSetup) {
-    if (!tokenValidated) {
-      return (
-        <TokenGate
-          onValidToken={(token) => {
-            setAccessToken(token);
-            setTokenValidated(true);
-          }}
-        />
-      );
-    }
     return (
       <AdminSetup
         accessToken={accessToken}
