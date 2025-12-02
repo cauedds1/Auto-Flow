@@ -1,135 +1,359 @@
 import { Button } from "@/components/ui/button";
-import { Car, TrendingUp, BarChart, Sparkles, Wrench, Gauge, Shield } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { 
+  Car, TrendingUp, BarChart, Sparkles, Wrench, Gauge, Shield,
+  ChevronRight, Activity, DollarSign, CheckCircle2, Zap
+} from "lucide-react";
+import { useState, useEffect } from "react";
 
 export default function Landing() {
+  const [activeFeature, setActiveFeature] = useState(0);
+  const [scrollProgress, setScrollProgress] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const scrolled = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+      setScrollProgress(scrolled);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const features = [
+    {
+      title: "Pipeline Visual",
+      description: "Acompanhe cada veículo da entrada à venda em um kanban intuitivo",
+      icon: TrendingUp,
+      color: "from-green-400 to-green-600",
+      demo: "Mova veículos entre os estágios: Entrada → Preparação → Pronto → Vendido"
+    },
+    {
+      title: "Análise Completa",
+      description: "Dashboard com métricas em tempo real e controle de custos detalhado",
+      icon: BarChart,
+      color: "from-blue-400 to-blue-600",
+      demo: "Visualize lucros, margem, estoque e tendências de vendas"
+    },
+    {
+      title: "IA Integrada",
+      description: "Sugestões de preço e geração de anúncios com inteligência artificial",
+      icon: Sparkles,
+      color: "from-purple-400 to-purple-600",
+      demo: "Gere anúncios profissionais e preços otimizados automaticamente"
+    }
+  ];
+
+  const automations = [
+    {
+      icon: Wrench,
+      title: "Checklists Completos",
+      description: "Preparação padronizada para cada veículo"
+    },
+    {
+      icon: Activity,
+      title: "Rastreamento em Tempo Real",
+      description: "Status de cada veículo atualizado instantaneamente"
+    },
+    {
+      icon: DollarSign,
+      title: "Gestão de Custos",
+      description: "Controle precisão de gastos e lucratividade"
+    },
+    {
+      icon: CheckCircle2,
+      title: "Documentação Automática",
+      description: "Relatórios e PDFs gerados com um clique"
+    },
+    {
+      icon: Gauge,
+      title: "Controle de Estoque",
+      description: "Inventário sempre sincronizado e atualizado"
+    },
+    {
+      icon: Shield,
+      title: "Seguro Multi-tenant",
+      description: "Seus dados sempre protegidos e isolados"
+    }
+  ];
+
+  const stats = [
+    { value: "3x", label: "Mais rápido", subtext: "que spreadsheets" },
+    { value: "100%", label: "Rastreável", subtext: "cada transação" },
+    { value: "AI", label: "Otimizado", subtext: "por inteligência artificial" }
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-green-600 flex flex-col relative overflow-hidden">
-      {/* Automotive pattern background */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-10 left-10 w-32 h-32 border-4 border-white rounded-full animate-pulse" />
-        <div className="absolute bottom-20 right-20 w-24 h-24 border-4 border-white rounded-full animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-1/2 left-1/3 w-16 h-16 border-4 border-white rounded-full animate-pulse" style={{ animationDelay: '0.5s' }} />
-      </div>
-      
+    <div className="w-full min-h-screen bg-white dark:bg-slate-950 overflow-hidden">
+      {/* Scroll Progress Bar */}
+      <div 
+        className="fixed top-0 left-0 h-1 bg-gradient-to-r from-green-500 via-blue-500 to-purple-500 z-50 transition-all duration-300"
+        style={{ width: `${scrollProgress}%` }}
+      />
+
       {/* Header */}
-      <header className="p-6 relative z-10">
-        <div className="flex items-center gap-3 group hover-elevate active-elevate-2 rounded-xl p-3 inline-flex transition-all duration-300">
-          <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
-            <Car className="w-7 h-7 text-purple-600" />
+      <header className="sticky top-0 z-40 w-full bg-white/80 dark:bg-slate-950/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3 group">
+            <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-blue-600 rounded-lg flex items-center justify-center shadow-lg">
+              <Car className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-2xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
+              VeloStock
+            </span>
           </div>
-          <span className="text-3xl font-bold text-white tracking-tight">VeloStock</span>
-          <Gauge className="w-6 h-6 text-green-300 ml-2 group-hover:rotate-12 transition-transform" />
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="ghost"
+              onClick={() => window.location.href = '/login'}
+              data-testid="button-fazer-login"
+              className="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+            >
+              Entrar
+            </Button>
+            <Button 
+              onClick={() => window.open('https://wa.me/5548999186426', '_blank')}
+              data-testid="button-solicitar-demonstracao"
+              className="bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 text-white rounded-lg"
+            >
+              Demo Grátis
+            </Button>
+          </div>
         </div>
       </header>
 
       {/* Hero Section */}
-      <main className="flex-1 flex items-center justify-center px-4 py-12">
-        <div className="max-w-4xl mx-auto text-center space-y-8">
-          {/* Título */}
-          <div className="space-y-4">
-            <h1 className="text-5xl md:text-7xl font-bold text-white leading-tight">
-              Gestão Completa para
-              <span className="block bg-gradient-to-r from-green-300 to-emerald-300 bg-clip-text text-transparent">
-                Revenda de Veículos
+      <section className="relative w-full py-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-20 right-10 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob" />
+          <div className="absolute bottom-20 left-10 w-72 h-72 bg-green-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000" />
+          <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000" />
+        </div>
+
+        <div className="relative z-10 max-w-6xl mx-auto">
+          {/* Main Headline */}
+          <div className="text-center space-y-6 mb-16">
+            <div className="inline-block px-4 py-2 bg-green-100 dark:bg-green-900/30 rounded-full border border-green-300 dark:border-green-700">
+              <span className="text-green-700 dark:text-green-300 text-sm font-semibold flex items-center gap-2">
+                <Zap className="w-4 h-4" />
+                Transforme sua revenda automotiva
+              </span>
+            </div>
+
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black tracking-tight">
+              <span className="block text-gray-900 dark:text-white mb-2">Gestão Completa</span>
+              <span className="block bg-gradient-to-r from-green-500 via-blue-500 to-purple-500 bg-clip-text text-transparent">
+                para Revenda de Veículos
               </span>
             </h1>
-            <p className="text-xl md:text-2xl text-purple-100 max-w-2xl mx-auto">
-              Controle total do estoque, preparação, custos e vendas em uma plataforma inteligente e moderna.
+
+            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
+              Controle total do estoque, preparação, custos e vendas em uma plataforma inteligente. 
+              De spreadsheets caóticos para sistema profissional em minutos.
             </p>
-          </div>
 
-          {/* Features */}
-          <div className="grid md:grid-cols-3 gap-6 py-8 relative z-10">
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover-elevate active-elevate-2 cursor-default transition-all group">
-              <div className="bg-gradient-to-br from-green-400 to-green-600 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
-                <TrendingUp className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-white font-semibold text-lg mb-2">Pipeline Visual</h3>
-              <p className="text-purple-100 text-sm">
-                Acompanhe cada veículo da entrada à venda em um kanban intuitivo
-              </p>
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-4 max-w-md mx-auto py-8">
+              {stats.map((stat, idx) => (
+                <div key={idx} className="p-4 rounded-lg bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800">
+                  <div className="text-2xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
+                    {stat.value}
+                  </div>
+                  <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mt-1">{stat.label}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">{stat.subtext}</div>
+                </div>
+              ))}
             </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover-elevate active-elevate-2 cursor-default transition-all group">
-              <div className="bg-gradient-to-br from-purple-400 to-purple-600 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
-                <BarChart className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-white font-semibold text-lg mb-2">Análise Completa</h3>
-              <p className="text-purple-100 text-sm">
-                Dashboard com métricas em tempo real e controle de custos detalhado
-              </p>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover-elevate active-elevate-2 cursor-default transition-all group">
-              <div className="bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
-                <Sparkles className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-white font-semibold text-lg mb-2">IA Integrada</h3>
-              <p className="text-purple-100 text-sm">
-                Sugestões de preço e geração de anúncios com inteligência artificial
-              </p>
-            </div>
-          </div>
-          
-          {/* Automotive-specific features */}
-          <div className="grid md:grid-cols-3 gap-4 py-4 relative z-10">
-            <div className="flex items-center gap-3 bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-              <Wrench className="w-8 h-8 text-green-300" />
-              <div className="text-left">
-                <p className="text-white font-medium text-sm">Preparação</p>
-                <p className="text-purple-200 text-xs">Checklists completos</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-              <Car className="w-8 h-8 text-green-300" />
-              <div className="text-left">
-                <p className="text-white font-medium text-sm">Estoque</p>
-                <p className="text-purple-200 text-xs">Controle total</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-              <Shield className="w-8 h-8 text-green-300" />
-              <div className="text-left">
-                <p className="text-white font-medium text-sm">Seguro</p>
-                <p className="text-purple-200 text-xs">Multi-tenant</p>
-              </div>
-            </div>
-          </div>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col gap-6 justify-center items-center pt-4 max-w-md mx-auto w-full relative z-10">
-            <Button 
-              size="lg" 
-              className="bg-white text-purple-700 hover:bg-purple-50 font-semibold px-8 py-6 text-lg rounded-xl shadow-2xl w-full hover-elevate transition-all"
-              onClick={() => window.open('https://wa.me/5548999186426', '_blank')}
-              data-testid="button-solicitar-demonstracao"
-            >
-              Solicitar Demonstração
-            </Button>
-            
-            <div className="text-center">
-              <p className="text-purple-200 text-sm mb-2">Já tem uma conta?</p>
+            {/* CTA */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
               <Button 
-                variant="link" 
-                className="text-white hover:text-purple-100 font-semibold underline text-lg"
-                onClick={() => window.location.href = '/login'}
-                data-testid="button-fazer-login"
+                size="lg"
+                onClick={() => window.open('https://wa.me/5548999186426', '_blank')}
+                data-testid="button-solicitar-demonstracao-hero"
+                className="bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 text-white text-lg px-8 py-6 rounded-xl font-semibold shadow-xl hover:shadow-2xl transition-all"
               >
-                Fazer Login
+                Comece Seu Teste Grátis <ChevronRight className="w-5 h-5 ml-2" />
+              </Button>
+              <Button 
+                size="lg"
+                variant="outline"
+                onClick={() => window.location.href = '/login'}
+                className="text-gray-900 dark:text-white border-gray-300 dark:border-gray-700 text-lg px-8 py-6 rounded-xl font-semibold"
+              >
+                Já tenho conta
               </Button>
             </div>
           </div>
+        </div>
+      </section>
 
-          {/* Social Proof */}
-          <div className="pt-8 relative z-10">
-            <p className="text-purple-200 text-sm">
-              Sistema multi-tenant • Seguro e escalável • Controle completo para revendas automotivas
+      {/* Features Showcase */}
+      <section className="relative w-full py-20 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-900/50">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+              Funcionalidades Poderosas
+            </h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400">
+              Tudo que você precisa para gerenciar sua revenda de veículos
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-3 gap-8">
+            {features.map((feature, idx) => {
+              const Icon = feature.icon;
+              const isActive = activeFeature === idx;
+              
+              return (
+                <Card 
+                  key={idx}
+                  onClick={() => setActiveFeature(idx)}
+                  className={`group cursor-pointer overflow-hidden transition-all duration-300 ${
+                    isActive 
+                      ? 'ring-2 ring-blue-500 shadow-xl scale-105' 
+                      : 'hover:shadow-lg'
+                  }`}
+                >
+                  <div className="p-8 space-y-4">
+                    <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${feature.color} flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                      <Icon className="w-7 h-7 text-white" />
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                        {feature.title}
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                        {feature.description}
+                      </p>
+                    </div>
+
+                    {isActive && (
+                      <div className="mt-6 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 animate-in fade-in">
+                        <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 flex items-start gap-2">
+                          <span className="mt-0.5">→</span>
+                          <span>{feature.demo}</span>
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Automation Features Grid */}
+      <section className="relative w-full py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+              Tudo Automatizado
+            </h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400">
+              Deixe o sistema trabalhar enquanto você vende
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {automations.map((item, idx) => {
+              const Icon = item.icon;
+              return (
+                <div 
+                  key={idx}
+                  className="group p-6 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/50 hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-300 hover:translate-y-[-4px]"
+                >
+                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <Icon className="w-6 h-6 text-white" />
+                  </div>
+                  <h3 className="font-bold text-gray-900 dark:text-white mb-2">{item.title}</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{item.description}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Results Section */}
+      <section className="relative w-full py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+              Resultados Reais
+            </h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400">
+              Veja como o VeloStock transforma revendas automotivas
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              { metric: "↑ 45%", description: "Aumento na margem de lucro" },
+              { metric: "↓ 60%", description: "Redução no tempo de gestão" },
+              { metric: "↑ 3x", description: "Velocidade de vendas" }
+            ].map((item, idx) => (
+              <div key={idx} className="text-center p-8 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:shadow-xl transition-all">
+                <div className="text-5xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent mb-2">
+                  {item.metric}
+                </div>
+                <p className="text-gray-600 dark:text-gray-400 font-medium">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="relative w-full py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-6">
+            Pronto para revolucionar sua revenda?
+          </h2>
+          <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
+            Teste o VeloStock gratuitamente. Sem cartão de crédito. Sem compromisso.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button 
+              size="lg"
+              onClick={() => window.open('https://wa.me/5548999186426', '_blank')}
+              data-testid="button-demo-final"
+              className="bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 text-white text-lg px-8 py-6 rounded-xl font-semibold shadow-xl hover:shadow-2xl transition-all"
+            >
+              Solicitar Demonstração <ChevronRight className="w-5 h-5 ml-2" />
+            </Button>
+            <Button 
+              size="lg"
+              variant="outline"
+              onClick={() => window.location.href = '/login'}
+              className="text-gray-900 dark:text-white border-gray-300 dark:border-gray-700 text-lg px-8 py-6 rounded-xl font-semibold"
+            >
+              Fazer Login
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-200 dark:border-gray-800 py-12 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-900/50">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col sm:flex-row justify-between items-center">
+            <div className="flex items-center gap-2 mb-4 sm:mb-0">
+              <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-blue-600 rounded-lg flex items-center justify-center">
+                <Car className="w-5 h-5 text-white" />
+              </div>
+              <span className="font-bold text-gray-900 dark:text-white">VeloStock</span>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              © 2024 VeloStock. Gestão inteligente para sua revenda automotiva.
             </p>
           </div>
         </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="p-6 text-center text-purple-200 text-sm">
-        <p>© 2024 VeloStock. Gestão inteligente para sua revenda.</p>
       </footer>
     </div>
   );
