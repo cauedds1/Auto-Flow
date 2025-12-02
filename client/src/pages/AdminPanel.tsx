@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, Building2, CreditCard, DollarSign, TrendingUp, LogOut, Lock, Mail, User, Shield } from "lucide-react";
+import { Users, Building2, CreditCard, DollarSign, TrendingUp, LogOut, Lock, Mail, User, Shield, KeyRound } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 
@@ -38,14 +38,10 @@ interface Admin {
   nome: string;
 }
 
-function AdminLogin({ onLogin, needsSetup, setupTokenConfigured }: { onLogin: (admin: Admin) => void; needsSetup: boolean; setupTokenConfigured: boolean }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [nome, setNome] = useState("");
-  const [setupToken, setSetupToken] = useState("");
+function TokenGate({ onValidToken }: { onValidToken: (token: string) => void }) {
+  const [token, setToken] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [isSetup, setIsSetup] = useState(needsSetup);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,36 +49,20 @@ function AdminLogin({ onLogin, needsSetup, setupTokenConfigured }: { onLogin: (a
     setLoading(true);
 
     try {
-      const endpoint = isSetup ? "/api/admin/setup" : "/api/admin/login";
-      const body = isSetup ? { email, password, nome, setupToken } : { email, password };
-
-      const res = await fetch(endpoint, {
+      const res = await fetch("/api/admin/validate-token", {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          ...(isSetup && setupToken ? { "x-admin-setup-token": setupToken } : {})
-        },
-        body: JSON.stringify(body),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Erro ao realizar operação");
+        setError(data.error || "Token inválido");
         return;
       }
 
-      if (isSetup) {
-        setIsSetup(false);
-        setError("");
-        setEmail("");
-        setPassword("");
-        setNome("");
-        setSetupToken("");
-        return;
-      }
-
-      onLogin(data);
+      onValidToken(token);
     } catch (err) {
       setError("Erro de conexão");
     } finally {
@@ -94,35 +74,114 @@ function AdminLogin({ onLogin, needsSetup, setupTokenConfigured }: { onLogin: (a
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 to-green-500 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">
-            {isSetup ? "Configurar Admin" : "Painel Administrativo"}
-          </CardTitle>
+          <div className="mx-auto w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mb-4">
+            <KeyRound className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+          </div>
+          <CardTitle className="text-2xl">Acesso Restrito</CardTitle>
           <CardDescription>
-            {isSetup
-              ? "Crie sua conta de administrador do VeloStock"
-              : "Acesse o painel de gestão de clientes"}
+            Digite o token de acesso para continuar
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {isSetup && (
-              <div className="space-y-2">
-                <Label htmlFor="nome">Nome</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="nome"
-                    type="text"
-                    placeholder="Seu nome"
-                    value={nome}
-                    onChange={(e) => setNome(e.target.value)}
-                    className="pl-10"
-                    required
-                    data-testid="input-admin-nome"
-                  />
-                </div>
+            <div className="space-y-2">
+              <Label htmlFor="token">Token de Acesso</Label>
+              <div className="relative">
+                <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="token"
+                  type="password"
+                  placeholder="Digite seu token"
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                  className="pl-10"
+                  required
+                  autoFocus
+                  data-testid="input-admin-access-token"
+                />
+              </div>
+            </div>
+
+            {error && (
+              <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 rounded-md">
+                {error}
               </div>
             )}
+
+            <Button type="submit" className="w-full" disabled={loading} data-testid="button-validate-token">
+              {loading ? "Validando..." : "Acessar"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function AdminSetup({ accessToken, onSetupComplete }: { accessToken: string; onSetupComplete: () => void }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [nome, setNome] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/admin/setup", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "x-admin-setup-token": accessToken
+        },
+        body: JSON.stringify({ email, password, nome, setupToken: accessToken }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Erro ao criar admin");
+        return;
+      }
+
+      onSetupComplete();
+    } catch (err) {
+      setError("Erro de conexão");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 to-green-500 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl">Configurar Admin</CardTitle>
+          <CardDescription>
+            Crie sua conta de administrador do VeloStock
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="nome">Nome</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="nome"
+                  type="text"
+                  placeholder="Seu nome"
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  className="pl-10"
+                  required
+                  data-testid="input-admin-nome"
+                />
+              </div>
+            </div>
 
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -158,27 +217,99 @@ function AdminLogin({ onLogin, needsSetup, setupTokenConfigured }: { onLogin: (a
               </div>
             </div>
 
-            {isSetup && (
-              <div className="space-y-2">
-                <Label htmlFor="setupToken">Token de Configuração</Label>
-                <div className="relative">
-                  <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="setupToken"
-                    type="password"
-                    placeholder="Token secreto fornecido pelo desenvolvedor"
-                    value={setupToken}
-                    onChange={(e) => setSetupToken(e.target.value)}
-                    className="pl-10"
-                    required
-                    data-testid="input-admin-setup-token"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Este token é definido no servidor e protege a criação do primeiro admin.
-                </p>
+            {error && (
+              <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 rounded-md">
+                {error}
               </div>
             )}
+
+            <Button type="submit" className="w-full" disabled={loading} data-testid="button-admin-setup">
+              {loading ? "Criando..." : "Criar Conta Admin"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function AdminLogin({ onLogin }: { onLogin: (admin: Admin) => void }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Erro ao fazer login");
+        return;
+      }
+
+      onLogin(data);
+    } catch (err) {
+      setError("Erro de conexão");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 to-green-500 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl">Painel Administrativo</CardTitle>
+          <CardDescription>
+            Acesse o painel de gestão de clientes
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="admin@velostock.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-10"
+                  required
+                  data-testid="input-admin-email"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Senha</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="********"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-10"
+                  required
+                  data-testid="input-admin-password"
+                />
+              </div>
+            </div>
 
             {error && (
               <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 rounded-md">
@@ -187,7 +318,7 @@ function AdminLogin({ onLogin, needsSetup, setupTokenConfigured }: { onLogin: (a
             )}
 
             <Button type="submit" className="w-full" disabled={loading} data-testid="button-admin-login">
-              {loading ? "Processando..." : isSetup ? "Criar Conta Admin" : "Entrar"}
+              {loading ? "Entrando..." : "Entrar"}
             </Button>
           </form>
         </CardContent>
@@ -200,7 +331,8 @@ export default function AdminPanel() {
   const [admin, setAdmin] = useState<Admin | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [needsSetup, setNeedsSetup] = useState(false);
-  const [setupTokenConfigured, setSetupTokenConfigured] = useState(false);
+  const [tokenValidated, setTokenValidated] = useState(false);
+  const [accessToken, setAccessToken] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -212,7 +344,6 @@ export default function AdminPanel() {
         
         if (setupData.needsSetup) {
           setNeedsSetup(true);
-          setSetupTokenConfigured(setupData.setupTokenConfigured || false);
           setAuthChecked(true);
           return;
         }
@@ -221,6 +352,7 @@ export default function AdminPanel() {
         if (res.ok) {
           const data = await res.json();
           setAdmin(data);
+          setTokenValidated(true);
         }
       } catch (err) {
         console.error("Erro ao verificar autenticação:", err);
