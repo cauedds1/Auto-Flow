@@ -892,9 +892,9 @@ export default function AdminPanel() {
   });
 
   const { data: bugs = [], isLoading: bugsLoading } = useQuery<BugReport[]>({
-    queryKey: ["/api/bug-reports"],
+    queryKey: ["/api/admin/bug-reports"],
     queryFn: async () => {
-      const res = await fetch("/api/bug-reports", { credentials: "include" });
+      const res = await fetch("/api/admin/bug-reports", { credentials: "include" });
       if (res.status === 401) {
         handleSessionExpired();
         throw new Error("Sessão expirada");
@@ -983,7 +983,7 @@ export default function AdminPanel() {
 
   const handleChangeBugStatus = async (bugId: string, novoStatus: string) => {
     try {
-      const res = await fetch(`/api/bug-reports/${bugId}/status`, {
+      const res = await fetch(`/api/admin/bug-reports/${bugId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -991,7 +991,7 @@ export default function AdminPanel() {
       });
 
       if (res.ok) {
-        queryClient.invalidateQueries({ queryKey: ["/api/bug-reports"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/bug-reports"] });
       }
     } catch (error) {
       console.error("Erro ao atualizar status do bug:", error);

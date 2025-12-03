@@ -1,6 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { db } from "../db";
-import { companies, users, subscriptions, payments, vehicles, adminCredentials } from "@shared/schema";
+import { companies, users, subscriptions, payments, vehicles, adminCredentials, bugReports } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
@@ -1106,6 +1106,52 @@ export async function registerAdminRoutes(app: Express) {
     } catch (error) {
       console.error("Erro ao atualizar empresa:", error);
       res.status(500).json({ error: "Erro ao atualizar empresa" });
+    }
+  });
+
+  // ============================================
+  // BUG REPORTS - ENDPOINTS PARA ADMIN
+  // ============================================
+  
+  // Listar todos os bug reports
+  app.get("/api/admin/bug-reports", requireAdminAuth, async (req: any, res) => {
+    try {
+      const reports = await db
+        .select()
+        .from(bugReports)
+        .orderBy(desc(bugReports.createdAt));
+      
+      res.json(reports);
+    } catch (error) {
+      console.error("Erro ao buscar bug reports:", error);
+      res.status(500).json({ error: "Erro ao buscar relatórios de bugs" });
+    }
+  });
+
+  // Atualizar status do bug report
+  app.patch("/api/admin/bug-reports/:id/status", requireAdminAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      if (!status) {
+        return res.status(400).json({ error: "Status é obrigatório" });
+      }
+
+      const updated = await db
+        .update(bugReports)
+        .set({ status })
+        .where(eq(bugReports.id, id))
+        .returning();
+
+      if (updated.length === 0) {
+        return res.status(404).json({ error: "Bug report não encontrado" });
+      }
+
+      res.json(updated[0]);
+    } catch (error) {
+      console.error("Erro ao atualizar status do bug report:", error);
+      res.status(500).json({ error: "Erro ao atualizar status" });
     }
   });
 }
