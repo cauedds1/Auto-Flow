@@ -165,7 +165,7 @@ function AppContent() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="system" storageKey="velo-theme">
+      <ThemeProvider defaultTheme="dark" storageKey="velo-theme">
         <CompanyThemeProvider>
           <TooltipProvider>
             <AppContent />
