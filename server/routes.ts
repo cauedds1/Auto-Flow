@@ -582,10 +582,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/vehicles - Criar novo veículo
   app.post("/api/vehicles", isAuthenticated, upload.array("images", 8), async (req: any, res) => {
     try {
-      const userId = req.user.claims?.id || req.user.claims?.sub;
+      console.log("[VEHICLE] Iniciando criação de veículo...");
+      console.log("[VEHICLE] User object:", JSON.stringify(req.user, null, 2));
+      
+      const userId = req.user?.claims?.id || req.user?.claims?.sub;
       if (!userId) {
+        console.log("[VEHICLE] Erro: userId não encontrado");
         return res.status(401).json({ error: "Usuário não autenticado" });
       }
+      
+      console.log("[VEHICLE] UserId:", userId);
 
       const user = await storage.getUser(userId);
       if (!user?.empresaId) {
