@@ -3556,12 +3556,15 @@ Retorne APENAS um JSON válido no formato:
   // Semáforo para evitar múltiplas requisições simultâneas ao mesmo recurso
   const fipePendingRequests = new Map<string, Promise<any>>();
   
-  // Buscar do cache (banco + memória)
-  async function getFipeFromCache(cacheKey: string): Promise<any | null> {
+  // Buscar do cache (banco + memória) - retorna { data, expired } para permitir fallback
+  async function getFipeFromCache(cacheKey: string): Promise<{ data: any; expired: boolean } | null> {
     // Primeiro: verificar cache em memória
     const memCached = fipeMemoryCache.get(cacheKey);
-    if (memCached && Date.now() < memCached.expiresAt) {
-      return memCached.data;
+    if (memCached) {
+      const expired = Date.now() >= memCached.expiresAt;
+      if (!expired) {
+        return { data: memCached.data, expired: false };
+      }
     }
     
     // Segundo: verificar cache no banco de dados
@@ -3572,13 +3575,14 @@ Retorne APENAS um JSON válido no formato:
         .where(eq(fipeCache.cacheKey, cacheKey))
         .limit(1);
       
-      if (cached.length > 0 && new Date(cached[0].expiresAt) > new Date()) {
+      if (cached.length > 0) {
+        const expired = new Date(cached[0].expiresAt) <= new Date();
         // Atualizar cache em memória
         fipeMemoryCache.set(cacheKey, {
           data: cached[0].data,
           expiresAt: new Date(cached[0].expiresAt).getTime()
         });
-        return cached[0].data;
+        return { data: cached[0].data, expired };
       }
     } catch (error) {
       console.error("[FIPE Cache] Erro ao buscar do banco:", error);
@@ -3651,12 +3655,12 @@ Retorne APENAS um JSON válido no formato:
     throw lastError || new Error("Falha ao conectar com API FIPE");
   }
   
-  // Função genérica para buscar dados FIPE com deduplicação de requisições
-  async function fetchFipeData(cacheKey: string, cacheType: string, vehicleType: string, url: string, ttl: number): Promise<any> {
+  // Função genérica para buscar dados FIPE com deduplicação de requisições e fallback
+  async function fetchFipeData(cacheKey: string, cacheType: string, vehicleType: string, url: string, ttl: number): Promise<{ data: any; fromCache: boolean; stale: boolean }> {
     // Verificar cache primeiro
     const cached = await getFipeFromCache(cacheKey);
-    if (cached) {
-      return cached;
+    if (cached && !cached.expired) {
+      return { data: cached.data, fromCache: true, stale: false };
     }
     
     // Verificar se já existe uma requisição pendente para este recurso
@@ -3674,7 +3678,33 @@ Retorne APENAS um JSON válido no formato:
         // Salvar no cache
         await setFipeCache(cacheKey, cacheType, vehicleType, data, ttl);
         
-        return data;
+        return { data, fromCache: false, stale: false };
+      } catch (error) {
+        // Se falhou e temos cache expirado, usar como fallback
+        if (cached && cached.expired) {
+          console.log(`[FIPE] Usando cache expirado como fallback para ${cacheKey}`);
+          // Atualizar TTL do cache expirado para evitar hits repetidos
+          const shortTtl = 5 * 60 * 1000; // 5 minutos antes de tentar novamente
+          const newExpiresAt = Date.now() + shortTtl;
+          
+          // Atualizar cache em memória
+          fipeMemoryCache.set(cacheKey, { 
+            data: cached.data, 
+            expiresAt: newExpiresAt 
+          });
+          
+          // Atualizar TTL no banco também para evitar leituras repetidas
+          try {
+            await db.update(fipeCache)
+              .set({ expiresAt: new Date(newExpiresAt) })
+              .where(eq(fipeCache.cacheKey, cacheKey));
+          } catch (dbError) {
+            console.error("[FIPE Cache] Erro ao atualizar TTL no banco:", dbError);
+          }
+          
+          return { data: cached.data, fromCache: true, stale: true };
+        }
+        throw error;
       } finally {
         // Limpar requisição pendente
         fipePendingRequests.delete(cacheKey);
@@ -3692,8 +3722,8 @@ Retorne APENAS um JSON válido no formato:
       const cacheKey = `brands-${vehicleType}`;
       const url = `${FIPE_BASE_URL}/${vehicleType}/marcas`;
       
-      const data = await fetchFipeData(cacheKey, "brands", vehicleType, url, CACHE_TTL_BRANDS);
-      res.json(data);
+      const result = await fetchFipeData(cacheKey, "brands", vehicleType, url, CACHE_TTL_BRANDS);
+      res.json(result.data);
     } catch (error: any) {
       console.error("[FIPE] Erro ao buscar marcas:", error.message);
       res.status(503).json({ 
@@ -3716,8 +3746,8 @@ Retorne APENAS um JSON válido no formato:
       const cacheKey = `models-${vehicleType}-${brandCode}`;
       const url = `${FIPE_BASE_URL}/${vehicleType}/marcas/${brandCode}/modelos`;
       
-      const data = await fetchFipeData(cacheKey, "models", vehicleType, url, CACHE_TTL_MODELS);
-      res.json(data);
+      const result = await fetchFipeData(cacheKey, "models", vehicleType, url, CACHE_TTL_MODELS);
+      res.json(result.data);
     } catch (error: any) {
       console.error("[FIPE] Erro ao buscar modelos:", error.message);
       res.status(503).json({ 
@@ -3743,8 +3773,8 @@ Retorne APENAS um JSON válido no formato:
       const cacheKey = `years-${vehicleType}-${brandCode}-${modelCode}`;
       const url = `${FIPE_BASE_URL}/${vehicleType}/marcas/${brandCode}/modelos/${modelCode}/anos`;
       
-      const data = await fetchFipeData(cacheKey, "years", vehicleType, url, CACHE_TTL_YEARS);
-      res.json(data);
+      const result = await fetchFipeData(cacheKey, "years", vehicleType, url, CACHE_TTL_YEARS);
+      res.json(result.data);
     } catch (error: any) {
       console.error("[FIPE] Erro ao buscar anos:", error.message);
       res.status(503).json({ 
@@ -3771,8 +3801,8 @@ Retorne APENAS um JSON válido no formato:
       const cacheKey = `value-${vehicleType}-${brandCode}-${modelCode}-${yearCode}`;
       const url = `${FIPE_BASE_URL}/${vehicleType}/marcas/${brandCode}/modelos/${modelCode}/anos/${yearCode}`;
       
-      const data = await fetchFipeData(cacheKey, "value", vehicleType, url, CACHE_TTL_VALUES);
-      res.json(data);
+      const result = await fetchFipeData(cacheKey, "value", vehicleType, url, CACHE_TTL_VALUES);
+      res.json(result.data);
     } catch (error: any) {
       console.error("[FIPE] Erro ao buscar valor:", error.message);
       res.status(503).json({ 

@@ -29,12 +29,15 @@ export interface FipePrice {
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-const fetchWithTimeout = async (url: string, timeout = 10000): Promise<Response> => {
+const fetchWithTimeout = async (url: string, timeout = 15000): Promise<Response> => {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
   
   try {
-    const response = await fetch(url, { signal: controller.signal });
+    const response = await fetch(url, { 
+      signal: controller.signal,
+      credentials: "include"
+    });
     clearTimeout(id);
     return response;
   } catch (error) {
@@ -43,21 +46,22 @@ const fetchWithTimeout = async (url: string, timeout = 10000): Promise<Response>
   }
 };
 
-const fetchWithRetry = async (url: string, maxRetries = 3, baseDelay = 1000): Promise<Response> => {
+const fetchWithRetry = async (url: string, maxRetries = 2, baseDelay = 1000): Promise<Response> => {
   let lastError: Error | null = null;
   
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      const response = await fetchWithTimeout(url, 15000);
+      const response = await fetchWithTimeout(url, 20000);
       
       if (response.ok) {
         return response;
       }
       
-      const data = await response.clone().json().catch(() => ({}));
-      if (data.error && data.error.includes("limite de taxa")) {
-        await delay(baseDelay * (attempt + 1));
-        continue;
+      if (response.status === 503) {
+        if (attempt < maxRetries - 1) {
+          await delay(baseDelay * (attempt + 1));
+          continue;
+        }
       }
       
       return response;
@@ -72,70 +76,100 @@ const fetchWithRetry = async (url: string, maxRetries = 3, baseDelay = 1000): Pr
   throw lastError || new Error("Falha apos multiplas tentativas");
 };
 
+const parseErrorMessage = async (response: Response): Promise<string> => {
+  try {
+    const cloned = response.clone();
+    const data = await cloned.json();
+    return data.message || "Erro desconhecido";
+  } catch {
+    return "Servico temporariamente indisponivel";
+  }
+};
+
 export function useFipeBrands(vehicleType: string = "carros") {
   return useQuery<FipeBrand[]>({
     queryKey: ["/api/fipe/brands", vehicleType],
     queryFn: async () => {
       const response = await fetchWithRetry(`/api/fipe/brands?type=${encodeURIComponent(vehicleType)}`);
-      if (!response.ok) throw new Error("Erro ao buscar marcas FIPE");
+      if (!response.ok) {
+        const errorMsg = await parseErrorMessage(response);
+        throw new Error(errorMsg);
+      }
       return response.json();
     },
-    staleTime: 1000 * 60 * 30,
-    gcTime: 1000 * 60 * 60,
+    staleTime: 1000 * 60 * 60 * 24,
+    gcTime: 1000 * 60 * 60 * 24 * 7,
+    retry: 1,
   });
 }
 
-export function useFipeModels(brandId: string | null, vehicleType: string = "carros") {
+export function useFipeModels(brandCode: string | null, vehicleType: string = "carros") {
   return useQuery<{ modelos: FipeModel[] }>({
-    queryKey: ["/api/fipe/brands", brandId, "models", vehicleType],
+    queryKey: ["/api/fipe/models", brandCode, vehicleType],
     queryFn: async () => {
-      if (!brandId) throw new Error("Brand ID nao fornecido");
-      const response = await fetchWithRetry(`/api/fipe/brands/${brandId}/models?type=${encodeURIComponent(vehicleType)}`);
-      if (!response.ok) throw new Error("Erro ao buscar modelos FIPE");
+      if (!brandCode) throw new Error("Codigo da marca nao fornecido");
+      const response = await fetchWithRetry(
+        `/api/fipe/models?type=${encodeURIComponent(vehicleType)}&brandCode=${encodeURIComponent(brandCode)}`
+      );
+      if (!response.ok) {
+        const errorMsg = await parseErrorMessage(response);
+        throw new Error(errorMsg);
+      }
       return response.json();
     },
-    enabled: !!brandId,
-    staleTime: 1000 * 60 * 30,
-    gcTime: 1000 * 60 * 60,
+    enabled: !!brandCode,
+    staleTime: 1000 * 60 * 60 * 24,
+    gcTime: 1000 * 60 * 60 * 24 * 7,
+    retry: 1,
   });
 }
 
-export function useFipeYears(brandId: string | null, modelId: string | null, vehicleType: string = "carros") {
+export function useFipeYears(brandCode: string | null, modelCode: string | null, vehicleType: string = "carros") {
   return useQuery<FipeYear[]>({
-    queryKey: ["/api/fipe/brands", brandId, "models", modelId, "years", vehicleType],
+    queryKey: ["/api/fipe/years", brandCode, modelCode, vehicleType],
     queryFn: async () => {
-      if (!brandId || !modelId) throw new Error("Brand ID ou Model ID nao fornecido");
-      const response = await fetchWithRetry(`/api/fipe/brands/${brandId}/models/${modelId}/years?type=${encodeURIComponent(vehicleType)}`);
-      if (!response.ok) throw new Error("Erro ao buscar anos FIPE");
+      if (!brandCode || !modelCode) throw new Error("Codigo da marca ou modelo nao fornecido");
+      const response = await fetchWithRetry(
+        `/api/fipe/years?type=${encodeURIComponent(vehicleType)}&brandCode=${encodeURIComponent(brandCode)}&modelCode=${encodeURIComponent(modelCode)}`
+      );
+      if (!response.ok) {
+        const errorMsg = await parseErrorMessage(response);
+        throw new Error(errorMsg);
+      }
       return response.json();
     },
-    enabled: !!brandId && !!modelId,
-    staleTime: 1000 * 60 * 30,
-    gcTime: 1000 * 60 * 60,
+    enabled: !!brandCode && !!modelCode,
+    staleTime: 1000 * 60 * 60 * 24,
+    gcTime: 1000 * 60 * 60 * 24 * 7,
+    retry: 1,
   });
 }
 
 export function useFipePrice(
-  brandId: string | null,
-  modelId: string | null,
-  year: string | null,
+  brandCode: string | null,
+  modelCode: string | null,
+  yearCode: string | null,
   vehicleType: string = "carros"
 ) {
   return useQuery<FipePrice>({
-    queryKey: ["/api/fipe/brands", brandId, "models", modelId, "years", year, "price", vehicleType],
+    queryKey: ["/api/fipe/value", brandCode, modelCode, yearCode, vehicleType],
     queryFn: async () => {
-      if (!brandId || !modelId || !year) {
+      if (!brandCode || !modelCode || !yearCode) {
         throw new Error("Parametros incompletos para consulta FIPE");
       }
       const response = await fetchWithRetry(
-        `/api/fipe/brands/${brandId}/models/${modelId}/years/${year}/price?type=${encodeURIComponent(vehicleType)}`
+        `/api/fipe/value?type=${encodeURIComponent(vehicleType)}&brandCode=${encodeURIComponent(brandCode)}&modelCode=${encodeURIComponent(modelCode)}&yearCode=${encodeURIComponent(yearCode)}`
       );
-      if (!response.ok) throw new Error("Erro ao consultar preco FIPE");
+      if (!response.ok) {
+        const errorMsg = await parseErrorMessage(response);
+        throw new Error(errorMsg);
+      }
       return response.json();
     },
-    enabled: !!brandId && !!modelId && !!year,
-    staleTime: 1000 * 60 * 30,
-    gcTime: 1000 * 60 * 60,
+    enabled: !!brandCode && !!modelCode && !!yearCode,
+    staleTime: 1000 * 60 * 60,
+    gcTime: 1000 * 60 * 60 * 24,
+    retry: 1,
   });
 }
 
@@ -202,9 +236,11 @@ export function useFipeVehicleVersions() {
         throw new Error(`Marca "${brand}" nao encontrada na tabela FIPE`);
       }
 
-      await delay(500);
+      await delay(300);
 
-      const modelsResponse = await fetchWithRetry(`/api/fipe/brands/${matchedBrand.codigo}/models?type=${encodeURIComponent(vehicleType)}`);
+      const modelsResponse = await fetchWithRetry(
+        `/api/fipe/models?type=${encodeURIComponent(vehicleType)}&brandCode=${encodeURIComponent(matchedBrand.codigo)}`
+      );
       if (!modelsResponse.ok) throw new Error("Erro ao buscar modelos");
       const modelsData: { modelos: FipeModel[] } = await modelsResponse.json();
 
@@ -227,7 +263,6 @@ export function useFipeVehicleVersions() {
         throw new Error(`Modelo "${model}" nao encontrado para a marca ${matchedBrand.nome}`);
       }
 
-      // Aumentar limite para 50 modelos para incluir todas as versoes (LTZ, LT, LS, etc)
       const limitedModels = candidateModels.slice(0, 50);
       
       const allVersions: FipeVersion[] = [];
@@ -236,11 +271,11 @@ export function useFipeVehicleVersions() {
         const candidateModel = limitedModels[i];
         try {
           if (i > 0) {
-            await delay(200);
+            await delay(150);
           }
           
           const yearsResponse = await fetchWithRetry(
-            `/api/fipe/brands/${matchedBrand.codigo}/models/${candidateModel.codigo}/years?type=${encodeURIComponent(vehicleType)}`
+            `/api/fipe/years?type=${encodeURIComponent(vehicleType)}&brandCode=${encodeURIComponent(matchedBrand.codigo)}&modelCode=${encodeURIComponent(candidateModel.codigo.toString())}`
           );
           
           if (!yearsResponse.ok) continue;
@@ -283,9 +318,12 @@ export function useFipePriceByVersion() {
   return useMutation({
     mutationFn: async ({ brandId, modelId, versionCode, vehicleType = "carros" }: { brandId: string; modelId: string; versionCode: string; vehicleType?: string }) => {
       const priceResponse = await fetchWithRetry(
-        `/api/fipe/brands/${brandId}/models/${modelId}/years/${versionCode}/price?type=${encodeURIComponent(vehicleType)}`
+        `/api/fipe/value?type=${encodeURIComponent(vehicleType)}&brandCode=${encodeURIComponent(brandId)}&modelCode=${encodeURIComponent(modelId)}&yearCode=${encodeURIComponent(versionCode)}`
       );
-      if (!priceResponse.ok) throw new Error("Erro ao consultar preco FIPE");
+      if (!priceResponse.ok) {
+        const data = await priceResponse.json().catch(() => ({}));
+        throw new Error(data.message || "Erro ao consultar preco FIPE");
+      }
       const priceData: FipePrice = await priceResponse.json();
       return priceData;
     },
