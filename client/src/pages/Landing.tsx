@@ -191,7 +191,7 @@ export default function Landing() {
               <h1 className="text-5xl sm:text-6xl font-black tracking-tight">
                 <span className="block text-gray-900 dark:text-white mb-2">Gestão Completa</span>
                 <span className="block bg-gradient-to-r from-green-500 via-blue-500 to-purple-500 bg-clip-text text-transparent">
-                  para Revenda de Veículos
+                  Para Revenda de Veículos
                 </span>
               </h1>
 
