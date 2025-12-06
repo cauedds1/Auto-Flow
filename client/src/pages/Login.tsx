@@ -5,8 +5,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Car } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useI18n } from "@/lib/i18n";
+import { LanguageSelector } from "@/components/LanguageSelector";
 
 export default function Login() {
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -29,16 +32,16 @@ export default function Login() {
         window.location.href = "/";
       } else {
         toast({
-          title: "Login falhou",
-          description: data.message || "Email ou senha incorretos. Verifique seus dados.",
+          title: t("auth.loginFailed"),
+          description: data.message || t("auth.loginFailedDesc"),
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error("Erro no login:", error);
       toast({
-        title: "Erro de conexão",
-        description: "Não foi possível conectar ao servidor. Verifique sua conexão.",
+        title: t("auth.connectionError"),
+        description: t("auth.connectionErrorDesc"),
         variant: "destructive",
       });
     } finally {
@@ -47,9 +50,11 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-green-600 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-green-600 flex items-center justify-center p-4 relative">
+      <div className="absolute top-4 right-4">
+        <LanguageSelector />
+      </div>
       <div className="w-full max-w-md space-y-6">
-        {/* Logo */}
         <div className="flex items-center justify-center gap-3">
           <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center">
             <Car className="w-7 h-7 text-purple-600" />
@@ -57,18 +62,17 @@ export default function Login() {
           <span className="text-3xl font-bold text-white">VeloStock</span>
         </div>
 
-        {/* Card de Login */}
         <Card className="border-0 shadow-2xl">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold">Fazer Login</CardTitle>
+            <CardTitle className="text-2xl font-bold">{t("auth.loginTitle")}</CardTitle>
             <CardDescription>
-              Entre com seu email e senha para acessar sua conta
+              {t("auth.loginSubtitle")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{t("auth.email")}</Label>
                 <Input
                   id="email"
                   type="email"
@@ -79,7 +83,7 @@ export default function Login() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
+                <Label htmlFor="password">{t("auth.password")}</Label>
                 <Input
                   id="password"
                   type="password"
@@ -94,7 +98,7 @@ export default function Login() {
                 className="w-full bg-purple-600 hover:bg-purple-700"
                 disabled={isLoading}
               >
-                {isLoading ? "Entrando..." : "Entrar"}
+                {isLoading ? t("auth.entering") : t("auth.login")}
               </Button>
             </form>
 
@@ -104,16 +108,16 @@ export default function Login() {
                   className="text-sm text-purple-600 hover:text-purple-700 font-semibold underline"
                   onClick={() => window.location.href = '/forgot-password'}
                 >
-                  Esqueceu sua senha?
+                  {t("auth.forgotPassword")}
                 </button>
               </div>
               <div>
-                <span className="text-muted-foreground">Não tem uma conta? </span>
+                <span className="text-muted-foreground">{t("auth.noAccount")} </span>
                 <button
                   className="p-0 h-auto font-semibold text-purple-600 hover:text-purple-700 underline"
                   onClick={() => window.location.href = '/signup'}
                 >
-                  Criar conta
+                  {t("auth.createAccount")}
                 </button>
               </div>
               <div>
@@ -121,7 +125,7 @@ export default function Login() {
                   className="text-sm text-muted-foreground hover:text-foreground"
                   onClick={() => window.location.href = '/'}
                 >
-                  ← Voltar para home
+                  ← {t("auth.backToHome")}
                 </button>
               </div>
             </div>

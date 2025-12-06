@@ -6,8 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Car } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { useI18n } from "@/lib/i18n";
 
 export default function ForgotPassword() {
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [codeSent, setCodeSent] = useState(false);
@@ -28,8 +30,8 @@ export default function ForgotPassword() {
       if (response.ok) {
         setCodeSent(true);
         toast({
-          title: "Código enviado!",
-          description: "Verifique seu email para recuperar a senha",
+          title: t("auth.codeSent"),
+          description: t("auth.checkEmailRecovery"),
         });
         setTimeout(() => {
           setLocation(`/reset-password?email=${encodeURIComponent(email)}`);
@@ -37,15 +39,15 @@ export default function ForgotPassword() {
       } else {
         const error = await response.json();
         toast({
-          title: "Erro",
-          description: error.message || "Não foi possível enviar o código",
+          title: t("common.error"),
+          description: error.message || t("auth.couldNotSendCode"),
           variant: "destructive",
         });
       }
     } catch (error) {
       toast({
-        title: "Erro",
-        description: "Ocorreu um erro. Tente novamente.",
+        title: t("common.error"),
+        description: t("auth.tryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -56,7 +58,6 @@ export default function ForgotPassword() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-green-600 flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
-        {/* Logo */}
         <div className="flex items-center justify-center gap-3">
           <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center">
             <Car className="w-7 h-7 text-purple-600" />
@@ -64,18 +65,17 @@ export default function ForgotPassword() {
           <span className="text-3xl font-bold text-white">VeloStock</span>
         </div>
 
-        {/* Card de Recuperação */}
         <Card className="border-0 shadow-2xl">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold">Recuperar Senha</CardTitle>
+            <CardTitle className="text-2xl font-bold">{t("auth.recoverPassword")}</CardTitle>
             <CardDescription>
-              Digite seu email para receber um código de recuperação
+              {t("auth.enterEmailRecovery")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <form onSubmit={handleSendCode} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{t("auth.email")}</Label>
                 <Input
                   id="email"
                   type="email"
@@ -91,7 +91,7 @@ export default function ForgotPassword() {
                 className="w-full bg-purple-600 hover:bg-purple-700"
                 disabled={isLoading}
               >
-                {isLoading ? "Enviando..." : "Enviar Código"}
+                {isLoading ? t("auth.sending") : t("auth.sendCode")}
               </Button>
             </form>
 
@@ -101,7 +101,7 @@ export default function ForgotPassword() {
                   className="text-purple-600 hover:text-purple-700 font-semibold underline"
                   onClick={() => setLocation("/login")}
                 >
-                  ← Voltar para Login
+                  ← {t("auth.backToLogin")}
                 </button>
               </div>
             </div>

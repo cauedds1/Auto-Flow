@@ -13,6 +13,7 @@ import { Plus, DollarSign, TrendingDown, TrendingUp, AlertCircle, Calendar, Chec
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useCompanyTheme } from "@/components/CompanyThemeProvider";
+import { useI18n } from "@/lib/i18n";
 
 type Bill = {
   id: string;
@@ -37,6 +38,7 @@ type DashboardData = {
 };
 
 export default function Bills() {
+  const { t } = useI18n();
   const { changeIconColors } = useCompanyTheme();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -90,7 +92,7 @@ export default function Bills() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
       queryClient.invalidateQueries({ queryKey: ["/api/bills/dashboard"] });
-      toast({ title: "Conta criada com sucesso!" });
+      toast({ title: t("bills.billCreated") });
       setIsDialogOpen(false);
       resetForm();
     },
@@ -110,7 +112,7 @@ export default function Bills() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
       queryClient.invalidateQueries({ queryKey: ["/api/bills/dashboard"] });
-      toast({ title: "Conta atualizada!" });
+      toast({ title: t("bills.billUpdated") });
       setIsDialogOpen(false);
       setEditingBill(null);
       resetForm();
@@ -131,7 +133,7 @@ export default function Bills() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
       queryClient.invalidateQueries({ queryKey: ["/api/bills/dashboard"] });
-      toast({ title: "Conta marcada como paga!" });
+      toast({ title: t("bills.billPaid") });
     },
   });
 
@@ -147,7 +149,7 @@ export default function Bills() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
       queryClient.invalidateQueries({ queryKey: ["/api/bills/dashboard"] });
-      toast({ title: "Conta excluída!" });
+      toast({ title: t("bills.billDeleted") });
     },
   });
 
@@ -180,6 +182,16 @@ export default function Bills() {
     return colors[status] || "hsl(var(--muted))";
   };
 
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      pendente: t("bills.pending"),
+      pago: t("bills.paid"),
+      vencido: t("bills.overdue"),
+      parcial: t("bills.partial"),
+    };
+    return labels[status] || status;
+  };
+
   const filteredBills = bills.filter(bill => {
     if (tipoFilter !== "todos" && bill.tipo !== tipoFilter) return false;
     if (statusFilter !== "todos" && bill.status !== statusFilter) return false;
@@ -190,55 +202,55 @@ export default function Bills() {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Contas a Pagar e Receber</h1>
-          <p className="text-muted-foreground">Controle financeiro completo</p>
+          <h1 className="text-3xl font-bold">{t("bills.title")}</h1>
+          <p className="text-muted-foreground">{t("bills.subtitle")}</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={resetForm}>
               <Plus className="w-4 h-4 mr-2" />
-              Nova Conta
+              {t("bills.newBill")}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>{editingBill ? "Editar Conta" : "Nova Conta"}</DialogTitle>
+              <DialogTitle>{editingBill ? t("bills.editBill") : t("bills.newBill")}</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Tipo *</Label>
+                  <Label>{t("common.type")} *</Label>
                   <Select value={formData.tipo} onValueChange={(v: any) => setFormData({ ...formData, tipo: v })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="a_pagar">A Pagar</SelectItem>
-                      <SelectItem value="a_receber">A Receber</SelectItem>
+                      <SelectItem value="a_pagar">{t("bills.toPay")}</SelectItem>
+                      <SelectItem value="a_receber">{t("bills.toReceive")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label>Categoria *</Label>
+                  <Label>{t("common.category")} *</Label>
                   <Select value={formData.categoria} onValueChange={(v) => setFormData({ ...formData, categoria: v })}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
+                      <SelectValue placeholder={t("common.select")} />
                     </SelectTrigger>
                     <SelectContent>
                       {formData.tipo === "a_pagar" ? (
                         <>
-                          <SelectItem value="Aluguel">Aluguel</SelectItem>
-                          <SelectItem value="Salário">Salário</SelectItem>
-                          <SelectItem value="Fornecedor">Fornecedor</SelectItem>
-                          <SelectItem value="Luz/Água">Luz/Água</SelectItem>
-                          <SelectItem value="Impostos">Impostos</SelectItem>
-                          <SelectItem value="Outros">Outros</SelectItem>
+                          <SelectItem value="Aluguel">{t("bills.categoryRent")}</SelectItem>
+                          <SelectItem value="Salário">{t("bills.categorySalary")}</SelectItem>
+                          <SelectItem value="Fornecedor">{t("bills.categorySupplier")}</SelectItem>
+                          <SelectItem value="Luz/Água">{t("bills.categoryUtilities")}</SelectItem>
+                          <SelectItem value="Impostos">{t("bills.categoryTaxes")}</SelectItem>
+                          <SelectItem value="Outros">{t("bills.categoryOther")}</SelectItem>
                         </>
                       ) : (
                         <>
-                          <SelectItem value="Venda">Venda</SelectItem>
-                          <SelectItem value="Parcelamento">Parcelamento</SelectItem>
-                          <SelectItem value="Outros">Outros</SelectItem>
+                          <SelectItem value="Venda">{t("bills.categorySale")}</SelectItem>
+                          <SelectItem value="Parcelamento">{t("bills.categoryInstallment")}</SelectItem>
+                          <SelectItem value="Outros">{t("bills.categoryOther")}</SelectItem>
                         </>
                       )}
                     </SelectContent>
@@ -247,17 +259,17 @@ export default function Bills() {
               </div>
 
               <div>
-                <Label>Descrição *</Label>
+                <Label>{t("common.description")} *</Label>
                 <Input
                   value={formData.descricao}
                   onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-                  placeholder="Ex: Aluguel da loja - Janeiro/2024"
+                  placeholder={t("bills.descriptionPlaceholder")}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Valor (R$) *</Label>
+                  <Label>{t("common.value")} (R$) *</Label>
                   <Input
                     type="number"
                     value={formData.valor}
@@ -266,7 +278,7 @@ export default function Bills() {
                   />
                 </div>
                 <div>
-                  <Label>Data de Vencimento *</Label>
+                  <Label>{t("bills.dueDate")} *</Label>
                   <Input
                     type="date"
                     value={formData.dataVencimento}
@@ -276,7 +288,7 @@ export default function Bills() {
               </div>
 
               <div>
-                <Label>Observações</Label>
+                <Label>{t("common.observations")}</Label>
                 <Textarea
                   value={formData.observacoes || ""}
                   onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
@@ -286,10 +298,10 @@ export default function Bills() {
 
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => { setIsDialogOpen(false); setEditingBill(null); resetForm(); }}>
-                  Cancelar
+                  {t("common.cancel")}
                 </Button>
                 <Button onClick={handleSubmit} disabled={!formData.descricao || !formData.categoria || !formData.valor || !formData.dataVencimento}>
-                  {editingBill ? "Salvar" : "Criar Conta"}
+                  {editingBill ? t("common.save") : t("bills.createBill")}
                 </Button>
               </div>
             </div>
@@ -305,9 +317,9 @@ export default function Bills() {
                 <TrendingDown className="h-6 w-6" style={{ color: changeIconColors ? "hsl(var(--destructive))" : "currentColor" }} />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total a Pagar</p>
+                <p className="text-sm text-muted-foreground">{t("bills.totalToPay")}</p>
                 <p className="text-2xl font-bold">R$ {parseFloat(dashboard.totalAPagar.valor).toLocaleString("pt-BR")}</p>
-                <p className="text-xs text-muted-foreground">{dashboard.totalAPagar.quantidade} contas</p>
+                <p className="text-xs text-muted-foreground">{dashboard.totalAPagar.quantidade} {t("bills.bills")}</p>
               </div>
             </div>
           </Card>
@@ -318,9 +330,9 @@ export default function Bills() {
                 <TrendingUp className="h-6 w-6" style={{ color: changeIconColors ? "hsl(var(--badge-color-1))" : "currentColor" }} />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total a Receber</p>
+                <p className="text-sm text-muted-foreground">{t("bills.totalToReceive")}</p>
                 <p className="text-2xl font-bold">R$ {parseFloat(dashboard.totalAReceber.valor).toLocaleString("pt-BR")}</p>
-                <p className="text-xs text-muted-foreground">{dashboard.totalAReceber.quantidade} contas</p>
+                <p className="text-xs text-muted-foreground">{dashboard.totalAReceber.quantidade} {t("bills.bills")}</p>
               </div>
             </div>
           </Card>
@@ -331,7 +343,7 @@ export default function Bills() {
                 <DollarSign className="h-6 w-6" style={{ color: changeIconColors ? "hsl(var(--badge-color-2))" : "currentColor" }} />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Saldo Previsto</p>
+                <p className="text-sm text-muted-foreground">{t("bills.expectedBalance")}</p>
                 <p className="text-2xl font-bold" style={{ color: changeIconColors ? (parseFloat(dashboard.saldoPrevisto) >= 0 ? "hsl(var(--badge-color-1))" : "hsl(var(--destructive))") : "inherit" }}>
                   R$ {parseFloat(dashboard.saldoPrevisto).toLocaleString("pt-BR")}
                 </p>
@@ -345,7 +357,7 @@ export default function Bills() {
                 <AlertCircle className="h-6 w-6" style={{ color: changeIconColors ? "hsl(var(--badge-color-5))" : "currentColor" }} />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Contas Vencidas</p>
+                <p className="text-sm text-muted-foreground">{t("bills.overdueBills")}</p>
                 <p className="text-2xl font-bold" style={{ color: changeIconColors ? "hsl(var(--badge-color-5))" : "inherit" }}>{dashboard.vencidas.quantidade}</p>
                 <p className="text-xs text-muted-foreground">R$ {parseFloat(dashboard.vencidas.total).toLocaleString("pt-BR")}</p>
               </div>
@@ -358,7 +370,7 @@ export default function Bills() {
                 <Calendar className="h-6 w-6" style={{ color: changeIconColors ? "hsl(var(--badge-color-4))" : "currentColor" }} />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Próximos 7 Dias</p>
+                <p className="text-sm text-muted-foreground">{t("bills.next7Days")}</p>
                 <p className="text-2xl font-bold" style={{ color: changeIconColors ? "hsl(var(--badge-color-4))" : "inherit" }}>{dashboard.proximosVencimentos.quantidade}</p>
                 <p className="text-xs text-muted-foreground">R$ {parseFloat(dashboard.proximosVencimentos.total).toLocaleString("pt-BR")}</p>
               </div>
@@ -371,7 +383,7 @@ export default function Bills() {
                 <CheckCircle className="h-6 w-6" style={{ color: changeIconColors ? "hsl(var(--badge-color-1))" : "currentColor" }} />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Pago este Mês</p>
+                <p className="text-sm text-muted-foreground">{t("bills.paidThisMonth")}</p>
                 <p className="text-xl font-bold" style={{ color: changeIconColors ? "hsl(var(--destructive))" : "inherit" }}>- R$ {parseFloat(dashboard.pagosMes.totalPago).toLocaleString("pt-BR")}</p>
                 <p className="text-xl font-bold" style={{ color: changeIconColors ? "hsl(var(--badge-color-1))" : "inherit" }}>+ R$ {parseFloat(dashboard.pagosMes.totalRecebido).toLocaleString("pt-BR")}</p>
               </div>
@@ -386,9 +398,9 @@ export default function Bills() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="todos">Todos os Tipos</SelectItem>
-            <SelectItem value="a_pagar">A Pagar</SelectItem>
-            <SelectItem value="a_receber">A Receber</SelectItem>
+            <SelectItem value="todos">{t("common.allTypes")}</SelectItem>
+            <SelectItem value="a_pagar">{t("bills.toPay")}</SelectItem>
+            <SelectItem value="a_receber">{t("bills.toReceive")}</SelectItem>
           </SelectContent>
         </Select>
 
@@ -397,23 +409,23 @@ export default function Bills() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="todos">Todos os Status</SelectItem>
-            <SelectItem value="pendente">Pendente</SelectItem>
-            <SelectItem value="pago">Pago</SelectItem>
-            <SelectItem value="vencido">Vencido</SelectItem>
+            <SelectItem value="todos">{t("common.allStatus")}</SelectItem>
+            <SelectItem value="pendente">{t("bills.pending")}</SelectItem>
+            <SelectItem value="pago">{t("bills.paid")}</SelectItem>
+            <SelectItem value="vencido">{t("bills.overdue")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {isLoading ? (
-        <div>Carregando...</div>
+        <div>{t("common.loading")}</div>
       ) : filteredBills.length === 0 ? (
         <Card className="p-12 text-center">
           <DollarSign className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-          <p className="text-muted-foreground">Nenhuma conta cadastrada</p>
+          <p className="text-muted-foreground">{t("bills.noBillsRegistered")}</p>
           <Button className="mt-4" onClick={() => setIsDialogOpen(true)}>
             <Plus className="w-4 h-4 mr-2" />
-            Criar Primeira Conta
+            {t("bills.createFirstBill")}
           </Button>
         </Card>
       ) : (
@@ -422,13 +434,13 @@ export default function Bills() {
             <table className="w-full">
               <thead>
                 <tr className="border-b">
-                  <th className="text-left p-3">Tipo</th>
-                  <th className="text-left p-3">Descrição</th>
-                  <th className="text-left p-3">Categoria</th>
-                  <th className="text-right p-3">Valor</th>
-                  <th className="text-left p-3">Vencimento</th>
-                  <th className="text-left p-3">Status</th>
-                  <th className="text-right p-3">Ações</th>
+                  <th className="text-left p-3">{t("common.type")}</th>
+                  <th className="text-left p-3">{t("common.description")}</th>
+                  <th className="text-left p-3">{t("common.category")}</th>
+                  <th className="text-right p-3">{t("common.value")}</th>
+                  <th className="text-left p-3">{t("bills.dueDate")}</th>
+                  <th className="text-left p-3">{t("common.status")}</th>
+                  <th className="text-right p-3">{t("common.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -436,7 +448,7 @@ export default function Bills() {
                   <tr key={bill.id} className="border-b hover:bg-muted/50">
                     <td className="p-3">
                       <Badge variant={bill.tipo === "a_pagar" ? "destructive" : "default"}>
-                        {bill.tipo === "a_pagar" ? "A Pagar" : "A Receber"}
+                        {bill.tipo === "a_pagar" ? t("bills.toPay") : t("bills.toReceive")}
                       </Badge>
                     </td>
                     <td className="p-3">{bill.descricao}</td>
@@ -445,7 +457,7 @@ export default function Bills() {
                     <td className="p-3">{format(new Date(bill.dataVencimento), "dd/MM/yyyy", { locale: ptBR })}</td>
                     <td className="p-3">
                       <Badge style={{ backgroundColor: getStatusColor(bill.status), color: "white" }}>
-                        {bill.status.charAt(0).toUpperCase() + bill.status.slice(1)}
+                        {getStatusLabel(bill.status)}
                       </Badge>
                     </td>
                     <td className="p-3 text-right">
@@ -481,7 +493,7 @@ export default function Bills() {
                           size="sm"
                           variant="outline"
                           onClick={() => {
-                            if (confirm("Deseja excluir esta conta?")) {
+                            if (confirm(t("bills.confirmDelete"))) {
                               deleteMutation.mutate(bill.id);
                             }
                           }}

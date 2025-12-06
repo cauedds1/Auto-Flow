@@ -11,8 +11,11 @@ import dashboardImg from "@assets/image_1764685751623.png";
 import metricsImg from "@assets/image_1764685752441.png";
 import reportsImg from "@assets/image_1764685874050.png";
 import veloBotImg from "@assets/image_1764686690039.png";
+import { useI18n } from "@/lib/i18n";
+import { LanguageSelector } from "@/components/LanguageSelector";
 
 export default function Landing() {
+  const { t } = useI18n();
   const [activeFeature, setActiveFeature] = useState(0);
   const [scrollProgress, setScrollProgress] = useState(0);
   const { theme, setTheme } = useThemeMode();
@@ -35,88 +38,88 @@ export default function Landing() {
 
   const features = [
     {
-      title: "Pipeline Visual",
-      description: "Acompanhe cada veículo da entrada à venda em um kanban intuitivo",
+      title: t("landing.features.pipeline"),
+      description: t("landing.features.pipelineDesc"),
       icon: TrendingUp,
       color: "from-green-400 to-green-600",
-      demo: "Mova veículos entre os estágios: Entrada → Preparação → Pronto → Vendido"
+      demo: t("landing.features.pipelineDemo")
     },
     {
-      title: "Análise Completa",
-      description: "Dashboard com métricas em tempo real e controle de custos detalhado",
+      title: t("landing.features.analysis"),
+      description: t("landing.features.analysisDesc"),
       icon: BarChart,
       color: "from-blue-400 to-blue-600",
-      demo: "Visualize lucros, margem, estoque e tendências de vendas"
+      demo: t("landing.features.analysisDemo")
     },
     {
-      title: "IA Integrada",
-      description: "Sugestões de preço e geração de anúncios com inteligência artificial",
+      title: t("landing.features.ai"),
+      description: t("landing.features.aiDesc"),
       icon: Sparkles,
       color: "from-purple-400 to-purple-600",
-      demo: "Gere anúncios profissionais e preços otimizados automaticamente"
+      demo: t("landing.features.aiDemo")
     }
   ];
 
   const automations = [
     {
       icon: Wrench,
-      title: "Checklists Completos",
-      description: "Preparação padronizada para cada veículo"
+      title: t("landing.automation.checklists"),
+      description: t("landing.automation.checklistsDesc")
     },
     {
       icon: Activity,
-      title: "Rastreamento em Tempo Real",
-      description: "Status de cada veículo atualizado instantaneamente"
+      title: t("landing.automation.tracking"),
+      description: t("landing.automation.trackingDesc")
     },
     {
       icon: DollarSign,
-      title: "Gestão de Custos",
-      description: "Controle precisão de gastos e lucratividade"
+      title: t("landing.automation.costs"),
+      description: t("landing.automation.costsDesc")
     },
     {
       icon: CheckCircle2,
-      title: "Documentação Automática",
-      description: "Relatórios e PDFs gerados com um clique"
+      title: t("landing.automation.docs"),
+      description: t("landing.automation.docsDesc")
     },
     {
       icon: Gauge,
-      title: "Controle de Estoque",
-      description: "Inventário sempre sincronizado e atualizado"
+      title: t("landing.automation.inventory"),
+      description: t("landing.automation.inventoryDesc")
     },
     {
       icon: Shield,
-      title: "Seguro Multi-tenant",
-      description: "Seus dados sempre protegidos e isolados"
+      title: t("landing.automation.security"),
+      description: t("landing.automation.securityDesc")
     }
   ];
 
   const veloBotPowers = [
     {
       icon: MessageCircle,
-      title: "Assistência 24/7",
-      description: "Respostas instantâneas para suas dúvidas e problemas"
+      title: t("landing.velobot.assistance"),
+      description: t("landing.velobot.assistanceDesc")
     },
     {
       icon: Brain,
-      title: "Inteligência Adaptativa",
-      description: "Aprende com seu negócio e oferece sugestões personalizadas"
+      title: t("landing.velobot.adaptive"),
+      description: t("landing.velobot.adaptiveDesc")
     },
     {
       icon: Lightbulb,
-      title: "Recomendações Inteligentes",
-      description: "Sugestões de preços otimizados e estratégias de vendas"
+      title: t("landing.velobot.recommendations"),
+      description: t("landing.velobot.recommendationsDesc")
     },
     {
       icon: Zap,
-      title: "Processamento Rápido",
-      description: "Análise instantânea de dados e geração de insights"
+      title: t("landing.velobot.processing"),
+      description: t("landing.velobot.processingDesc")
     }
   ];
 
   const stats = [
-    { value: "3x", label: "Mais rápido", subtext: "que spreadsheets" },
-    { value: "100%", label: "Rastreável", subtext: "cada transação" },
-    { value: "AI", label: "Otimizado", subtext: "por inteligência artificial" }
+    { value: "3x", label: t("landing.stats.faster"), subtext: t("landing.stats.fasterSub") },
+    { value: "100%", label: t("landing.stats.traceable"), subtext: t("landing.stats.traceableSub") },
+    { value: "AI", label: t("landing.stats.optimized"), subtext: t("landing.stats.optimizedSub") }
   ];
 
   return (
@@ -139,6 +142,7 @@ export default function Landing() {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <LanguageSelector />
             <Button 
               variant="ghost"
               size="icon"
@@ -148,21 +152,21 @@ export default function Landing() {
             >
               <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
               <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              <span className="sr-only">Alternar tema</span>
+              <span className="sr-only">{t("landing.toggleTheme")}</span>
             </Button>
             <Button 
               variant="ghost"
               onClick={() => window.location.href = '/login'}
               className="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
             >
-              Entrar
+              {t("landing.header.login")}
             </Button>
             <Button 
               onClick={() => window.open('https://wa.me/5548999186426', '_blank')}
               data-testid="button-solicitar-demonstracao"
               className="bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 text-white rounded-lg"
             >
-              Demo Grátis
+              {t("landing.header.demo")}
             </Button>
           </div>
         </div>
@@ -184,20 +188,19 @@ export default function Landing() {
               <div className="inline-block px-4 py-2 bg-green-100 dark:bg-green-900/30 rounded-full border border-green-300 dark:border-green-700">
                 <span className="text-green-700 dark:text-green-300 text-sm font-semibold flex items-center gap-2">
                   <Zap className="w-4 h-4" />
-                  Transforme sua revenda automotiva
+                  {t("landing.hero.badge")}
                 </span>
               </div>
 
               <h1 className="text-5xl sm:text-6xl font-black tracking-tight">
-                <span className="block text-gray-900 dark:text-white mb-2">Gestão Completa</span>
+                <span className="block text-gray-900 dark:text-white mb-2">{t("landing.hero.title1")}</span>
                 <span className="block bg-gradient-to-r from-green-500 via-blue-500 to-purple-500 bg-clip-text text-transparent">
-                  Para Revenda de Veículos
+                  {t("landing.hero.title2")}
                 </span>
               </h1>
 
               <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-400 leading-relaxed">
-                Controle total do estoque, preparação, custos e vendas em uma plataforma inteligente. 
-                De spreadsheets caóticos para sistema profissional em minutos.
+                {t("landing.hero.description")}
               </p>
 
               {/* Stats */}
@@ -220,7 +223,7 @@ export default function Landing() {
                 data-testid="button-solicitar-demonstracao-hero"
                 className="bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 text-white text-lg px-8 py-6 rounded-xl font-semibold shadow-xl hover:shadow-2xl transition-all w-full"
               >
-                Comece Seu Teste Grátis <ChevronRight className="w-5 h-5 ml-2" />
+                {t("landing.hero.cta")} <ChevronRight className="w-5 h-5 ml-2" />
               </Button>
             </div>
 

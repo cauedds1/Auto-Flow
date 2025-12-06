@@ -23,8 +23,9 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { getRoleName, getRoleBadgeColor, AVAILABLE_PERMISSIONS, type UserRole } from "@/hooks/use-permissions";
 import { formatDistanceToNow } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { ptBR, enUS } from "date-fns/locale";
 import type { CustomPermissions } from "@shared/schema";
+import { useI18n } from "@/lib/i18n";
 
 interface User {
   id: string;
@@ -43,6 +44,7 @@ interface User {
 }
 
 export default function Users() {
+  const { t, language } = useI18n();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -50,12 +52,12 @@ export default function Users() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
-  // Buscar usuários
+  const dateLocale = language === "pt-BR" ? ptBR : enUS;
+
   const { data: users = [], isLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
   });
 
-  // Criar usuário
   const createUser = useMutation({
     mutationFn: async (data: { email: string; firstName: string; lastName?: string; role: string; password: string }) => {
       const response = await fetch("/api/users", {
@@ -65,7 +67,7 @@ export default function Users() {
       });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Erro ao criar usuário");
+        throw new Error(error.error || t("users.errorCreating"));
       }
       return response.json();
     },
@@ -73,20 +75,19 @@ export default function Users() {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       setIsAddDialogOpen(false);
       toast({
-        title: "Usuário criado!",
-        description: "O novo usuário foi adicionado com sucesso.",
+        title: t("users.userCreated"),
+        description: t("users.userCreatedDesc"),
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Erro ao criar usuário",
+        title: t("users.errorCreating"),
         description: error.message,
         variant: "destructive",
       });
     },
   });
 
-  // Atualizar usuário
   const updateUser = useMutation({
     mutationFn: async ({ id, ...data }: Partial<User> & { id: string }) => {
       const response = await fetch(`/api/users/${id}`, {
@@ -96,7 +97,7 @@ export default function Users() {
       });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Erro ao atualizar usuário");
+        throw new Error(error.error || t("users.errorUpdating"));
       }
       return response.json();
     },
@@ -105,13 +106,13 @@ export default function Users() {
       setIsEditDialogOpen(false);
       setSelectedUser(null);
       toast({
-        title: "Usuário atualizado!",
-        description: "As informações foram atualizadas com sucesso.",
+        title: t("users.userUpdated"),
+        description: t("users.userUpdatedDesc"),
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Erro ao atualizar usuário",
+        title: t("users.errorUpdating"),
         description: error.message,
         variant: "destructive",
       });
@@ -126,7 +127,6 @@ export default function Users() {
     });
   };
 
-  // Deletar usuário
   const deleteUser = useMutation({
     mutationFn: async (userId: string) => {
       const response = await fetch(`/api/users/${userId}`, {
@@ -134,7 +134,7 @@ export default function Users() {
       });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Erro ao remover usuário");
+        throw new Error(error.error || t("users.errorRemoving"));
       }
       return response.json();
     },
@@ -142,13 +142,13 @@ export default function Users() {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       setUserToDelete(null);
       toast({
-        title: "Usuário removido!",
-        description: "O usuário foi removido permanentemente.",
+        title: t("users.userRemoved"),
+        description: t("users.userRemovedDesc"),
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Erro ao remover usuário",
+        title: t("users.errorRemoving"),
         description: error.message,
         variant: "destructive",
       });
@@ -158,7 +158,7 @@ export default function Users() {
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-muted-foreground">Carregando usuários...</p>
+        <p className="text-muted-foreground">{t("users.loadingUsers")}</p>
       </div>
     );
   }
@@ -167,9 +167,9 @@ export default function Users() {
     <div className="flex h-full flex-col p-8">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Gestão de Usuários</h1>
+          <h1 className="text-3xl font-bold">{t("users.title")}</h1>
           <p className="mt-2 text-muted-foreground">
-            Gerencie os usuários e permissões da sua empresa
+            {t("users.subtitle")}
           </p>
         </div>
         <Button
@@ -177,7 +177,7 @@ export default function Users() {
           className="bg-gradient-to-r from-purple-600 to-green-600 hover:from-purple-700 hover:to-green-700"
         >
           <UserPlus className="mr-2 h-4 w-4" />
-          Adicionar Usuário
+          {t("users.addUser")}
         </Button>
       </div>
 
@@ -188,9 +188,11 @@ export default function Users() {
               <UsersIcon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
             </div>
             <div>
-              <CardTitle>Usuários da Empresa</CardTitle>
+              <CardTitle>{t("users.companyUsers")}</CardTitle>
               <CardDescription>
-                {users.length} {users.length === 1 ? "usuário cadastrado" : "usuários cadastrados"}
+                {users.length === 1 
+                  ? t("users.registeredCount", { count: users.length })
+                  : t("users.registeredCountPlural", { count: users.length })}
               </CardDescription>
             </div>
           </div>
@@ -212,13 +214,13 @@ export default function Users() {
                     </Badge>
                     {user.isActive === "false" && (
                       <Badge variant="outline" className="text-red-600">
-                        Inativo
+                        {t("users.inactive")}
                       </Badge>
                     )}
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">{user.email}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Criado {formatDistanceToNow(new Date(user.createdAt), { addSuffix: true, locale: ptBR })}
+                    {t("users.createdAgo")} {formatDistanceToNow(new Date(user.createdAt), { addSuffix: true, locale: dateLocale })}
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -229,7 +231,7 @@ export default function Users() {
                       setSelectedUser(user);
                       setIsEditDialogOpen(true);
                     }}
-                    title="Editar usuário"
+                    title={t("common.edit")}
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
@@ -237,7 +239,7 @@ export default function Users() {
                     variant={user.isActive === "true" ? "outline" : "default"}
                     size="sm"
                     onClick={() => handleToggleActive(user)}
-                    title={user.isActive === "true" ? "Desativar usuário" : "Ativar usuário"}
+                    title={user.isActive === "true" ? t("users.deactivateUser") : t("users.activateUser")}
                   >
                     {user.isActive === "true" ? (
                       <XCircle className="h-4 w-4" />
@@ -249,7 +251,7 @@ export default function Users() {
                     variant="outline"
                     size="sm"
                     onClick={() => setUserToDelete(user)}
-                    title="Remover usuário permanentemente"
+                    title={t("users.removeUser")}
                     className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -261,15 +263,14 @@ export default function Users() {
             {users.length === 0 && (
               <div className="text-center py-12 text-muted-foreground">
                 <UsersIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Nenhum usuário cadastrado ainda.</p>
-                <p className="text-sm mt-2">Clique em "Adicionar Usuário" para começar.</p>
+                <p>{t("users.noUsersYet")}</p>
+                <p className="text-sm mt-2">{t("users.clickToAdd")}</p>
               </div>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Dialog Adicionar Usuário */}
       <AddUserDialog
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
@@ -277,7 +278,6 @@ export default function Users() {
         isLoading={createUser.isPending}
       />
 
-      {/* Dialog Editar Usuário */}
       {selectedUser && (
         <EditUserDialog
           open={isEditDialogOpen}
@@ -288,26 +288,24 @@ export default function Users() {
         />
       )}
 
-      {/* Dialog Confirmar Exclusão */}
       <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remover Usuário</AlertDialogTitle>
+            <AlertDialogTitle>{t("users.removeUserTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja remover permanentemente o usuário{" "}
+              {t("users.removeUserConfirm")}{" "}
               <strong>{userToDelete?.firstName} {userToDelete?.lastName}</strong>?
               <br /><br />
-              Esta ação não pode ser desfeita. Todos os dados associados a este usuário serão mantidos, 
-              mas ele não poderá mais acessar o sistema.
+              {t("users.removeUserWarning")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => userToDelete && deleteUser.mutate(userToDelete.id)}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
-              {deleteUser.isPending ? "Removendo..." : "Remover Permanentemente"}
+              {deleteUser.isPending ? t("users.removing") : t("users.removePermanently")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -324,6 +322,7 @@ interface AddUserDialogProps {
 }
 
 function AddUserDialog({ open, onOpenChange, onSubmit, isLoading }: AddUserDialogProps) {
+  const { t } = useI18n();
   const [formData, setFormData] = useState({
     email: "",
     firstName: "",
@@ -338,19 +337,30 @@ function AddUserDialog({ open, onOpenChange, onSubmit, isLoading }: AddUserDialo
     setFormData({ email: "", firstName: "", lastName: "", role: "vendedor", password: "" });
   };
 
+  const getRoleDescription = (role: string) => {
+    switch (role) {
+      case "proprietario": return t("users.roleDescOwner");
+      case "gerente": return t("users.roleDescManager");
+      case "financeiro": return t("users.roleDescFinancial");
+      case "vendedor": return t("users.roleDescSeller");
+      case "motorista": return t("users.roleDescDriver");
+      default: return "";
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Adicionar Novo Usuário</DialogTitle>
+          <DialogTitle>{t("users.addNewUser")}</DialogTitle>
           <DialogDescription>
-            Preencha as informações do novo funcionário
+            {t("users.fillEmployeeInfo")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="firstName">Nome *</Label>
+              <Label htmlFor="firstName">{t("users.firstName")} *</Label>
               <Input
                 id="firstName"
                 value={formData.firstName}
@@ -359,7 +369,7 @@ function AddUserDialog({ open, onOpenChange, onSubmit, isLoading }: AddUserDialo
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="lastName">Sobrenome</Label>
+              <Label htmlFor="lastName">{t("users.lastName")}</Label>
               <Input
                 id="lastName"
                 value={formData.lastName}
@@ -367,7 +377,7 @@ function AddUserDialog({ open, onOpenChange, onSubmit, isLoading }: AddUserDialo
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="email">Email *</Label>
+              <Label htmlFor="email">{t("auth.email")} *</Label>
               <Input
                 id="email"
                 type="email"
@@ -377,45 +387,41 @@ function AddUserDialog({ open, onOpenChange, onSubmit, isLoading }: AddUserDialo
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="password">Senha Temporária *</Label>
+              <Label htmlFor="password">{t("users.temporaryPassword")} *</Label>
               <Input
                 id="password"
                 type="password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                placeholder="Mínimo 6 caracteres"
+                placeholder={t("users.minCharacters")}
                 required
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="role">Papel no Sistema *</Label>
+              <Label htmlFor="role">{t("users.systemRole")} *</Label>
               <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="proprietario">Proprietário</SelectItem>
-                  <SelectItem value="gerente">Gerente</SelectItem>
-                  <SelectItem value="financeiro">Financeiro</SelectItem>
-                  <SelectItem value="vendedor">Vendedor</SelectItem>
-                  <SelectItem value="motorista">Motorista</SelectItem>
+                  <SelectItem value="proprietario">{t("users.roles.owner")}</SelectItem>
+                  <SelectItem value="gerente">{t("users.roles.manager")}</SelectItem>
+                  <SelectItem value="financeiro">{t("users.roles.financial")}</SelectItem>
+                  <SelectItem value="vendedor">{t("users.roles.seller")}</SelectItem>
+                  <SelectItem value="motorista">{t("users.roles.driver")}</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                {formData.role === "financeiro" && "Acesso a relatórios, contas e custos. Sem acesso a leads e detalhes dos veículos."}
-                {formData.role === "proprietario" && "Acesso total ao sistema."}
-                {formData.role === "gerente" && "Acesso gerencial completo, exceto contas financeiras."}
-                {formData.role === "vendedor" && "Acesso a veículos, leads e vendas."}
-                {formData.role === "motorista" && "Acesso limitado para registro de custos e movimentações."}
+                {getRoleDescription(formData.role)}
               </p>
             </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Criando..." : "Criar Usuário"}
+              {isLoading ? t("users.creating") : t("users.createUser")}
             </Button>
           </DialogFooter>
         </form>
@@ -433,7 +439,8 @@ interface EditUserDialogProps {
 }
 
 function EditUserDialog({ open, onOpenChange, user, onSubmit, isLoading }: EditUserDialogProps) {
-  // Normalizar customPermissions: converter strings "true"/"false" para booleanos
+  const { t } = useI18n();
+  
   const normalizePermissions = (perms: any): CustomPermissions => {
     if (!perms) return {};
     const normalized: CustomPermissions = {};
@@ -466,7 +473,6 @@ function EditUserDialog({ open, onOpenChange, user, onSubmit, isLoading }: EditU
 
   const [activeTab, setActiveTab] = useState("info");
 
-  // CORRECAO: Atualizar formData quando o usuario mudar
   useEffect(() => {
     setFormData({
       firstName: user.firstName,
@@ -483,7 +489,6 @@ function EditUserDialog({ open, onOpenChange, user, onSubmit, isLoading }: EditU
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Converter customPermissions para strings "true"/"false" para armazenamento
     const permissionsToSubmit: any = {};
     for (const [key, value] of Object.entries(customPermissions)) {
       permissionsToSubmit[key] = value === true ? "true" : value === false ? "false" : value;
@@ -512,29 +517,40 @@ function EditUserDialog({ open, onOpenChange, user, onSubmit, isLoading }: EditU
     setCustomPermissions({});
   };
 
+  const getRoleDescription = (role: string) => {
+    switch (role) {
+      case "proprietario": return t("users.roleDescOwner");
+      case "gerente": return t("users.roleDescManager");
+      case "financeiro": return t("users.roleDescFinancial");
+      case "vendedor": return t("users.roleDescSeller");
+      case "motorista": return t("users.roleDescDriver");
+      default: return "";
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Editar Usuário</DialogTitle>
+          <DialogTitle>{t("users.editUser")}</DialogTitle>
           <DialogDescription>
-            Atualize as informações de {user.firstName}
+            {t("users.updateInfo")} {user.firstName}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="info">Informações</TabsTrigger>
+              <TabsTrigger value="info">{t("users.info")}</TabsTrigger>
               <TabsTrigger value="permissions" className="flex items-center gap-2">
                 <Shield className="h-4 w-4" />
-                Gerenciar Acessos
+                {t("users.manageAccess")}
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="info" className="space-y-4 mt-4">
               <div className="grid gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="edit-firstName">Nome</Label>
+                  <Label htmlFor="edit-firstName">{t("users.firstName")}</Label>
                   <Input
                     id="edit-firstName"
                     value={formData.firstName}
@@ -542,7 +558,7 @@ function EditUserDialog({ open, onOpenChange, user, onSubmit, isLoading }: EditU
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="edit-lastName">Sobrenome</Label>
+                  <Label htmlFor="edit-lastName">{t("users.lastName")}</Label>
                   <Input
                     id="edit-lastName"
                     value={formData.lastName}
@@ -550,108 +566,93 @@ function EditUserDialog({ open, onOpenChange, user, onSubmit, isLoading }: EditU
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="edit-role">Papel no Sistema</Label>
+                  <Label htmlFor="edit-role">{t("users.systemRole")}</Label>
                   <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value as UserRole })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="proprietario">Proprietário</SelectItem>
-                      <SelectItem value="gerente">Gerente</SelectItem>
-                      <SelectItem value="financeiro">Financeiro</SelectItem>
-                      <SelectItem value="vendedor">Vendedor</SelectItem>
-                      <SelectItem value="motorista">Motorista</SelectItem>
+                      <SelectItem value="proprietario">{t("users.roles.owner")}</SelectItem>
+                      <SelectItem value="gerente">{t("users.roles.manager")}</SelectItem>
+                      <SelectItem value="financeiro">{t("users.roles.financial")}</SelectItem>
+                      <SelectItem value="vendedor">{t("users.roles.seller")}</SelectItem>
+                      <SelectItem value="motorista">{t("users.roles.driver")}</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    {formData.role === "financeiro" && "Acesso a relatórios, contas e custos. Sem acesso a leads e detalhes dos veículos."}
-                    {formData.role === "proprietario" && "Acesso total ao sistema."}
-                    {formData.role === "gerente" && "Acesso gerencial completo, exceto contas financeiras."}
-                    {formData.role === "vendedor" && "Acesso a veículos, leads e vendas."}
-                    {formData.role === "motorista" && "Acesso limitado para registro de custos e movimentações."}
+                    {getRoleDescription(formData.role)}
                   </p>
                 </div>
 
-                {/* Campos de comissão (apenas para vendedores) */}
                 {isVendedor && (
                   <div className="grid gap-4 pt-4 border-t">
                     <div className="flex items-center gap-2">
                       <DollarSign className="h-5 w-5 text-green-600" />
-                      <Label className="text-base font-semibold">Configuração de Comissão</Label>
+                      <Label className="text-base font-semibold">{t("users.commissionConfig")}</Label>
                     </div>
                     
                     <div className="flex items-center justify-between gap-4 p-3 rounded-lg bg-muted/50">
                       <div className="flex-1">
                         <Label htmlFor="usar-comissao-global" className="text-sm font-medium">
-                          Usar comissão fixa global
+                          {t("users.useGlobalCommission")}
                         </Label>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Quando ativado, usa o valor de comissão configurado nas configurações da empresa
+                          {t("users.useGlobalCommissionDesc")}
                         </p>
                       </div>
                       <Switch
                         id="usar-comissao-global"
                         checked={formData.usarComissaoFixaGlobal}
                         onCheckedChange={(checked) => setFormData({ ...formData, usarComissaoFixaGlobal: checked })}
-                        data-testid="switch-comissao-global"
                       />
                     </div>
 
                     {!formData.usarComissaoFixaGlobal && (
                       <div className="grid gap-2">
                         <Label htmlFor="comissao-fixa">Comissão Fixa Individual (R$)</Label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
-                          <Input
-                            id="comissao-fixa"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            placeholder="0.00"
-                            className="pl-10"
-                            value={formData.comissaoFixa}
-                            onChange={(e) => setFormData({ ...formData, comissaoFixa: e.target.value })}
-                            data-testid="input-comissao-fixa"
-                          />
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Este vendedor receberá este valor fixo por cada venda realizada
-                        </p>
+                        <Input
+                          id="comissao-fixa"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.comissaoFixa}
+                          onChange={(e) => setFormData({ ...formData, comissaoFixa: e.target.value })}
+                          placeholder="0.00"
+                        />
                       </div>
                     )}
 
-                    {/* Metas de vendas */}
-                    <div className="space-y-4 pt-4 border-t">
+                    <div className="grid gap-4 pt-4 border-t">
                       <div className="flex items-center gap-2">
                         <Target className="h-5 w-5 text-blue-600" />
-                        <Label className="text-base font-semibold">Metas de Vendas</Label>
+                        <Label className="text-base font-semibold">Metas do Vendedor</Label>
                       </div>
-
-                      <div className="grid gap-2">
-                        <Label htmlFor="meta-quantidade">Meta de Quantidade (Veículos)</Label>
-                        <Input
-                          id="meta-quantidade"
-                          type="number"
-                          placeholder="Ex: 5"
-                          value={formData.metaQuantidade}
-                          onChange={(e) => setFormData({ ...formData, metaQuantidade: e.target.value })}
-                          data-testid="input-edit-meta-quantidade"
-                        />
-                      </div>
-
-                      <div className="grid gap-2">
-                        <Label htmlFor="meta-valor">Meta de Faturamento (R$)</Label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                          <Label htmlFor="meta-quantidade">Meta de Quantidade</Label>
+                          <Input
+                            id="meta-quantidade"
+                            type="number"
+                            min="0"
+                            value={formData.metaQuantidade}
+                            onChange={(e) => setFormData({ ...formData, metaQuantidade: e.target.value })}
+                            placeholder="Ex: 10"
+                          />
+                          <p className="text-xs text-muted-foreground">Veículos por mês</p>
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="meta-valor">Meta de Valor (R$)</Label>
                           <Input
                             id="meta-valor"
                             type="number"
-                            placeholder="Ex: 50000"
-                            className="pl-10"
+                            step="0.01"
+                            min="0"
                             value={formData.metaValor}
                             onChange={(e) => setFormData({ ...formData, metaValor: e.target.value })}
-                            data-testid="input-edit-meta-valor"
+                            placeholder="Ex: 50000"
                           />
+                          <p className="text-xs text-muted-foreground">Faturamento por mês</p>
                         </div>
                       </div>
                     </div>
@@ -661,59 +662,46 @@ function EditUserDialog({ open, onOpenChange, user, onSubmit, isLoading }: EditU
             </TabsContent>
 
             <TabsContent value="permissions" className="space-y-4 mt-4">
-              <div className="rounded-lg border p-4 bg-muted/30">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h4 className="font-medium flex items-center gap-2">
-                      <Shield className="h-4 w-4 text-purple-600" />
-                      Permissões Personalizadas
-                    </h4>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Por padrão, as permissões seguem o papel do usuário. Ative permissões extras aqui.
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={resetPermissions}
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  Personalize os acessos deste usuário além do papel padrão
+                </p>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={resetPermissions}
+                >
+                  Restaurar Padrão
+                </Button>
+              </div>
+              
+              <div className="grid gap-3">
+                {AVAILABLE_PERMISSIONS.map((perm) => (
+                  <div 
+                    key={perm.key} 
+                    className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
                   >
-                    Resetar
-                  </Button>
-                </div>
-
-                <div className="space-y-3">
-                  {AVAILABLE_PERMISSIONS.map((permission) => {
-                    const isEnabled = customPermissions[permission.key as keyof CustomPermissions];
-                    
-                    return (
-                      <div
-                        key={permission.key}
-                        className="flex items-center justify-between p-3 rounded-lg bg-background border"
-                      >
-                        <div className="flex-1">
-                          <Label className="text-sm font-medium">{permission.label}</Label>
-                          <p className="text-xs text-muted-foreground">{permission.description}</p>
-                        </div>
-                        <Switch
-                          checked={isEnabled === true}
-                          onCheckedChange={() => togglePermission(permission.key as keyof CustomPermissions)}
-                          data-testid={`switch-${permission.key}`}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">{perm.label}</p>
+                      <p className="text-xs text-muted-foreground">{perm.description}</p>
+                    </div>
+                    <Switch
+                      checked={customPermissions[perm.key] === true}
+                      onCheckedChange={() => togglePermission(perm.key)}
+                    />
+                  </div>
+                ))}
               </div>
             </TabsContent>
           </Tabs>
 
           <DialogFooter className="mt-6">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Salvando..." : "Salvar Alterações"}
+              {isLoading ? t("settings.saving") : t("common.save")}
             </Button>
           </DialogFooter>
         </form>

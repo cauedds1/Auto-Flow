@@ -13,8 +13,10 @@ import { Button } from "@/components/ui/button";
 import { TrendingUp, DollarSign, Clock, Target } from "lucide-react";
 import { useCompanyTheme } from "@/components/CompanyThemeProvider";
 import { usePermissions } from "@/hooks/use-permissions";
+import { useI18n } from "@/lib/i18n";
 
 export default function Dashboard() {
+  const { t } = useI18n();
   const { changeIconColors, primaryColor } = useCompanyTheme();
   const { isVendedor } = usePermissions();
   const [setTargetOpen, setSetTargetOpen] = useState(false);
@@ -28,15 +30,15 @@ export default function Dashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Dashboard
+              {t("dashboard.title")}
             </h1>
             <p className="mt-1 sm:mt-2 text-sm sm:text-base text-muted-foreground flex items-center gap-2">
               <TrendingUp 
                 className="h-4 w-4"
                 style={changeIconColors ? { color: primaryColor } : undefined}
               />
-              <span className="hidden sm:inline">Visao geral completa do estoque e operacoes</span>
-              <span className="sm:hidden">Visao geral do estoque</span>
+              <span className="hidden sm:inline">{t("dashboard.overview")}</span>
+              <span className="sm:hidden">{t("dashboard.overviewShort")}</span>
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -49,8 +51,8 @@ export default function Dashboard() {
                 data-testid="button-set-target"
               >
                 <Target className="h-4 w-4" />
-                <span className="hidden sm:inline">Definir Meta</span>
-                <span className="sm:hidden">Meta</span>
+                <span className="hidden sm:inline">{t("dashboard.setTarget")}</span>
+                <span className="sm:hidden">{t("dashboard.target")}</span>
               </Button>
             )}
             <AddVehicleDialog onAdd={(data) => console.log("Novo veículo:", data)} />
@@ -58,27 +60,23 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Dialog para definir meta */}
       <SetSalesTargetDialog open={setTargetOpen} onOpenChange={setSetTargetOpen} />
 
       <div className="flex-1 overflow-auto p-4 sm:p-8">
         <div className="space-y-6 sm:space-y-8 max-w-[1800px] mx-auto">
-          {/* Dashboard de Vendedor */}
           {isVendedor && (
             <div className="animate-fade-in">
               <div className="mb-4">
-                <h2 className="text-2xl font-bold">Minha Meta e Comissões</h2>
+                <h2 className="text-2xl font-bold">{t("dashboard.myTargetCommissions")}</h2>
               </div>
               <SellerDashboard />
             </div>
           )}
           
-          {/* Métricas principais - cards com gradientes */}
           <div className="animate-fade-in">
             <DashboardMetricsEnhanced />
           </div>
           
-          {/* Grid 2 colunas - Financeiro e Alertas */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             <div className="space-y-6">
               <FinancialSummary />
@@ -90,11 +88,10 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Kanban Board - Pipeline visual */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <div className="h-1 w-12 bg-gradient-to-r from-primary to-secondary rounded-full"></div>
-              <h2 className="text-2xl font-bold">Pipeline de Veículos</h2>
+              <h2 className="text-2xl font-bold">{t("dashboard.vehiclePipeline")}</h2>
               <div className="h-1 flex-1 bg-gradient-to-r from-secondary/20 to-transparent rounded-full"></div>
             </div>
             

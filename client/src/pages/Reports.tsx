@@ -10,13 +10,14 @@ import { Input } from "@/components/ui/input";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 import { TrendingUp, Clock, DollarSign, Package, CheckCircle2, AlertCircle, TrendingDown, Calendar, Search, Car, Wallet, CreditCard, User } from "lucide-react";
 import { subMonths, startOfMonth, format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { ptBR, enUS } from "date-fns/locale";
 import { checklistItems, getChecklistStats, normalizeChecklistData, hasChecklistStarted } from "@shared/checklistUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { motion } from "framer-motion";
 import { CommissionDetailsButton } from "@/components/CommissionDetailsButton";
 import { FinancialReportPDF } from "@/components/FinancialReportPDF";
+import { useI18n } from "@/lib/i18n";
 
 const COLORS = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
 
@@ -48,6 +49,9 @@ type BillsDashboard = {
 };
 
 export default function Reports() {
+  const { t, language } = useI18n();
+  const dateLocale = language === "pt-BR" ? ptBR : enUS;
+  
   const [dateFilter, setDateFilter] = useState<string>("current-month");
   const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
   const [checklistDialogType, setChecklistDialogType] = useState<"completed" | "missing">("missing");
@@ -55,14 +59,13 @@ export default function Reports() {
   const [observationsDialogType, setObservationsDialogType] = useState<"pending" | "resolved">("pending");
   const [avgDaysDialogOpen, setAvgDaysDialogOpen] = useState(false);
   
-  // Estados para filtros da aba Custos
   const [costSearchTerm, setCostSearchTerm] = useState("");
   const [costCategoryFilter, setCostCategoryFilter] = useState<string>("all");
   const [costPaymentMethodFilter, setCostPaymentMethodFilter] = useState<string>("all");
 
   const { user } = useAuth();
   const { can, isFinanceiro, isProprietario, isVendedor } = usePermissions();
-  const hasFinancialAccess = can.viewFinancialReports; // Proprietário e Financeiro
+  const hasFinancialAccess = can.viewFinancialReports;
 
   const getPeriodFromFilter = () => {
     const now = new Date();

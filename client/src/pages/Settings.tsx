@@ -32,6 +32,7 @@ import { useCurrentCompany, useUpdateCompany } from "@/hooks/use-company";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
+import { useI18n } from "@/lib/i18n";
 
 const companySchema = z.object({
   nomeFantasia: z.string().min(1, "Nome fantasia é obrigatório"),
@@ -57,6 +58,7 @@ const companySchema = z.object({
 type CompanyFormData = z.infer<typeof companySchema>;
 
 export default function Settings() {
+  const { t } = useI18n();
   const { company, isLoading } = useCurrentCompany();
   const updateCompany = useUpdateCompany(company?.id || "");
   const { toast } = useToast();
@@ -179,7 +181,7 @@ export default function Settings() {
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-muted-foreground">Carregando...</p>
+        <p className="text-muted-foreground">{t("common.loading")}</p>
       </div>
     );
   }
@@ -187,7 +189,7 @@ export default function Settings() {
   if (!company) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-muted-foreground">Nenhuma empresa cadastrada</p>
+        <p className="text-muted-foreground">{t("settings.noCompanyRegistered")}</p>
       </div>
     );
   }
@@ -195,18 +197,18 @@ export default function Settings() {
   return (
     <div className="flex h-full flex-col p-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Configurações</h1>
+        <h1 className="text-3xl font-bold">{t("settings.title")}</h1>
         <p className="mt-2 text-muted-foreground">
-          Gerencie as informações da sua empresa e personalizações
+          {t("settings.manageSettings")}
         </p>
       </div>
 
       <Tabs defaultValue="company" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="company">Informações da Empresa</TabsTrigger>
-          <TabsTrigger value="appearance">Aparência</TabsTrigger>
-          <TabsTrigger value="system">Sistema</TabsTrigger>
-          <TabsTrigger value="advanced">Configurações Avançadas</TabsTrigger>
+          <TabsTrigger value="company">{t("settings.tabs.company")}</TabsTrigger>
+          <TabsTrigger value="appearance">{t("settings.tabs.appearance")}</TabsTrigger>
+          <TabsTrigger value="system">{t("settings.tabs.system")}</TabsTrigger>
+          <TabsTrigger value="advanced">{t("settings.tabs.advanced")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="company" className="space-y-6">

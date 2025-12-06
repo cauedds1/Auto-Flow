@@ -9,6 +9,7 @@ import { FipeSearchDialog } from "@/components/FipeSearchDialog";
 import { ImportVehiclesDialog } from "@/components/ImportVehiclesDialog";
 import { Link } from "wouter";
 import { usePermissions } from "@/hooks/use-permissions";
+import { useI18n } from "@/lib/i18n";
 import {
   Select,
   SelectContent,
@@ -16,16 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-const ALL_STATUS = [
-  "Todos os Status",
-  "Pronto para Venda",
-  "Em Higienização",
-  "Em Reparos",
-  "Entrada",
-  "Vendido",
-  "Arquivado",
-];
 
 const STATUS_ORDER = {
   "Pronto para Venda": 1,
@@ -50,22 +41,14 @@ const LOCATION_PRIORITY = {
   "": 999,
 };
 
-const SORT_OPTIONS = [
-  { value: "location", label: "Ordenar por Localização" },
-  { value: "status", label: "Ordenar por Status" },
-  { value: "brand", label: "Ordenar por Marca" },
-  { value: "year", label: "Ordenar por Ano (Mais Novo)" },
-  { value: "year-old", label: "Ordenar por Ano (Mais Antigo)" },
-];
-
 export default function Vehicles() {
+  const { t } = useI18n();
   const { isMotorista } = usePermissions();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState(() => {
     return localStorage.getItem("vehicles-sort-by") || "status";
   });
   
-  // Filtros específicos para cada tipo de ordenação
   const [selectedLocation, setSelectedLocation] = useState<string>(() => {
     return localStorage.getItem("vehicles-selected-location") || "all";
   });
@@ -81,13 +64,30 @@ export default function Vehicles() {
     queryFn: async () => {
       const response = await fetch("/api/vehicles");
       if (!response.ok) {
-        throw new Error("Erro ao carregar veículos");
+        throw new Error(t("vehicles.errorLoading"));
       }
       return response.json();
     },
   });
 
-  // Salvar preferências no localStorage
+  const SORT_OPTIONS = useMemo(() => [
+    { value: "location", label: t("vehicles.sortByLocation") },
+    { value: "status", label: t("vehicles.sortByStatus") },
+    { value: "brand", label: t("vehicles.sortByBrand") },
+    { value: "year", label: t("vehicles.sortByYearNew") },
+    { value: "year-old", label: t("vehicles.sortByYearOld") },
+  ], [t]);
+
+  const ALL_STATUS = useMemo(() => [
+    t("vehicles.status.all"),
+    t("vehicles.status.ready"),
+    t("vehicles.status.cleaning"),
+    t("vehicles.status.repair"),
+    t("vehicles.status.intake"),
+    t("vehicles.status.sold"),
+    t("vehicles.status.archived"),
+  ], [t]);
+
   useEffect(() => {
     localStorage.setItem("vehicles-sort-by", sortBy);
   }, [sortBy]);
@@ -104,7 +104,6 @@ export default function Vehicles() {
     localStorage.setItem("vehicles-selected-brand", selectedBrand);
   }, [selectedBrand]);
 
-  // Extrair localizações únicas dos veículos
   const uniqueLocations = useMemo(() => {
     const locations = new Set<string>();
     vehicles.forEach((v: any) => {
@@ -115,7 +114,6 @@ export default function Vehicles() {
     return Array.from(locations).sort();
   }, [vehicles]);
 
-  // Extrair marcas únicas dos veículos
   const uniqueBrands = useMemo(() => {
     const brands = new Set<string>();
     vehicles.forEach((v: any) => {
@@ -128,24 +126,20 @@ export default function Vehicles() {
 
   const filteredVehicles = vehicles
     .filter((vehicle: any) => {
-      // Busca por texto
       const matchesSearch = `${vehicle.brand} ${vehicle.model} ${vehicle.plate}`
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
       
-      // Sempre oculta arquivados, exceto se selecionado explicitamente
       const isArchived = vehicle.status === "Arquivado";
-      if (isArchived && sortBy === "status" && selectedStatus !== "Arquivado") {
+      if (isArchived && sortBy === "status" && selectedStatus !== "Arquivado" && selectedStatus !== t("vehicles.status.archived")) {
         return false;
       }
       if (isArchived && sortBy !== "status") {
         return false;
       }
 
-      // Filtrar por localização
       if (sortBy === "location" && selectedLocation !== "all") {
-        if (selectedLocation === "Outros") {
-          // Mostrar veículos sem localização ou com localização não padrão
+        if (selectedLocation === "Outros" || selectedLocation === t("vehicles.others")) {
           const isKnownLocation = uniqueLocations.includes(vehicle.physicalLocation || "");
           if (isKnownLocation) return false;
         } else {
@@ -153,12 +147,10 @@ export default function Vehicles() {
         }
       }
 
-      // Filtrar por status
-      if (sortBy === "status" && selectedStatus !== "Todos os Status") {
+      if (sortBy === "status" && selectedStatus !== t("vehicles.status.all") && selectedStatus !== "Todos os Status") {
         if (vehicle.status !== selectedStatus) return false;
       }
 
-      // Filtrar por marca
       if (sortBy === "brand" && selectedBrand !== "all") {
         if (vehicle.brand !== selectedBrand) return false;
       }
@@ -198,9 +190,9 @@ export default function Vehicles() {
     <div className="flex h-full flex-col p-4 sm:p-8">
       <div className="mb-4 sm:mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Veiculos</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{t("vehicles.title")}</h1>
           <p className="mt-1 sm:mt-2 text-sm sm:text-base text-muted-foreground">
-            Gerencie todos os veiculos do estoque
+            {t("vehicles.manageVehicles")}
           </p>
         </div>
         <div className="flex gap-2 sm:gap-3 flex-wrap">
@@ -214,7 +206,7 @@ export default function Vehicles() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Buscar veiculo..."
+            placeholder={t("vehicles.searchPlaceholder")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -239,16 +231,16 @@ export default function Vehicles() {
           {sortBy === "location" && (
             <Select value={selectedLocation} onValueChange={setSelectedLocation}>
               <SelectTrigger className="w-full sm:w-52">
-                <SelectValue placeholder="Todas as Localizacoes" />
+                <SelectValue placeholder={t("vehicles.allLocations")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas as Localizações</SelectItem>
+                <SelectItem value="all">{t("vehicles.allLocations")}</SelectItem>
                 {uniqueLocations.map((location) => (
                   <SelectItem key={location} value={location}>
                     {location}
                   </SelectItem>
                 ))}
-                <SelectItem value="Outros">Outros</SelectItem>
+                <SelectItem value="Outros">{t("vehicles.others")}</SelectItem>
               </SelectContent>
             </Select>
           )}
@@ -259,11 +251,13 @@ export default function Vehicles() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {ALL_STATUS.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {status}
-                  </SelectItem>
-                ))}
+                <SelectItem value={t("vehicles.status.all")}>{t("vehicles.status.all")}</SelectItem>
+                <SelectItem value="Pronto para Venda">{t("vehicles.status.ready")}</SelectItem>
+                <SelectItem value="Em Higienização">{t("vehicles.status.cleaning")}</SelectItem>
+                <SelectItem value="Em Reparos">{t("vehicles.status.repair")}</SelectItem>
+                <SelectItem value="Entrada">{t("vehicles.status.intake")}</SelectItem>
+                <SelectItem value="Vendido">{t("vehicles.status.sold")}</SelectItem>
+                <SelectItem value="Arquivado">{t("vehicles.status.archived")}</SelectItem>
               </SelectContent>
             </Select>
           )}
@@ -271,10 +265,10 @@ export default function Vehicles() {
           {sortBy === "brand" && (
             <Select value={selectedBrand} onValueChange={setSelectedBrand}>
               <SelectTrigger className="w-full sm:w-52">
-                <SelectValue placeholder="Todas as Marcas" />
+                <SelectValue placeholder={t("vehicles.allBrands")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas as Marcas</SelectItem>
+                <SelectItem value="all">{t("vehicles.allBrands")}</SelectItem>
                 {uniqueBrands.map((brand) => (
                   <SelectItem key={brand} value={brand}>
                     {brand}
@@ -288,9 +282,9 @@ export default function Vehicles() {
 
       <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {isLoading ? (
-          <p className="text-muted-foreground">Carregando...</p>
+          <p className="text-muted-foreground">{t("common.loading")}</p>
         ) : filteredVehicles.length === 0 ? (
-          <p className="text-muted-foreground">Nenhum veículo encontrado</p>
+          <p className="text-muted-foreground">{t("vehicles.noVehicles")}</p>
         ) : (
           filteredVehicles.map((vehicle: any) => (
             <Link key={vehicle.id} href={`/veiculo/${vehicle.id}`}>
@@ -311,10 +305,10 @@ export default function Vehicles() {
                   </CardTitle>
                   <div className="space-y-1.5 text-sm">
                     <p className="text-muted-foreground">
-                      <span className="font-medium">Ano:</span> {vehicle.year}
+                      <span className="font-medium">{t("vehicles.year")}:</span> {vehicle.year}
                     </p>
                     <p className="text-muted-foreground font-mono">
-                      <span className="font-medium font-sans">Placa:</span> {vehicle.plate}
+                      <span className="font-medium font-sans">{t("vehicles.plate")}:</span> {vehicle.plate}
                     </p>
                     <div className="pt-1">
                       <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-primary/10 text-primary border border-primary/20">

@@ -12,6 +12,7 @@ import { CheckSquare } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { ChecklistItemStatus } from "@/components/ChecklistItemStatus";
+import { useI18n } from "@/lib/i18n";
 import { 
   getChecklistStats,
   getChecklistItemStatus,
@@ -22,6 +23,7 @@ import {
 } from "@shared/checklistUtils";
 
 export default function Checklists() {
+  const { t } = useI18n();
   const [selectedVehicle, setSelectedVehicle] = useState<string>("all");
 
   const { data: vehicles = [], isLoading } = useQuery<any[]>({
@@ -69,18 +71,18 @@ export default function Checklists() {
     <div className="flex h-full flex-col p-8">
       <div className="mb-8 flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Checklists</h1>
+          <h1 className="text-3xl font-bold text-foreground">{t("checklists.title")}</h1>
           <p className="mt-2 text-muted-foreground">
-            Acompanhe o progresso dos checklists de todos os veículos
+            {t("checklists.subtitle")}
           </p>
         </div>
         <div className="w-64">
           <Select value={selectedVehicle} onValueChange={setSelectedVehicle}>
             <SelectTrigger>
-              <SelectValue placeholder="Filtrar por veículo" />
+              <SelectValue placeholder={t("checklists.filterByVehicle")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos os Veículos</SelectItem>
+              <SelectItem value="all">{t("checklists.allVehicles")}</SelectItem>
               {activeVehicles.map((vehicle) => (
                 <SelectItem key={vehicle.id} value={vehicle.id}>
                   {vehicle.brand} {vehicle.model} - {vehicle.plate}
@@ -95,7 +97,7 @@ export default function Checklists() {
         <Card>
           <CardContent className="pt-6">
             <p className="text-center text-muted-foreground">
-              Nenhum veículo encontrado
+              {t("checklists.noVehiclesFound")}
             </p>
           </CardContent>
         </Card>
@@ -120,7 +122,7 @@ export default function Checklists() {
                       {getVehicleChecklistStats(vehicle).completionPercentage}%
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Completo
+                      {t("checklists.complete")}
                     </p>
                   </div>
                 </div>

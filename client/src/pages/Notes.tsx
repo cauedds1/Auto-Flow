@@ -27,8 +27,10 @@ import type { StoreObservation } from "@shared/schema";
 import { StoreObservationDialog } from "@/components/StoreObservationDialog";
 import { RemindersTab } from "@/components/RemindersTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useI18n } from "@/lib/i18n";
 
 export default function Notes() {
+  const { t } = useI18n();
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -55,16 +57,16 @@ export default function Notes() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/store-observations"] });
       toast({
-        title: "Observação deletada",
-        description: "A observação foi removida com sucesso.",
+        title: t("notes.observationDeleted"),
+        description: t("notes.observationDeletedDesc"),
       });
       setDeleteId(null);
     },
     onError: () => {
       toast({
         variant: "destructive",
-        title: "Erro",
-        description: "Não foi possível deletar a observação.",
+        title: t("notes.deleteError"),
+        description: t("notes.deleteErrorDesc"),
       });
     },
   });
@@ -75,15 +77,12 @@ export default function Notes() {
     return matchesCategory && matchesStatus;
   });
 
-  // Contadores de OBSERVAÇÕES DA LOJA
   const pendingCount = observations.filter(o => o.status === "Pendente").length;
   const resolvedCount = observations.filter(o => o.status === "Resolvido").length;
 
-  // Contadores de MEUS LEMBRETES
   const pendingRemindersCount = reminders.filter(r => r.status === "Pendente").length;
   const completedRemindersCount = reminders.filter(r => r.status === "Concluído").length;
 
-  // Derivar categorias únicas dos dados
   const uniqueCategories = Array.from(
     new Set(observations.map(o => o.category).filter(Boolean))
   ).sort();
@@ -92,18 +91,18 @@ export default function Notes() {
     <div className="flex h-full flex-col p-8">
       <div className="mb-8 flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Observações Gerais</h1>
+          <h1 className="text-3xl font-bold text-foreground">{t("notes.title")}</h1>
           <p className="mt-2 text-muted-foreground">
-            Registre lembretes sobre a loja: estoque de materiais (papel higiênico, café, copos, pretinho, etc.) e manutenção da propriedade (portão, lâmpadas, etc.)
+            {t("notes.subtitle")}
           </p>
           <div className="mt-4 flex gap-4">
             <Badge variant="outline" className="text-sm">
               <AlertCircle className="mr-1 h-3 w-3" />
-              {pendingCount} Pendente{pendingCount !== 1 ? 's' : ''}
+              {pendingCount} {pendingCount !== 1 ? t("notes.pendingPlural") : t("notes.pending")}
             </Badge>
             <Badge variant="outline" className="text-sm">
               <CheckCircle2 className="mr-1 h-3 w-3" />
-              {resolvedCount} Resolvido{resolvedCount !== 1 ? 's' : ''}
+              {resolvedCount} {resolvedCount !== 1 ? t("notes.resolvedPlural") : t("notes.resolved")}
             </Badge>
           </div>
         </div>
@@ -112,7 +111,7 @@ export default function Notes() {
           setIsDialogOpen(true);
         }}>
           <Plus className="mr-2 h-4 w-4" />
-          Nova Observação
+          {t("notes.newObservation")}
         </Button>
       </div>
 
@@ -120,7 +119,7 @@ export default function Notes() {
         <TabsList className="mb-6">
           <TabsTrigger value="observacoes" data-testid="tab-store-observations">
             <div className="flex items-center gap-2">
-              <span>Observações da Loja</span>
+              <span>{t("notes.storeObservations")}</span>
               <Badge variant="outline" className="text-xs">
                 <AlertCircle className="mr-1 h-3 w-3" />
                 {pendingCount}
@@ -130,7 +129,7 @@ export default function Notes() {
           <TabsTrigger value="lembretes" data-testid="tab-personal-reminders">
             <div className="flex items-center gap-2">
               <Clock className="mr-2 h-4 w-4" />
-              <span>Meus Lembretes</span>
+              <span>{t("notes.myReminders")}</span>
               <Badge variant="outline" className="text-xs">
                 <Clock className="mr-1 h-3 w-3" />
                 {pendingRemindersCount}
@@ -143,21 +142,21 @@ export default function Notes() {
           <div className="mb-6 flex gap-4 items-center">
             <Badge variant="outline" className="text-sm">
               <AlertCircle className="mr-1 h-3 w-3" />
-              {pendingCount} Pendente{pendingCount !== 1 ? 's' : ''}
+              {pendingCount} {pendingCount !== 1 ? t("notes.pendingPlural") : t("notes.pending")}
             </Badge>
             <Badge variant="outline" className="text-sm">
               <CheckCircle2 className="mr-1 h-3 w-3" />
-              {resolvedCount} Resolvido{resolvedCount !== 1 ? 's' : ''}
+              {resolvedCount} {resolvedCount !== 1 ? t("notes.resolvedPlural") : t("notes.resolved")}
             </Badge>
           </div>
 
           <div className="mb-6 flex gap-4">
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
               <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Filtrar por categoria" />
+                <SelectValue placeholder={t("notes.filterByCategory")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas as Categorias</SelectItem>
+                <SelectItem value="all">{t("common.allCategories")}</SelectItem>
                 {uniqueCategories.map((cat) => (
                   <SelectItem key={cat} value={cat!}>
                     {cat}
@@ -168,29 +167,29 @@ export default function Notes() {
 
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Filtrar por status" />
+                <SelectValue placeholder={t("notes.filterByStatus")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos os Status</SelectItem>
-                <SelectItem value="Pendente">Pendente</SelectItem>
-                <SelectItem value="Resolvido">Resolvido</SelectItem>
+                <SelectItem value="all">{t("common.allStatus")}</SelectItem>
+                <SelectItem value="Pendente">{t("notes.pending")}</SelectItem>
+                <SelectItem value="Resolvido">{t("notes.resolved")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {isLoading ? (
-            <p className="text-muted-foreground">Carregando...</p>
+            <p className="text-muted-foreground">{t("common.loading")}</p>
           ) : filteredObservations.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12">
               <StickyNote className="h-16 w-16 text-muted-foreground mb-4" />
               <p className="text-lg text-muted-foreground">
                 {observations.length === 0 
-                  ? "Nenhuma observação registrada ainda"
-                  : "Nenhuma observação encontrada com os filtros aplicados"}
+                  ? t("notes.noObservations")
+                  : t("notes.noObservationsFiltered")}
               </p>
               {observations.length === 0 && (
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Clique em "Nova Observação" para adicionar lembretes sobre a loja
+                  {t("notes.clickNewObservation")}
                 </p>
               )}
             </div>
@@ -208,13 +207,13 @@ export default function Notes() {
                             <CheckCircle2 className="h-5 w-5 text-green-500" />
                           )}
                           <CardTitle className="text-lg">
-                            {obs.category ? obs.category : "Sem categoria"}
+                            {obs.category ? obs.category : t("notes.noCategory")}
                           </CardTitle>
                           <Badge 
                             variant={obs.status === "Pendente" ? "default" : "outline"}
                             className={obs.status === "Pendente" ? "bg-yellow-500 text-white" : ""}
                           >
-                            {obs.status}
+                            {obs.status === "Pendente" ? t("notes.pending") : t("notes.resolved")}
                           </Badge>
                           {obs.expenseCost && (
                             <Badge variant="secondary">
@@ -223,9 +222,9 @@ export default function Notes() {
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          Criado em {format(new Date(obs.createdAt), "dd/MM/yyyy 'às' HH:mm")}
+                          {t("notes.createdOn")} {format(new Date(obs.createdAt), "dd/MM/yyyy 'às' HH:mm")}
                           {obs.resolvedAt && (
-                            <> • Resolvido em {format(new Date(obs.resolvedAt), "dd/MM/yyyy 'às' HH:mm")}</>
+                            <> • {t("notes.resolvedOn")} {format(new Date(obs.resolvedAt), "dd/MM/yyyy 'às' HH:mm")}</>
                           )}
                         </p>
                       </div>
@@ -262,7 +261,11 @@ export default function Notes() {
 
           {!isLoading && filteredObservations.length > 0 && (
             <div className="mt-6 text-center text-sm text-muted-foreground">
-              Mostrando {filteredObservations.length} de {observations.length} {observations.length === 1 ? 'observação' : 'observações'}
+              {t("notes.showingCount", { 
+                count: filteredObservations.length, 
+                total: observations.length, 
+                label: observations.length === 1 ? t("notes.observation") : t("notes.observations") 
+              })}
             </div>
           )}
         </TabsContent>
@@ -272,15 +275,15 @@ export default function Notes() {
             <div className="flex gap-4 items-center">
               <Badge variant="outline" className="text-sm">
                 <Clock className="mr-1 h-3 w-3" />
-                {pendingRemindersCount} Pendente{pendingRemindersCount !== 1 ? 's' : ''}
+                {pendingRemindersCount} {pendingRemindersCount !== 1 ? t("notes.pendingPlural") : t("notes.pending")}
               </Badge>
               <Badge variant="outline" className="text-sm">
                 <CheckCircle2 className="mr-1 h-3 w-3" />
-                {completedRemindersCount} Concluído{completedRemindersCount !== 1 ? 's' : ''}
+                {completedRemindersCount} {completedRemindersCount !== 1 ? t("notes.completedPlural") : t("notes.completed")}
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground">
-              Crie lembretes pessoais com prazos. Apenas você verá seus lembretes - são anotações individuais para não esquecer de nada.
+              {t("notes.reminderNote")}
             </p>
             <RemindersTab vehicleId="" />
           </div>
@@ -299,18 +302,18 @@ export default function Notes() {
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogTitle>{t("notes.confirmDeleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja deletar esta observação? Esta ação não pode ser desfeita.
+              {t("notes.confirmDeleteDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteId && deleteMutation.mutate(deleteId)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Deletar
+              {t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

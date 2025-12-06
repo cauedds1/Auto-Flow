@@ -5,8 +5,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Car } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useI18n } from "@/lib/i18n";
+import { LanguageSelector } from "@/components/LanguageSelector";
 
 export default function Signup() {
+  const { t } = useI18n();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -20,8 +23,8 @@ export default function Signup() {
 
     if (password !== confirmPassword) {
       toast({
-        title: "Erro",
-        description: "As senhas não coincidem",
+        title: t("common.error"),
+        description: t("auth.passwordsDontMatch"),
         variant: "destructive",
       });
       return;
@@ -29,8 +32,8 @@ export default function Signup() {
 
     if (password.length < 6) {
       toast({
-        title: "Erro",
-        description: "A senha deve ter pelo menos 6 caracteres",
+        title: t("common.error"),
+        description: t("auth.passwordMinLength"),
         variant: "destructive",
       });
       return;
@@ -49,24 +52,24 @@ export default function Signup() {
 
       if (response.ok && data.success) {
         toast({
-          title: "Sucesso!",
-          description: "Conta criada! Redirecionando para login...",
+          title: t("common.success"),
+          description: t("auth.accountCreatedRedirecting"),
         });
         setTimeout(() => {
           window.location.href = "/login";
         }, 1500);
       } else {
         toast({
-          title: "Erro ao criar conta",
-          description: data.message || "Ocorreu um erro. Tente novamente.",
+          title: t("auth.errorCreatingAccount"),
+          description: data.message || t("auth.tryAgain"),
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error("Erro no signup:", error);
       toast({
-        title: "Erro de conexão",
-        description: "Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.",
+        title: t("auth.connectionError"),
+        description: t("auth.connectionErrorDesc"),
         variant: "destructive",
       });
     } finally {
@@ -75,9 +78,11 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-green-600 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-green-600 flex items-center justify-center p-4 relative">
+      <div className="absolute top-4 right-4">
+        <LanguageSelector />
+      </div>
       <div className="w-full max-w-md space-y-6">
-        {/* Logo */}
         <div className="flex items-center justify-center gap-3">
           <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center">
             <Car className="w-7 h-7 text-purple-600" />
@@ -87,16 +92,16 @@ export default function Signup() {
 
         <Card className="border-0 shadow-2xl">
             <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl font-bold">Criar Conta</CardTitle>
+              <CardTitle className="text-2xl font-bold">{t("auth.createAccountTitle")}</CardTitle>
               <CardDescription>
-                Preencha os dados abaixo para começar a usar o VeloStock
+                {t("auth.fillDataToStart")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <form onSubmit={handleSignup} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="firstName">Nome</Label>
+                    <Label htmlFor="firstName">{t("users.firstName")}</Label>
                     <Input
                       id="firstName"
                       type="text"
@@ -108,7 +113,7 @@ export default function Signup() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="lastName">Sobrenome</Label>
+                    <Label htmlFor="lastName">{t("users.lastName")}</Label>
                     <Input
                       id="lastName"
                       type="text"
@@ -122,7 +127,7 @@ export default function Signup() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">{t("auth.email")}</Label>
                   <Input
                     id="email"
                     type="email"
@@ -135,7 +140,7 @@ export default function Signup() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password">Senha</Label>
+                  <Label htmlFor="password">{t("auth.password")}</Label>
                   <Input
                     id="password"
                     type="password"
@@ -148,7 +153,7 @@ export default function Signup() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirmar Senha</Label>
+                  <Label htmlFor="confirmPassword">{t("auth.confirmPassword")}</Label>
                   <Input
                     id="confirmPassword"
                     type="password"
@@ -165,18 +170,18 @@ export default function Signup() {
                   className="w-full bg-purple-600 hover:bg-purple-700"
                   disabled={isLoading}
                 >
-                  {isLoading ? "Criando conta..." : "Criar Conta"}
+                  {isLoading ? t("auth.creatingAccount") : t("auth.createAccountTitle")}
                 </Button>
               </form>
 
               <div className="text-center text-sm pt-4 space-y-2">
                 <div>
-                  <span className="text-muted-foreground">Já tem uma conta? </span>
+                  <span className="text-muted-foreground">{t("auth.alreadyHaveAccount")} </span>
                   <button
                     className="p-0 h-auto font-semibold text-purple-600 hover:text-purple-700 underline"
                     onClick={() => (window.location.href = "/login")}
                   >
-                    Fazer login
+                    {t("auth.login")}
                   </button>
                 </div>
                 <div>
@@ -184,7 +189,7 @@ export default function Signup() {
                     className="text-sm text-muted-foreground hover:text-foreground"
                     onClick={() => (window.location.href = "/")}
                   >
-                    ← Voltar para home
+                    ← {t("auth.backToHome")}
                   </button>
                 </div>
               </div>

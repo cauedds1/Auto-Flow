@@ -13,6 +13,7 @@ import { Plus, Phone, Mail, User, TrendingUp, Calendar, Edit, Trash2, Car } from
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { LeadAssistant } from "@/components/LeadAssistant";
+import { useI18n } from "@/lib/i18n";
 
 type Lead = {
   id: string;
@@ -45,6 +46,7 @@ type LeadStats = {
 };
 
 export default function Leads() {
+  const { t } = useI18n();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -59,23 +61,19 @@ export default function Leads() {
     veiculoInteresse: "",
   });
 
-  // Buscar leads (backend já filtra por vendedor)
   const { data: leads = [], isLoading } = useQuery<Lead[]>({
     queryKey: ["/api/leads"],
   });
 
-  // Estatísticas
   const { data: stats } = useQuery<LeadStats>({
     queryKey: ["/api/leads/stats/me"],
   });
 
-  // Buscar veículos em estoque (não vendidos nem arquivados)
   const { data: vehicles = [] } = useQuery<Vehicle[]>({
     queryKey: ["/api/vehicles"],
     select: (data: any[]) => data.filter((v: any) => v.status !== "Vendido" && v.status !== "Arquivado"),
   });
 
-  // Buscar origens de leads das configurações avançadas
   const { data: advancedSettings } = useQuery({
     queryKey: ["/api/settings/advanced"],
     queryFn: async () => {
@@ -101,12 +99,12 @@ export default function Leads() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
       queryClient.invalidateQueries({ queryKey: ["/api/leads/stats/me"] });
-      toast({ title: "Lead criado com sucesso!" });
+      toast({ title: t("leads.leadCreated") });
       setIsCreateOpen(false);
       resetForm();
     },
     onError: () => {
-      toast({ title: "Erro ao criar lead", variant: "destructive" });
+      toast({ title: t("leads.errorCreating"), variant: "destructive" });
     },
   });
 
@@ -124,7 +122,7 @@ export default function Leads() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
       queryClient.invalidateQueries({ queryKey: ["/api/leads/stats/me"] });
-      toast({ title: "Lead atualizado!" });
+      toast({ title: t("leads.leadUpdated") });
       setEditingLead(null);
       resetForm();
     },
@@ -141,7 +139,7 @@ export default function Leads() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
-      toast({ title: "Lead excluído!" });
+      toast({ title: t("leads.leadDeleted") });
     },
   });
 
@@ -178,32 +176,45 @@ export default function Leads() {
     return colors[status] || "bg-gray-500";
   };
 
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      "Novo": t("leads.status.new"),
+      "Contatado": t("leads.status.contacted"),
+      "Visitou Loja": t("leads.status.visitedStore"),
+      "Proposta Enviada": t("leads.status.proposalSent"),
+      "Negociando": t("leads.status.negotiating"),
+      "Convertido": t("leads.status.converted"),
+      "Perdido": t("leads.status.lost"),
+    };
+    return labels[status] || status;
+  };
+
   if (isLoading) {
-    return <div className="p-6">Carregando leads...</div>;
+    return <div className="p-6">{t("leads.loadingLeads")}</div>;
   }
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Leads & CRM</h1>
-          <p className="text-muted-foreground">Gerencie seus potenciais clientes</p>
+          <h1 className="text-3xl font-bold">{t("leads.title")}</h1>
+          <p className="text-muted-foreground">{t("leads.subtitle")}</p>
         </div>
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
             <Button onClick={resetForm}>
               <Plus className="w-4 h-4 mr-2" />
-              Novo Lead
+              {t("leads.newLead")}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>{editingLead ? "Editar Lead" : "Novo Lead"}</DialogTitle>
+              <DialogTitle>{editingLead ? t("leads.editLead") : t("leads.newLead")}</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Nome *</Label>
+                  <Label>{t("leads.name")} *</Label>
                   <Input
                     value={formData.nome}
                     onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
@@ -211,7 +222,7 @@ export default function Leads() {
                   />
                 </div>
                 <div>
-                  <Label>Telefone *</Label>
+                  <Label>{t("leads.phone")} *</Label>
                   <Input
                     value={formData.telefone}
                     onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
@@ -221,7 +232,7 @@ export default function Leads() {
               </div>
 
               <div>
-                <Label>Email</Label>
+                <Label>{t("leads.email")}</Label>
                 <Input
                   type="email"
                   value={formData.email || ""}
@@ -232,27 +243,27 @@ export default function Leads() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Status</Label>
+                  <Label>{t("common.status")}</Label>
                   <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Novo">Novo</SelectItem>
-                      <SelectItem value="Contatado">Contatado</SelectItem>
-                      <SelectItem value="Visitou Loja">Visitou Loja</SelectItem>
-                      <SelectItem value="Proposta Enviada">Proposta Enviada</SelectItem>
-                      <SelectItem value="Negociando">Negociando</SelectItem>
-                      <SelectItem value="Convertido">Convertido</SelectItem>
-                      <SelectItem value="Perdido">Perdido</SelectItem>
+                      <SelectItem value="Novo">{t("leads.status.new")}</SelectItem>
+                      <SelectItem value="Contatado">{t("leads.status.contacted")}</SelectItem>
+                      <SelectItem value="Visitou Loja">{t("leads.status.visitedStore")}</SelectItem>
+                      <SelectItem value="Proposta Enviada">{t("leads.status.proposalSent")}</SelectItem>
+                      <SelectItem value="Negociando">{t("leads.status.negotiating")}</SelectItem>
+                      <SelectItem value="Convertido">{t("leads.status.converted")}</SelectItem>
+                      <SelectItem value="Perdido">{t("leads.status.lost")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label>Origem</Label>
+                  <Label>{t("leads.source")}</Label>
                   <Select value={formData.origem || ""} onValueChange={(v) => setFormData({ ...formData, origem: v })}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
+                      <SelectValue placeholder={t("common.select")} />
                     </SelectTrigger>
                     <SelectContent>
                       {(advancedSettings?.origensLeads || ["WhatsApp", "Telefone", "Presencial", "Site", "Indicação"]).map((origem: string) => (
@@ -266,10 +277,10 @@ export default function Leads() {
               </div>
 
               <div>
-                <Label>Carro em Negociação</Label>
+                <Label>{t("leads.vehicleNegotiation")}</Label>
                 <Select value={formData.veiculoInteresse || ""} onValueChange={(v) => setFormData({ ...formData, veiculoInteresse: v })}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione um carro (opcional)" />
+                    <SelectValue placeholder={t("leads.selectVehicle")} />
                   </SelectTrigger>
                   <SelectContent>
                     {vehicles.map((v: Vehicle) => (
@@ -285,11 +296,11 @@ export default function Leads() {
               </div>
 
               <div>
-                <Label>Observações</Label>
+                <Label>{t("common.observations")}</Label>
                 <Textarea
                   value={formData.observacoes || ""}
                   onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
-                  placeholder="Anotações sobre o lead..."
+                  placeholder="..."
                   rows={3}
                 />
               </div>
@@ -300,10 +311,10 @@ export default function Leads() {
                   setEditingLead(null);
                   resetForm();
                 }}>
-                  Cancelar
+                  {t("common.cancel")}
                 </Button>
                 <Button onClick={handleSubmit} disabled={!formData.nome || !formData.telefone}>
-                  {editingLead ? "Salvar" : "Criar Lead"}
+                  {editingLead ? t("common.save") : t("leads.createLead")}
                 </Button>
               </div>
             </div>
@@ -311,23 +322,22 @@ export default function Leads() {
         </Dialog>
       </div>
 
-      {/* Estatísticas */}
       {stats && (
         <div className="grid grid-cols-4 gap-4">
           <Card className="p-4">
-            <div className="text-sm text-muted-foreground">Total de Leads</div>
+            <div className="text-sm text-muted-foreground">{t("leads.totalLeads")}</div>
             <div className="text-2xl font-bold">{stats.total}</div>
           </Card>
           <Card className="p-4">
-            <div className="text-sm text-muted-foreground">Convertidos</div>
+            <div className="text-sm text-muted-foreground">{t("leads.converted")}</div>
             <div className="text-2xl font-bold text-green-600">{stats.convertidos}</div>
           </Card>
           <Card className="p-4">
-            <div className="text-sm text-muted-foreground">Taxa de Conversão</div>
+            <div className="text-sm text-muted-foreground">{t("leads.conversionRate")}</div>
             <div className="text-2xl font-bold">{stats.taxaConversao}%</div>
           </Card>
           <Card className="p-4">
-            <div className="text-sm text-muted-foreground">Em Negociação</div>
+            <div className="text-sm text-muted-foreground">{t("leads.inNegotiation")}</div>
             <div className="text-2xl font-bold">
               {stats.porStatus?.find((s: any) => s.status === "Negociando")?.count || 0}
             </div>
@@ -335,15 +345,14 @@ export default function Leads() {
         </div>
       )}
 
-      {/* Lista de Leads */}
       <div className="grid gap-4">
         {leads.length === 0 ? (
           <Card className="p-12 text-center">
             <User className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground">Nenhum lead cadastrado ainda</p>
+            <p className="text-muted-foreground">{t("leads.noLeadsYet")}</p>
             <Button className="mt-4" onClick={() => setIsCreateOpen(true)}>
               <Plus className="w-4 h-4 mr-2" />
-              Criar Primeiro Lead
+              {t("leads.createFirstLead")}
             </Button>
           </Card>
         ) : (
@@ -353,7 +362,7 @@ export default function Leads() {
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <h3 className="text-lg font-semibold">{lead.nome}</h3>
-                    <Badge className={getStatusColor(lead.status)}>{lead.status}</Badge>
+                    <Badge className={getStatusColor(lead.status)}>{getStatusLabel(lead.status)}</Badge>
                     {lead.origem && (
                       <Badge variant="outline">{lead.origem}</Badge>
                     )}
@@ -427,7 +436,7 @@ export default function Leads() {
                     size="sm"
                     variant="ghost"
                     onClick={() => {
-                      if (confirm("Deseja excluir este lead?")) {
+                      if (confirm(t("leads.confirmDelete"))) {
                         deleteMutation.mutate(lead.id);
                       }
                     }}

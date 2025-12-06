@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
+import { useI18n } from "@/lib/i18n";
 
 interface DashboardStats {
   totalClientes: number;
@@ -96,6 +97,7 @@ interface BugReport {
 }
 
 function TokenGate({ onValidToken }: { onValidToken: (token: string) => void }) {
+  const { t } = useI18n();
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -115,13 +117,13 @@ function TokenGate({ onValidToken }: { onValidToken: (token: string) => void }) 
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Token inválido");
+        setError(data.error || t("admin.invalidToken"));
         return;
       }
 
       onValidToken(token);
     } catch (err) {
-      setError("Erro de conexão");
+      setError(t("admin.connectionError"));
     } finally {
       setLoading(false);
     }
@@ -134,21 +136,21 @@ function TokenGate({ onValidToken }: { onValidToken: (token: string) => void }) 
           <div className="mx-auto w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mb-4">
             <KeyRound className="w-8 h-8 text-purple-600 dark:text-purple-400" />
           </div>
-          <CardTitle className="text-2xl">Acesso Restrito</CardTitle>
+          <CardTitle className="text-2xl">{t("admin.accessRestricted")}</CardTitle>
           <CardDescription>
-            Digite o token de acesso para continuar
+            {t("admin.enterToken")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="token">Token de Acesso</Label>
+              <Label htmlFor="token">{t("admin.accessToken")}</Label>
               <div className="relative">
                 <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="token"
                   type="password"
-                  placeholder="Digite seu token"
+                  placeholder={t("admin.enterTokenPlaceholder")}
                   value={token}
                   onChange={(e) => setToken(e.target.value)}
                   className="pl-10"
@@ -166,7 +168,7 @@ function TokenGate({ onValidToken }: { onValidToken: (token: string) => void }) 
             )}
 
             <Button type="submit" className="w-full" disabled={loading} data-testid="button-validate-token">
-              {loading ? "Validando..." : "Acessar"}
+              {loading ? t("admin.validating") : t("admin.access")}
             </Button>
           </form>
         </CardContent>
@@ -176,6 +178,7 @@ function TokenGate({ onValidToken }: { onValidToken: (token: string) => void }) 
 }
 
 function AdminSetup({ accessToken, onSetupComplete }: { accessToken: string; onSetupComplete: () => void }) {
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nome, setNome] = useState("");
@@ -200,13 +203,13 @@ function AdminSetup({ accessToken, onSetupComplete }: { accessToken: string; onS
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Erro ao criar admin");
+        setError(data.error || t("admin.errorCreatingAdmin"));
         return;
       }
 
       onSetupComplete();
     } catch (err) {
-      setError("Erro de conexão");
+      setError(t("admin.connectionError"));
     } finally {
       setLoading(false);
     }
@@ -216,21 +219,21 @@ function AdminSetup({ accessToken, onSetupComplete }: { accessToken: string; onS
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 to-green-500 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Configurar Admin</CardTitle>
+          <CardTitle className="text-2xl">{t("admin.setupAdmin")}</CardTitle>
           <CardDescription>
-            Crie sua conta de administrador do VeloStock
+            {t("admin.createAdminAccount")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="nome">Nome</Label>
+              <Label htmlFor="nome">{t("admin.name")}</Label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="nome"
                   type="text"
-                  placeholder="Seu nome"
+                  placeholder={t("admin.yourName")}
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
                   className="pl-10"
@@ -258,7 +261,7 @@ function AdminSetup({ accessToken, onSetupComplete }: { accessToken: string; onS
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
+              <Label htmlFor="password">{t("auth.password")}</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -281,7 +284,7 @@ function AdminSetup({ accessToken, onSetupComplete }: { accessToken: string; onS
             )}
 
             <Button type="submit" className="w-full" disabled={loading} data-testid="button-admin-setup">
-              {loading ? "Criando..." : "Criar Conta Admin"}
+              {loading ? t("admin.creating") : t("admin.createAdminBtn")}
             </Button>
           </form>
         </CardContent>
@@ -293,6 +296,7 @@ function AdminSetup({ accessToken, onSetupComplete }: { accessToken: string; onS
 function AdminLogin({ onLogin }: { 
   onLogin: (admin: Admin & { isMaster?: boolean }) => void; 
 }) {
+  const { t } = useI18n();
   const [loginMethod, setLoginMethod] = useState<"token" | "email">("token");
   const [token, setToken] = useState("");
   const [email, setEmail] = useState("");
@@ -320,13 +324,13 @@ function AdminLogin({ onLogin }: {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Erro ao fazer login");
+        setError(data.error || t("admin.errorLogging"));
         return;
       }
 
       onLogin(data);
     } catch (err) {
-      setError("Erro de conexão");
+      setError(t("admin.connectionError"));
     } finally {
       setLoading(false);
     }
@@ -339,9 +343,9 @@ function AdminLogin({ onLogin }: {
           <div className="mx-auto w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mb-4">
             <Shield className="w-8 h-8 text-purple-600 dark:text-purple-400" />
           </div>
-          <CardTitle className="text-2xl">Painel Administrativo</CardTitle>
+          <CardTitle className="text-2xl">{t("admin.title")}</CardTitle>
           <CardDescription>
-            Acesse o painel de gestão VeloStock
+            {t("admin.panelAccess")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -349,24 +353,24 @@ function AdminLogin({ onLogin }: {
             <TabsList className="grid w-full grid-cols-2 mb-4">
               <TabsTrigger value="token" className="gap-2" data-testid="tab-login-token">
                 <KeyRound className="h-4 w-4" />
-                Token
+                {t("admin.loginByToken")}
               </TabsTrigger>
               <TabsTrigger value="email" className="gap-2" data-testid="tab-login-email">
                 <Mail className="h-4 w-4" />
-                Email
+                {t("admin.loginByEmail")}
               </TabsTrigger>
             </TabsList>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <TabsContent value="token" className="space-y-4 mt-0">
                 <div className="space-y-2">
-                  <Label htmlFor="token">Token de Acesso</Label>
+                  <Label htmlFor="token">{t("admin.accessToken")}</Label>
                   <div className="relative">
                     <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="token"
                       type="password"
-                      placeholder="Digite seu token"
+                      placeholder={t("admin.enterTokenPlaceholder")}
                       value={token}
                       onChange={(e) => setToken(e.target.value)}
                       className="pl-10"
@@ -376,7 +380,7 @@ function AdminLogin({ onLogin }: {
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Use o token fornecido pelo administrador master
+                    {t("admin.useTokenProvided")}
                   </p>
                 </div>
               </TabsContent>
@@ -400,7 +404,7 @@ function AdminLogin({ onLogin }: {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password">Senha</Label>
+                  <Label htmlFor="password">{t("auth.password")}</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -424,7 +428,7 @@ function AdminLogin({ onLogin }: {
               )}
 
               <Button type="submit" className="w-full" disabled={loading} data-testid="button-admin-login">
-                {loading ? "Entrando..." : "Entrar"}
+                {loading ? t("admin.entering") : t("admin.login")}
               </Button>
             </form>
           </Tabs>
@@ -435,6 +439,7 @@ function AdminLogin({ onLogin }: {
 }
 
 function NovaEmpresaDialog({ onSuccess }: { onSuccess: () => void }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -468,7 +473,7 @@ function NovaEmpresaDialog({ onSuccess }: { onSuccess: () => void }) {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Erro ao criar empresa");
+        setError(data.error || t("admin.errorCreatingCompany"));
         return;
       }
 
@@ -485,7 +490,7 @@ function NovaEmpresaDialog({ onSuccess }: { onSuccess: () => void }) {
       });
       onSuccess();
     } catch (err) {
-      setError("Erro de conexão");
+      setError(t("admin.connectionError"));
     } finally {
       setLoading(false);
     }
@@ -496,20 +501,20 @@ function NovaEmpresaDialog({ onSuccess }: { onSuccess: () => void }) {
       <DialogTrigger asChild>
         <Button className="gap-2" data-testid="button-nova-empresa">
           <Plus className="h-4 w-4" />
-          Nova Empresa
+          {t("admin.newCompany")}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Cadastrar Nova Empresa</DialogTitle>
+          <DialogTitle>{t("admin.registerNewCompany")}</DialogTitle>
           <DialogDescription>
-            Adicione uma nova empresa ao sistema VeloStock
+            {t("admin.addCompanyToSystem")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="nomeFantasia">Nome Fantasia *</Label>
+              <Label htmlFor="nomeFantasia">{t("admin.tradeName")} *</Label>
               <Input
                 id="nomeFantasia"
                 value={formData.nomeFantasia}
@@ -519,7 +524,7 @@ function NovaEmpresaDialog({ onSuccess }: { onSuccess: () => void }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="razaoSocial">Razão Social</Label>
+              <Label htmlFor="razaoSocial">{t("admin.corporateName")}</Label>
               <Input
                 id="razaoSocial"
                 value={formData.razaoSocial}
@@ -541,7 +546,7 @@ function NovaEmpresaDialog({ onSuccess }: { onSuccess: () => void }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="telefone">Telefone</Label>
+              <Label htmlFor="telefone">{t("admin.phone")}</Label>
               <Input
                 id="telefone"
                 value={formData.telefone}
@@ -565,13 +570,13 @@ function NovaEmpresaDialog({ onSuccess }: { onSuccess: () => void }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="senhaTemporaria">Senha Temporária *</Label>
+              <Label htmlFor="senhaTemporaria">{t("admin.temporaryPassword")} *</Label>
               <Input
                 id="senhaTemporaria"
                 type="password"
                 value={formData.senhaTemporaria}
                 onChange={(e) => setFormData({ ...formData, senhaTemporaria: e.target.value })}
-                placeholder="Mínimo 6 caracteres"
+                placeholder={t("admin.minChars")}
                 required
                 minLength={6}
                 data-testid="input-senha-temporaria"
@@ -581,20 +586,20 @@ function NovaEmpresaDialog({ onSuccess }: { onSuccess: () => void }) {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="plano">Plano</Label>
+              <Label htmlFor="plano">{t("admin.plan")}</Label>
               <Select value={formData.plano} onValueChange={(v) => setFormData({ ...formData, plano: v })}>
                 <SelectTrigger data-testid="select-plano">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="basico">Básico</SelectItem>
-                  <SelectItem value="profissional">Profissional</SelectItem>
-                  <SelectItem value="enterprise">Enterprise</SelectItem>
+                  <SelectItem value="basico">{t("admin.planBasic")}</SelectItem>
+                  <SelectItem value="profissional">{t("admin.planPro")}</SelectItem>
+                  <SelectItem value="enterprise">{t("admin.planEnterprise")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="diasTestGratis">Dias de Teste</Label>
+              <Label htmlFor="diasTestGratis">{t("admin.trialDays")}</Label>
               <Input
                 id="diasTestGratis"
                 type="number"
@@ -615,10 +620,10 @@ function NovaEmpresaDialog({ onSuccess }: { onSuccess: () => void }) {
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancelar
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={loading} data-testid="button-salvar-empresa">
-              {loading ? "Salvando..." : "Cadastrar Empresa"}
+              {loading ? t("admin.saving") : t("admin.registerCompany")}
             </Button>
           </div>
         </form>
@@ -628,6 +633,7 @@ function NovaEmpresaDialog({ onSuccess }: { onSuccess: () => void }) {
 }
 
 function NovoPagamentoDialog({ clientes, onSuccess }: { clientes: Cliente[]; onSuccess: () => void }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -657,7 +663,7 @@ function NovoPagamentoDialog({ clientes, onSuccess }: { clientes: Cliente[]; onS
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Erro ao criar pagamento");
+        setError(data.error || t("admin.errorCreatingPayment"));
         return;
       }
 
@@ -670,7 +676,7 @@ function NovoPagamentoDialog({ clientes, onSuccess }: { clientes: Cliente[]; onS
       });
       onSuccess();
     } catch (err) {
-      setError("Erro de conexão");
+      setError(t("admin.connectionError"));
     } finally {
       setLoading(false);
     }
@@ -681,27 +687,27 @@ function NovoPagamentoDialog({ clientes, onSuccess }: { clientes: Cliente[]; onS
       <DialogTrigger asChild>
         <Button className="gap-2" data-testid="button-novo-pagamento">
           <Plus className="h-4 w-4" />
-          Nova Cobrança
+          {t("admin.newCharge")}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Criar Nova Cobrança</DialogTitle>
+          <DialogTitle>{t("admin.createNewCharge")}</DialogTitle>
           <DialogDescription>
-            Gere uma nova cobrança para uma empresa
+            {t("admin.generateChargeForCompany")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="companyId">Empresa *</Label>
+            <Label htmlFor="companyId">{t("admin.company")} *</Label>
             <Select value={formData.companyId} onValueChange={(v) => setFormData({ ...formData, companyId: v })}>
               <SelectTrigger data-testid="select-empresa-pagamento">
-                <SelectValue placeholder="Selecione uma empresa" />
+                <SelectValue placeholder={t("admin.selectCompany")} />
               </SelectTrigger>
               <SelectContent>
                 {clientes.map((c) => (
                   <SelectItem key={c.empresaId} value={c.empresaId}>
-                    {c.nomeFantasia || "Sem nome"}
+                    {c.nomeFantasia || t("admin.noName")}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -710,7 +716,7 @@ function NovoPagamentoDialog({ clientes, onSuccess }: { clientes: Cliente[]; onS
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="valor">Valor (R$) *</Label>
+              <Label htmlFor="valor">{t("admin.valueAmount")} *</Label>
               <Input
                 id="valor"
                 type="number"
@@ -723,7 +729,7 @@ function NovoPagamentoDialog({ clientes, onSuccess }: { clientes: Cliente[]; onS
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="dataVencimento">Vencimento *</Label>
+              <Label htmlFor="dataVencimento">{t("admin.dueDate")} *</Label>
               <Input
                 id="dataVencimento"
                 type="date"
@@ -736,12 +742,12 @@ function NovoPagamentoDialog({ clientes, onSuccess }: { clientes: Cliente[]; onS
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="descricao">Descrição</Label>
+            <Label htmlFor="descricao">{t("common.description")}</Label>
             <Input
               id="descricao"
               value={formData.descricao}
               onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-              placeholder="Ex: Mensalidade Dezembro/2025"
+              placeholder={t("admin.monthlyExample")}
               data-testid="input-descricao-pagamento"
             />
           </div>
@@ -754,10 +760,10 @@ function NovoPagamentoDialog({ clientes, onSuccess }: { clientes: Cliente[]; onS
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancelar
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={loading} data-testid="button-salvar-pagamento">
-              {loading ? "Salvando..." : "Criar Cobrança"}
+              {loading ? t("admin.saving") : t("admin.createCharge")}
             </Button>
           </div>
         </form>
@@ -767,6 +773,7 @@ function NovoPagamentoDialog({ clientes, onSuccess }: { clientes: Cliente[]; onS
 }
 
 export default function AdminPanel() {
+  const { t } = useI18n();
   const [admin, setAdmin] = useState<Admin | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [needsSetup, setNeedsSetup] = useState(false);
@@ -913,10 +920,10 @@ export default function AdminPanel() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { variant: "default" | "outline" | "destructive" | "secondary"; label: string }> = {
-      ativo: { variant: "default", label: "Ativo" },
-      teste_gratis: { variant: "outline", label: "Teste Gratuito" },
-      suspenso: { variant: "destructive", label: "Suspenso" },
-      cancelado: { variant: "secondary", label: "Cancelado" },
+      ativo: { variant: "default", label: t("admin.statusActive") },
+      teste_gratis: { variant: "outline", label: t("admin.statusTrial") },
+      suspenso: { variant: "destructive", label: t("admin.statusSuspended") },
+      cancelado: { variant: "secondary", label: t("admin.statusCanceled") },
     };
     const config = statusConfig[status] || statusConfig.ativo;
     return <Badge variant={config.variant}>{config.label}</Badge>;
@@ -924,10 +931,10 @@ export default function AdminPanel() {
 
   const getPagamentoStatusBadge = (status: string) => {
     const statusConfig: Record<string, { variant: "default" | "outline" | "destructive" | "secondary"; label: string; icon: any }> = {
-      pago: { variant: "default", label: "Pago", icon: CheckCircle },
-      pendente: { variant: "outline", label: "Pendente", icon: Clock },
-      atrasado: { variant: "destructive", label: "Atrasado", icon: AlertTriangle },
-      cancelado: { variant: "secondary", label: "Cancelado", icon: X },
+      pago: { variant: "default", label: t("admin.statusPaid"), icon: CheckCircle },
+      pendente: { variant: "outline", label: t("admin.statusPending"), icon: Clock },
+      atrasado: { variant: "destructive", label: t("admin.statusOverdue"), icon: AlertTriangle },
+      cancelado: { variant: "secondary", label: t("admin.statusCanceled"), icon: X },
     };
     const config = statusConfig[status] || statusConfig.pendente;
     const Icon = config.icon;
@@ -1003,7 +1010,7 @@ export default function AdminPanel() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 to-green-500">
         <div className="flex flex-col items-center gap-4">
           <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent" />
-          <p className="text-white font-medium">Carregando...</p>
+          <p className="text-white font-medium">{t("common.loading")}</p>
         </div>
       </div>
     );
@@ -1018,9 +1025,9 @@ export default function AdminPanel() {
       <header className="border-b bg-card">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-xl sm:text-2xl font-bold">Painel Administrativo VeloStock</h1>
+            <h1 className="text-xl sm:text-2xl font-bold">{t("admin.panelTitle")}</h1>
             <p className="text-muted-foreground text-sm hidden sm:block">
-              Olá, {admin.nome}
+              {t("admin.hello")}, {admin.nome}
             </p>
           </div>
           <Button
@@ -1031,7 +1038,7 @@ export default function AdminPanel() {
             data-testid="button-admin-logout"
           >
             <LogOut className="h-4 w-4" />
-            <span className="hidden sm:inline">Sair</span>
+            <span className="hidden sm:inline">{t("auth.logout")}</span>
           </Button>
         </div>
       </header>
@@ -1041,28 +1048,28 @@ export default function AdminPanel() {
           <TabsList className={`grid w-full lg:w-auto lg:inline-grid ${admin.isMaster ? 'grid-cols-6' : 'grid-cols-5'}`}>
             <TabsTrigger value="dashboard" className="gap-2" data-testid="tab-dashboard">
               <BarChart3 className="h-4 w-4 hidden sm:inline" />
-              Dashboard
+              {t("admin.dashboard")}
             </TabsTrigger>
             <TabsTrigger value="empresas" className="gap-2" data-testid="tab-empresas">
               <Building2 className="h-4 w-4 hidden sm:inline" />
-              Empresas
+              {t("admin.companies")}
             </TabsTrigger>
             <TabsTrigger value="financeiro" className="gap-2" data-testid="tab-financeiro">
               <Wallet className="h-4 w-4 hidden sm:inline" />
-              Financeiro
+              {t("admin.financial")}
             </TabsTrigger>
             <TabsTrigger value="config" className="gap-2" data-testid="tab-config">
               <Settings className="h-4 w-4 hidden sm:inline" />
-              Config
+              {t("admin.config")}
             </TabsTrigger>
             <TabsTrigger value="bugs" className="gap-2" data-testid="tab-bugs">
               <Bug className="h-4 w-4 hidden sm:inline" />
-              Bugs
+              {t("admin.bugReports")}
             </TabsTrigger>
             {admin.isMaster && (
               <TabsTrigger value="usuarios" className="gap-2" data-testid="tab-usuarios">
                 <UserPlus className="h-4 w-4 hidden sm:inline" />
-                Usuários
+                {t("admin.users")}
               </TabsTrigger>
             )}
           </TabsList>
@@ -1077,20 +1084,20 @@ export default function AdminPanel() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                   <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-                      <CardTitle className="text-xs sm:text-sm font-medium">Total de Clientes</CardTitle>
+                      <CardTitle className="text-xs sm:text-sm font-medium">{t("admin.totalClients")}</CardTitle>
                       <Building2 className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
                       <div className="text-xl sm:text-2xl font-bold">{stats?.totalClientes || 0}</div>
                       <p className="text-xs text-muted-foreground">
-                        {stats?.clientesAtivos || 0} ativos
+                        {stats?.clientesAtivos || 0} {t("admin.activeClients")}
                       </p>
                     </CardContent>
                   </Card>
 
                   <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-                      <CardTitle className="text-xs sm:text-sm font-medium">Teste Gratuito</CardTitle>
+                      <CardTitle className="text-xs sm:text-sm font-medium">{t("admin.freeTrial")}</CardTitle>
                       <TrendingUp className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
@@ -1100,7 +1107,7 @@ export default function AdminPanel() {
 
                   <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-                      <CardTitle className="text-xs sm:text-sm font-medium">Total Veículos</CardTitle>
+                      <CardTitle className="text-xs sm:text-sm font-medium">{t("admin.totalVehicles")}</CardTitle>
                       <Users className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
@@ -1110,7 +1117,7 @@ export default function AdminPanel() {
 
                   <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-                      <CardTitle className="text-xs sm:text-sm font-medium">Valor Pendente</CardTitle>
+                      <CardTitle className="text-xs sm:text-sm font-medium">{t("admin.pendingValue")}</CardTitle>
                       <DollarSign className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
@@ -1124,33 +1131,33 @@ export default function AdminPanel() {
                 <div className="grid md:grid-cols-2 gap-6">
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-lg">Últimas Empresas</CardTitle>
+                      <CardTitle className="text-lg">{t("admin.latestCompanies")}</CardTitle>
                     </CardHeader>
                     <CardContent>
                       {clientes.slice(0, 5).map((c) => (
                         <div key={c.empresaId} className="flex items-center justify-between py-2 border-b last:border-0">
                           <div>
-                            <p className="font-medium">{c.nomeFantasia || "Sem nome"}</p>
+                            <p className="font-medium">{c.nomeFantasia || t("admin.noName")}</p>
                             <p className="text-xs text-muted-foreground">{c.email}</p>
                           </div>
                           {getStatusBadge(c.subscriptionStatus)}
                         </div>
                       ))}
                       {clientes.length === 0 && (
-                        <p className="text-muted-foreground text-center py-4">Nenhuma empresa cadastrada</p>
+                        <p className="text-muted-foreground text-center py-4">{t("admin.noCompanyRegistered")}</p>
                       )}
                     </CardContent>
                   </Card>
 
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-lg">Últimos Pagamentos</CardTitle>
+                      <CardTitle className="text-lg">{t("admin.latestPayments")}</CardTitle>
                     </CardHeader>
                     <CardContent>
                       {pagamentos.slice(0, 5).map((p) => (
                         <div key={p.id} className="flex items-center justify-between py-2 border-b last:border-0">
                           <div>
-                            <p className="font-medium">{p.nomeEmpresa || "Empresa"}</p>
+                            <p className="font-medium">{p.nomeEmpresa || t("admin.company")}</p>
                             <p className="text-xs text-muted-foreground">
                               R$ {Number(p.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                             </p>
@@ -1159,7 +1166,7 @@ export default function AdminPanel() {
                         </div>
                       ))}
                       {pagamentos.length === 0 && (
-                        <p className="text-muted-foreground text-center py-4">Nenhum pagamento registrado</p>
+                        <p className="text-muted-foreground text-center py-4">{t("admin.noPaymentRegistered")}</p>
                       )}
                     </CardContent>
                   </Card>
@@ -1172,8 +1179,8 @@ export default function AdminPanel() {
             <Card>
               <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <CardTitle>Empresas</CardTitle>
-                  <CardDescription>Gerenciar todas as empresas e suas assinaturas</CardDescription>
+                  <CardTitle>{t("admin.companies")}</CardTitle>
+                  <CardDescription>{t("admin.manageCompaniesDesc")}</CardDescription>
                 </div>
                 <NovaEmpresaDialog onSuccess={() => {
                   queryClient.invalidateQueries({ queryKey: ["/api/admin/clientes"] });
@@ -1183,7 +1190,7 @@ export default function AdminPanel() {
               <CardContent className="space-y-4">
                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                   <Input
-                    placeholder="Buscar por nome, CNPJ ou email..."
+                    placeholder={t("admin.searchByNameCnpjEmail")}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="flex-1"
@@ -1194,11 +1201,11 @@ export default function AdminPanel() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="ativo">Ativo</SelectItem>
-                      <SelectItem value="teste_gratis">Teste Gratuito</SelectItem>
-                      <SelectItem value="suspenso">Suspenso</SelectItem>
-                      <SelectItem value="cancelado">Cancelado</SelectItem>
+                      <SelectItem value="all">{t("common.all")}</SelectItem>
+                      <SelectItem value="ativo">{t("admin.statusActive")}</SelectItem>
+                      <SelectItem value="teste_gratis">{t("admin.freeTrial")}</SelectItem>
+                      <SelectItem value="suspenso">{t("admin.statusSuspended")}</SelectItem>
+                      <SelectItem value="cancelado">{t("admin.statusCanceled")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1215,20 +1222,20 @@ export default function AdminPanel() {
                       <table className="w-full text-sm">
                         <thead className="bg-muted border-b">
                           <tr>
-                            <th className="px-4 py-3 text-left font-medium">Empresa</th>
+                            <th className="px-4 py-3 text-left font-medium">{t("admin.company")}</th>
                             <th className="px-4 py-3 text-left font-medium hidden md:table-cell">CNPJ</th>
                             <th className="px-4 py-3 text-left font-medium hidden lg:table-cell">Email</th>
-                            <th className="px-4 py-3 text-left font-medium">Plano</th>
-                            <th className="px-4 py-3 text-left font-medium">Status</th>
-                            <th className="px-4 py-3 text-left font-medium hidden sm:table-cell">Vencimento</th>
-                            <th className="px-4 py-3 text-left font-medium">Ações</th>
+                            <th className="px-4 py-3 text-left font-medium">{t("admin.plan")}</th>
+                            <th className="px-4 py-3 text-left font-medium">{t("common.status")}</th>
+                            <th className="px-4 py-3 text-left font-medium hidden sm:table-cell">{t("admin.dueDate")}</th>
+                            <th className="px-4 py-3 text-left font-medium">{t("common.actions")}</th>
                           </tr>
                         </thead>
                         <tbody>
                           {filteredClientes.map((cliente) => (
                             <tr key={cliente.empresaId} className="border-b hover:bg-muted/50">
                               <td className="px-4 py-3 font-medium" data-testid={`text-empresa-${cliente.empresaId}`}>
-                                {cliente.nomeFantasia || "Sem nome"}
+                                {cliente.nomeFantasia || t("admin.noName")}
                               </td>
                               <td className="px-4 py-3 hidden md:table-cell">{cliente.cnpj || "-"}</td>
                               <td className="px-4 py-3 hidden lg:table-cell">{cliente.email || "-"}</td>
@@ -1250,9 +1257,9 @@ export default function AdminPanel() {
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="ativo">Ativar</SelectItem>
-                                    <SelectItem value="suspenso">Suspender</SelectItem>
-                                    <SelectItem value="cancelado">Cancelar</SelectItem>
+                                    <SelectItem value="ativo">{t("admin.activate")}</SelectItem>
+                                    <SelectItem value="suspenso">{t("admin.suspend")}</SelectItem>
+                                    <SelectItem value="cancelado">{t("admin.cancel")}</SelectItem>
                                   </SelectContent>
                                 </Select>
                               </td>
@@ -1266,7 +1273,7 @@ export default function AdminPanel() {
 
                 {filteredClientes.length === 0 && !clientesLoading && (
                   <div className="text-center py-8 text-muted-foreground">
-                    Nenhuma empresa encontrada
+                    {t("admin.noCompanyFound")}
                   </div>
                 )}
               </CardContent>
@@ -1282,7 +1289,7 @@ export default function AdminPanel() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-                    <CardTitle className="text-xs sm:text-sm font-medium">Total Recebido</CardTitle>
+                    <CardTitle className="text-xs sm:text-sm font-medium">{t("admin.totalReceived")}</CardTitle>
                     <CheckCircle className="h-4 w-4 text-green-500" />
                   </CardHeader>
                   <CardContent>
@@ -1290,14 +1297,14 @@ export default function AdminPanel() {
                       R$ {(financeiroStats?.totalRecebido || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {financeiroStats?.countPagos || 0} pagamentos
+                      {financeiroStats?.countPagos || 0} {t("admin.payments")}
                     </p>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-                    <CardTitle className="text-xs sm:text-sm font-medium">Pendente</CardTitle>
+                    <CardTitle className="text-xs sm:text-sm font-medium">{t("admin.statusPending")}</CardTitle>
                     <Clock className="h-4 w-4 text-yellow-500" />
                   </CardHeader>
                   <CardContent>
@@ -1305,14 +1312,14 @@ export default function AdminPanel() {
                       R$ {(financeiroStats?.totalPendente || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {financeiroStats?.countPendentes || 0} cobranças
+                      {financeiroStats?.countPendentes || 0} {t("admin.charges")}
                     </p>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-                    <CardTitle className="text-xs sm:text-sm font-medium">Atrasado</CardTitle>
+                    <CardTitle className="text-xs sm:text-sm font-medium">{t("admin.statusOverdue")}</CardTitle>
                     <AlertTriangle className="h-4 w-4 text-red-500" />
                   </CardHeader>
                   <CardContent>
@@ -1320,14 +1327,14 @@ export default function AdminPanel() {
                       R$ {(financeiroStats?.totalAtrasado || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {financeiroStats?.countAtrasados || 0} cobranças
+                      {financeiroStats?.countAtrasados || 0} {t("admin.charges")}
                     </p>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-                    <CardTitle className="text-xs sm:text-sm font-medium">Receita do Mês</CardTitle>
+                    <CardTitle className="text-xs sm:text-sm font-medium">{t("admin.monthRevenue")}</CardTitle>
                     <TrendingUp className="h-4 w-4 text-purple-500" />
                   </CardHeader>
                   <CardContent>
@@ -1342,8 +1349,8 @@ export default function AdminPanel() {
             <Card>
               <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <CardTitle>Cobranças</CardTitle>
-                  <CardDescription>Gerenciar pagamentos e faturas</CardDescription>
+                  <CardTitle>{t("admin.charges")}</CardTitle>
+                  <CardDescription>{t("admin.managePaymentsDesc")}</CardDescription>
                 </div>
                 <NovoPagamentoDialog
                   clientes={clientes}
@@ -1360,11 +1367,11 @@ export default function AdminPanel() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="pendente">Pendentes</SelectItem>
-                      <SelectItem value="pago">Pagos</SelectItem>
-                      <SelectItem value="atrasado">Atrasados</SelectItem>
-                      <SelectItem value="cancelado">Cancelados</SelectItem>
+                      <SelectItem value="all">{t("common.all")}</SelectItem>
+                      <SelectItem value="pendente">{t("admin.statusPending")}</SelectItem>
+                      <SelectItem value="pago">{t("admin.statusPaid")}</SelectItem>
+                      <SelectItem value="atrasado">{t("admin.statusOverdue")}</SelectItem>
+                      <SelectItem value="cancelado">{t("admin.statusCanceled")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1381,19 +1388,19 @@ export default function AdminPanel() {
                       <table className="w-full text-sm">
                         <thead className="bg-muted border-b">
                           <tr>
-                            <th className="px-4 py-3 text-left font-medium">Empresa</th>
-                            <th className="px-4 py-3 text-left font-medium">Valor</th>
-                            <th className="px-4 py-3 text-left font-medium hidden sm:table-cell">Descrição</th>
-                            <th className="px-4 py-3 text-left font-medium hidden md:table-cell">Vencimento</th>
-                            <th className="px-4 py-3 text-left font-medium">Status</th>
-                            <th className="px-4 py-3 text-left font-medium">Ações</th>
+                            <th className="px-4 py-3 text-left font-medium">{t("admin.company")}</th>
+                            <th className="px-4 py-3 text-left font-medium">{t("common.value")}</th>
+                            <th className="px-4 py-3 text-left font-medium hidden sm:table-cell">{t("common.description")}</th>
+                            <th className="px-4 py-3 text-left font-medium hidden md:table-cell">{t("admin.dueDate")}</th>
+                            <th className="px-4 py-3 text-left font-medium">{t("common.status")}</th>
+                            <th className="px-4 py-3 text-left font-medium">{t("common.actions")}</th>
                           </tr>
                         </thead>
                         <tbody>
                           {pagamentos.map((pag) => (
                             <tr key={pag.id} className="border-b hover:bg-muted/50">
                               <td className="px-4 py-3 font-medium">
-                                {pag.nomeEmpresa || "Empresa"}
+                                {pag.nomeEmpresa || t("admin.company")}
                               </td>
                               <td className="px-4 py-3">
                                 R$ {Number(pag.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
@@ -1416,10 +1423,10 @@ export default function AdminPanel() {
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="pendente">Pendente</SelectItem>
-                                    <SelectItem value="pago">Marcar Pago</SelectItem>
-                                    <SelectItem value="atrasado">Atrasado</SelectItem>
-                                    <SelectItem value="cancelado">Cancelar</SelectItem>
+                                    <SelectItem value="pendente">{t("admin.statusPending")}</SelectItem>
+                                    <SelectItem value="pago">{t("admin.markAsPaid")}</SelectItem>
+                                    <SelectItem value="atrasado">{t("admin.statusOverdue")}</SelectItem>
+                                    <SelectItem value="cancelado">{t("admin.cancel")}</SelectItem>
                                   </SelectContent>
                                 </Select>
                               </td>
@@ -1433,7 +1440,7 @@ export default function AdminPanel() {
 
                 {pagamentos.length === 0 && !pagamentosLoading && (
                   <div className="text-center py-8 text-muted-foreground">
-                    Nenhum pagamento encontrado
+                    {t("admin.noPaymentFound")}
                   </div>
                 )}
               </CardContent>
@@ -1443,43 +1450,43 @@ export default function AdminPanel() {
           <TabsContent value="config" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Configurações do Sistema</CardTitle>
-                <CardDescription>Gerencie as configurações gerais do VeloStock</CardDescription>
+                <CardTitle>{t("admin.systemSettings")}</CardTitle>
+                <CardDescription>{t("admin.manageSystemSettingsDesc")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid gap-4">
                   <div className="p-4 border rounded-lg">
-                    <h3 className="font-medium mb-2">Informações do Admin</h3>
+                    <h3 className="font-medium mb-2">{t("admin.adminInfo")}</h3>
                     <div className="space-y-2 text-sm">
-                      <p><span className="text-muted-foreground">Nome:</span> {admin.nome}</p>
+                      <p><span className="text-muted-foreground">{t("admin.name")}:</span> {admin.nome}</p>
                       <p><span className="text-muted-foreground">Email:</span> {admin.email}</p>
                     </div>
                   </div>
 
                   <div className="p-4 border rounded-lg">
-                    <h3 className="font-medium mb-2">Estatísticas Gerais</h3>
+                    <h3 className="font-medium mb-2">{t("admin.generalStats")}</h3>
                     <div className="grid grid-cols-2 gap-4 text-sm">
-                      <p><span className="text-muted-foreground">Total de Empresas:</span> {stats?.totalClientes || 0}</p>
-                      <p><span className="text-muted-foreground">Empresas Ativas:</span> {stats?.clientesAtivos || 0}</p>
-                      <p><span className="text-muted-foreground">Total de Veículos:</span> {stats?.totalVeiculos || 0}</p>
-                      <p><span className="text-muted-foreground">Total de Usuários:</span> {stats?.totalUsuarios || 0}</p>
+                      <p><span className="text-muted-foreground">{t("admin.totalCompanies")}:</span> {stats?.totalClientes || 0}</p>
+                      <p><span className="text-muted-foreground">{t("admin.activeCompanies")}:</span> {stats?.clientesAtivos || 0}</p>
+                      <p><span className="text-muted-foreground">{t("admin.totalVehicles")}:</span> {stats?.totalVeiculos || 0}</p>
+                      <p><span className="text-muted-foreground">{t("admin.totalUsers")}:</span> {stats?.totalUsuarios || 0}</p>
                     </div>
                   </div>
 
                   <div className="p-4 border rounded-lg">
-                    <h3 className="font-medium mb-2">Planos Disponíveis</h3>
+                    <h3 className="font-medium mb-2">{t("admin.availablePlans")}</h3>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
-                        <span>Básico</span>
-                        <span className="text-muted-foreground">Funcionalidades essenciais</span>
+                        <span>{t("admin.planBasic")}</span>
+                        <span className="text-muted-foreground">{t("admin.essentialFeatures")}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Profissional</span>
-                        <span className="text-muted-foreground">Recursos avançados + IA</span>
+                        <span>{t("admin.planPro")}</span>
+                        <span className="text-muted-foreground">{t("admin.advancedFeaturesAI")}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Enterprise</span>
-                        <span className="text-muted-foreground">Tudo + suporte prioritário</span>
+                        <span>{t("admin.planEnterprise")}</span>
+                        <span className="text-muted-foreground">{t("admin.allPlusPriority")}</span>
                       </div>
                     </div>
                   </div>
@@ -1491,9 +1498,9 @@ export default function AdminPanel() {
           <TabsContent value="bugs" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Relatórios de Bugs</CardTitle>
+                <CardTitle>{t("admin.bugReportsTitle")}</CardTitle>
                 <CardDescription>
-                  Acompanhe os bugs reportados pelos usuários do sistema
+                  {t("admin.trackBugsReported")}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1506,7 +1513,7 @@ export default function AdminPanel() {
                 ) : bugs.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <Bug className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>Nenhum bug reportado ainda</p>
+                    <p>{t("admin.noBugsReported")}</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -1538,7 +1545,7 @@ export default function AdminPanel() {
                               </div>
                               {bug.attachments && bug.attachments.length > 0 && (
                                 <div className="text-xs bg-muted px-2 py-1 rounded">
-                                  {bug.attachments.length} anexo(s)
+                                  {bug.attachments.length} {t("admin.attachments")}
                                 </div>
                               )}
                             </div>
@@ -1546,16 +1553,16 @@ export default function AdminPanel() {
 
                           <div className="flex items-center justify-between pt-2 border-t">
                             <Badge variant={bug.status === "novo" ? "destructive" : bug.status === "em_analise" ? "outline" : "default"}>
-                              {bug.status === "novo" ? "Novo" : bug.status === "em_analise" ? "Em Análise" : "Resolvido"}
+                              {bug.status === "novo" ? t("admin.bugNew") : bug.status === "em_analise" ? t("admin.bugInAnalysis") : t("admin.bugResolved")}
                             </Badge>
                             <Select value={bug.status} onValueChange={(value) => handleChangeBugStatus(bug.id, value)}>
                               <SelectTrigger className="w-32 h-8">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="novo">Novo</SelectItem>
-                                <SelectItem value="em_analise">Em Análise</SelectItem>
-                                <SelectItem value="resolvido">Resolvido</SelectItem>
+                                <SelectItem value="novo">{t("admin.bugNew")}</SelectItem>
+                                <SelectItem value="em_analise">{t("admin.bugInAnalysis")}</SelectItem>
+                                <SelectItem value="resolvido">{t("admin.bugResolved")}</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -1580,6 +1587,7 @@ export default function AdminPanel() {
 }
 
 function UsuariosAdminTab() {
+  const { t } = useI18n();
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -1622,7 +1630,7 @@ function UsuariosAdminTab() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Erro ao criar usuário");
+        setError(data.error || t("admin.errorCreatingUser"));
         return;
       }
 
@@ -1630,7 +1638,7 @@ function UsuariosAdminTab() {
       setNewAdmin({ email: "", password: "", nome: "" });
       fetchAdmins();
     } catch (err) {
-      setError("Erro de conexão");
+      setError(t("admin.connectionError"));
     } finally {
       setCreateLoading(false);
     }
@@ -1686,31 +1694,31 @@ function UsuariosAdminTab() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold">Usuários Administradores</h2>
-          <p className="text-sm text-muted-foreground">Gerencie os administradores do sistema</p>
+          <h2 className="text-xl font-semibold">{t("admin.adminUsers")}</h2>
+          <p className="text-sm text-muted-foreground">{t("admin.manageAdminsDesc")}</p>
         </div>
         <Button onClick={() => setShowCreateForm(!showCreateForm)} className="gap-2" data-testid="button-criar-admin">
           <UserPlus className="h-4 w-4" />
-          Criar Usuário
+          {t("admin.createUser")}
         </Button>
       </div>
 
       {showCreateForm && (
         <Card>
           <CardHeader>
-            <CardTitle>Criar Novo Administrador</CardTitle>
-            <CardDescription>O token será gerado automaticamente</CardDescription>
+            <CardTitle>{t("admin.createNewAdmin")}</CardTitle>
+            <CardDescription>{t("admin.tokenGeneratedAuto")}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleCreateAdmin} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="new-nome">Nome</Label>
+                  <Label htmlFor="new-nome">{t("admin.name")}</Label>
                   <Input
                     id="new-nome"
                     value={newAdmin.nome}
                     onChange={(e) => setNewAdmin({ ...newAdmin, nome: e.target.value })}
-                    placeholder="Nome do administrador"
+                    placeholder={t("admin.adminNamePlaceholder")}
                     required
                     data-testid="input-new-admin-nome"
                   />
@@ -1728,13 +1736,13 @@ function UsuariosAdminTab() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="new-password">Senha</Label>
+                  <Label htmlFor="new-password">{t("auth.password")}</Label>
                   <Input
                     id="new-password"
                     type="password"
                     value={newAdmin.password}
                     onChange={(e) => setNewAdmin({ ...newAdmin, password: e.target.value })}
-                    placeholder="Senha de acesso"
+                    placeholder={t("admin.accessPassword")}
                     required
                     minLength={6}
                     data-testid="input-new-admin-password"
@@ -1750,10 +1758,10 @@ function UsuariosAdminTab() {
 
               <div className="flex gap-2 justify-end">
                 <Button type="button" variant="outline" onClick={() => setShowCreateForm(false)}>
-                  Cancelar
+                  {t("common.cancel")}
                 </Button>
                 <Button type="submit" disabled={createLoading} data-testid="button-submit-criar-admin">
-                  {createLoading ? "Criando..." : "Criar Administrador"}
+                  {createLoading ? t("admin.creating") : t("admin.createAdmin")}
                 </Button>
               </div>
             </form>
@@ -1763,11 +1771,11 @@ function UsuariosAdminTab() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Lista de Administradores</CardTitle>
+          <CardTitle>{t("admin.adminList")}</CardTitle>
         </CardHeader>
         <CardContent>
           {admins.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">Nenhum administrador cadastrado</p>
+            <p className="text-center text-muted-foreground py-8">{t("admin.noAdminRegistered")}</p>
           ) : (
             <div className="space-y-4">
               {admins.map((a) => (
@@ -1776,7 +1784,7 @@ function UsuariosAdminTab() {
                     <div className="flex items-center gap-2">
                       <p className="font-medium">{a.nome}</p>
                       {a.isMaster && <Badge variant="default">Master</Badge>}
-                      {!a.ativo && <Badge variant="destructive">Desativado</Badge>}
+                      {!a.ativo && <Badge variant="destructive">{t("admin.deactivated")}</Badge>}
                     </div>
                     <p className="text-sm text-muted-foreground">{a.email}</p>
                     {a.token && (
@@ -1800,7 +1808,7 @@ function UsuariosAdminTab() {
                     )}
                     {a.ultimoLogin && (
                       <p className="text-xs text-muted-foreground">
-                        Último login: {new Date(a.ultimoLogin).toLocaleDateString("pt-BR", {
+                        {t("admin.lastLogin")}: {new Date(a.ultimoLogin).toLocaleDateString("pt-BR", {
                           day: "2-digit",
                           month: "2-digit",
                           year: "2-digit",
@@ -1820,7 +1828,7 @@ function UsuariosAdminTab() {
                           data-testid={`button-regenerate-token-${a.id}`}
                         >
                           <KeyRound className="h-4 w-4 mr-1" />
-                          Novo Token
+                          {t("admin.newToken")}
                         </Button>
                         <Button
                           size="sm"
@@ -1831,12 +1839,12 @@ function UsuariosAdminTab() {
                           {a.ativo ? (
                             <>
                               <X className="h-4 w-4 mr-1" />
-                              Desativar
+                              {t("admin.deactivate")}
                             </>
                           ) : (
                             <>
                               <Check className="h-4 w-4 mr-1" />
-                              Ativar
+                              {t("admin.activate")}
                             </>
                           )}
                         </Button>
