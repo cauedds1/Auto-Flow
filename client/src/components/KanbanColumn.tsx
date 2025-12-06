@@ -7,6 +7,7 @@ interface KanbanColumnProps {
   count: number;
   children: React.ReactNode;
   color?: string;
+  statusKey?: string;
 }
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string; dot: string }> = {
@@ -36,8 +37,9 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; border: string; 
   },
 };
 
-export const KanbanColumn = memo(function KanbanColumn({ title, count, children }: KanbanColumnProps) {
-  const colors = STATUS_COLORS[title] || STATUS_COLORS["Entrada"];
+export const KanbanColumn = memo(function KanbanColumn({ title, count, children, statusKey }: KanbanColumnProps) {
+  const colorKey = statusKey || title;
+  const colors = STATUS_COLORS[colorKey] || STATUS_COLORS["Entrada"];
   
   return (
     <div className="flex h-full w-72 flex-shrink-0 flex-col rounded-xl bg-muted/30 dark:bg-muted/10 border border-border/50">
@@ -49,7 +51,7 @@ export const KanbanColumn = memo(function KanbanColumn({ title, count, children 
         <Badge 
           variant="secondary" 
           className={`${colors.bg} ${colors.text} border ${colors.border} font-bold text-xs px-2 py-0.5`}
-          data-testid={`badge-count-${title}`}
+          data-testid={`badge-count-${statusKey || title}`}
         >
           {count}
         </Badge>

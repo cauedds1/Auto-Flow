@@ -3,16 +3,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, ArrowRight, DollarSign } from "lucide-react";
 import { Link } from "wouter";
 import { formatDistanceToNow } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { ptBR, enUS } from "date-fns/locale";
 import { useCompanyTheme } from "./CompanyThemeProvider";
+import { useI18n } from "@/lib/i18n";
 
 export function RecentActivity() {
   const { changeIconColors, secondaryColor } = useCompanyTheme();
+  const { t, language } = useI18n();
   const { data: vehicles = [] } = useQuery<any[]>({
     queryKey: ["/api/vehicles"],
   });
 
-  // Pegar veículos criados recentemente (últimos 7 dias)
   const recentVehicles = vehicles
     .filter(v => {
       const created = new Date(v.createdAt);
@@ -21,6 +22,19 @@ export function RecentActivity() {
     })
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 5);
+
+  const getStatusTranslation = (status: string) => {
+    const statusMap: Record<string, string> = {
+      "Entrada": t("vehicles.status.intake"),
+      "Em Preparação": t("vehicles.status.preparation"),
+      "Em Reparos": t("vehicles.status.repair"),
+      "Em Higienização": t("vehicles.status.cleaning"),
+      "Pronto para Venda": t("vehicles.status.ready"),
+      "Vendido": t("vehicles.status.sold"),
+      "Arquivado": t("vehicles.status.archived"),
+    };
+    return statusMap[status] || status;
+  };
 
   return (
     <Card>
@@ -31,14 +45,14 @@ export function RecentActivity() {
               className="h-5 w-5"
               style={{ color: changeIconColors ? secondaryColor : undefined }}
             />
-            Atividade Recente
+            {t("dashboard.recentActivity")}
           </CardTitle>
         </div>
       </CardHeader>
       <CardContent>
         {recentVehicles.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Nenhuma atividade nos últimos 7 dias
+            {t("dashboard.noActivityLast7Days")}
           </p>
         ) : (
           <div className="space-y-3">
@@ -60,7 +74,7 @@ export function RecentActivity() {
                       </span>
                       <ArrowRight className="h-3 w-3 text-muted-foreground" />
                       <span className="text-xs font-medium text-primary">
-                        {vehicle.status}
+                        {getStatusTranslation(vehicle.status)}
                       </span>
                     </div>
                     {vehicle.salePrice && (
@@ -83,7 +97,7 @@ export function RecentActivity() {
                   <div className="text-xs text-muted-foreground whitespace-nowrap">
                     {formatDistanceToNow(new Date(vehicle.createdAt), {
                       addSuffix: true,
-                      locale: ptBR
+                      locale: language === 'pt-BR' ? ptBR : enUS
                     })}
                   </div>
                 </div>

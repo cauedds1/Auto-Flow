@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useI18n } from "@/lib/i18n";
 
 const STATUS_COLUMNS = [
   "Entrada",
@@ -44,6 +45,7 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export function KanbanBoard({ vehicles }: KanbanBoardProps) {
+  const { t } = useI18n();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [displayLimit, setDisplayLimit] = useState(INITIAL_LIMIT);
@@ -57,6 +59,16 @@ export function KanbanBoard({ vehicles }: KanbanBoardProps) {
       prevVehiclesLength.current = vehicles.length;
     }
   }, [vehicles.length]);
+
+  const getStatusTranslation = useCallback((status: string) => {
+    const statusMap: Record<string, string> = {
+      "Entrada": t("vehicles.status.intake"),
+      "Em Reparos": t("vehicles.status.repair"),
+      "Em Higienização": t("vehicles.status.cleaning"),
+      "Pronto para Venda": t("vehicles.status.ready"),
+    };
+    return statusMap[status] || status;
+  }, [t]);
 
   const filteredVehicles = useMemo(() => {
     const searchLower = debouncedSearchTerm.toLowerCase();
@@ -113,7 +125,7 @@ export function KanbanBoard({ vehicles }: KanbanBoardProps) {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Buscar por marca, modelo ou placa..."
+            placeholder={t("dashboard.searchByBrandModelPlate")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-9 bg-background border-border/60"
@@ -123,13 +135,13 @@ export function KanbanBoard({ vehicles }: KanbanBoardProps) {
         <div className="flex items-center gap-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-full sm:w-44 bg-background border-border/60" data-testid="select-status-filter">
-              <SelectValue placeholder="Filtrar por status" />
+              <SelectValue placeholder={t("dashboard.filterByStatus")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos os Status</SelectItem>
+              <SelectItem value="all">{t("vehicles.status.all")}</SelectItem>
               {STATUS_COLUMNS.map((status) => (
                 <SelectItem key={status} value={status}>
-                  {status}
+                  {getStatusTranslation(status)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -153,15 +165,16 @@ export function KanbanBoard({ vehicles }: KanbanBoardProps) {
             return (
               <KanbanColumn
                 key={status}
-                title={status}
+                title={getStatusTranslation(status)}
                 count={totalInStatus}
+                statusKey={status}
               >
                 {vehiclesInStatus.map((vehicle) => (
                   <VehicleCard key={vehicle.id} {...vehicle} />
                 ))}
                 {vehiclesInStatus.length < totalInStatus && (
                   <div className="text-center text-xs text-muted-foreground py-2 bg-muted/30 rounded-lg">
-                    +{totalInStatus - vehiclesInStatus.length} mais veículos
+                    +{totalInStatus - vehiclesInStatus.length} {t("dashboard.moreVehicles")}
                   </div>
                 )}
                 {vehiclesInStatus.length === 0 && (
@@ -169,7 +182,7 @@ export function KanbanBoard({ vehicles }: KanbanBoardProps) {
                     <div className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center mb-2">
                       <LayoutGrid className="h-5 w-5 text-muted-foreground/50" />
                     </div>
-                    <span className="text-xs text-muted-foreground">Nenhum veículo</span>
+                    <span className="text-xs text-muted-foreground">{t("dashboard.noVehicle")}</span>
                   </div>
                 )}
               </KanbanColumn>
@@ -187,7 +200,7 @@ export function KanbanBoard({ vehicles }: KanbanBoardProps) {
             data-testid="button-load-more"
           >
             <ChevronDown className="h-4 w-4 mr-2" />
-            Carregar mais ({remainingCount} restantes)
+            {t("dashboard.loadMore", { count: remainingCount.toString() })}
           </Button>
         </div>
       )}

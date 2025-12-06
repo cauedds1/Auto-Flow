@@ -4,10 +4,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Car, CheckCircle, Wrench, TrendingUp, DollarSign, Clock, ArrowUp, ArrowDown } from "lucide-react";
 import { useCompanyTheme } from "./CompanyThemeProvider";
 import { usePermissions } from "@/hooks/use-permissions";
+import { useI18n } from "@/lib/i18n";
 
 export function DashboardMetricsEnhanced() {
   const { changeIconColors } = useCompanyTheme();
   const { isVendedor } = usePermissions();
+  const { t, language } = useI18n();
   
   const { data: metrics, isLoading } = useQuery<any>({
     queryKey: ["/api/metrics"],
@@ -60,30 +62,32 @@ export function DashboardMetricsEnhanced() {
   const avgMargin = metrics?.resultados?.margemLucro ? (metrics.resultados.margemLucro).toFixed(1) : "0.0";
   const avgDays = countWithDays > 0 ? Math.round(totalDays / countWithDays) : 0;
 
+  const currentMonthName = new Date().toLocaleDateString(language === 'pt-BR' ? 'pt-BR' : 'en-US', { month: 'long' });
+
   const baseMetricsData = [
     {
-      title: "Prontos para Venda",
+      title: t("dashboard.readyForSale"),
       value: readyForSale,
       icon: CheckCircle,
-      description: "Veículos disponíveis",
+      description: t("dashboard.availableVehicles"),
       gradientBg: "hsl(var(--badge-color-1))",
       iconBg: "hsl(var(--badge-color-1) / 0.1)",
       trend: readyForSale > 5 ? "up" : null,
     },
     {
-      title: "Em Preparação",
+      title: t("dashboard.inProcess"),
       value: inProcess,
       icon: Wrench,
-      description: "Sendo preparados",
+      description: t("dashboard.beingPrepared"),
       gradientBg: "hsl(var(--badge-color-2))",
       iconBg: "hsl(var(--badge-color-2) / 0.1)",
       trend: null,
     },
     {
-      title: "Vendidos no Mês",
+      title: t("dashboard.soldThisMonth"),
       value: soldThisMonth,
       icon: TrendingUp,
-      description: new Date().toLocaleDateString('pt-BR', { month: 'long' }),
+      description: currentMonthName,
       gradientBg: "hsl(var(--badge-color-3))",
       iconBg: "hsl(var(--badge-color-3) / 0.1)",
       trend: soldThisMonth > 0 ? "up" : null,
@@ -92,28 +96,28 @@ export function DashboardMetricsEnhanced() {
 
   const financeMetricsData = [
     {
-      title: "Margem Média",
+      title: t("dashboard.averageMargin"),
       value: `${avgMargin}%`,
       icon: DollarSign,
-      description: "Lucro sobre venda",
+      description: t("dashboard.profitOnSale"),
       gradientBg: "hsl(var(--badge-color-4))",
       iconBg: "hsl(var(--badge-color-4) / 0.1)",
       trend: parseFloat(avgMargin) > 15 ? "up" : parseFloat(avgMargin) > 0 ? null : "down",
     },
     {
-      title: "Dias Médios",
+      title: t("dashboard.averageDays"),
       value: avgDays,
       icon: Clock,
-      description: "Tempo em estoque",
+      description: t("dashboard.timeInStock"),
       gradientBg: "hsl(var(--badge-color-5))",
       iconBg: "hsl(var(--badge-color-5) / 0.1)",
       trend: avgDays < 30 ? "up" : avgDays > 60 ? "down" : null,
     },
     {
-      title: "Total em Estoque",
+      title: t("dashboard.totalInStock"),
       value: metrics?.totalVehicles || 0,
       icon: Car,
-      description: "Todos os veículos",
+      description: t("dashboard.allVehicles"),
       gradientBg: "hsl(var(--badge-color-6))",
       iconBg: "hsl(var(--badge-color-6) / 0.1)",
       trend: null,

@@ -34,12 +34,13 @@ import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useFipeVehicleVersions, useFipePriceByVersion } from "@/hooks/use-fipe";
 import type { FipeVersion } from "@/hooks/use-fipe";
+import { useI18n } from "@/lib/i18n";
 
 const vehicleFormSchema = z.object({
   brand: z.string().min(1, "Marca é obrigatória"),
   model: z.string().min(1, "Modelo é obrigatório"),
   year: z.coerce.number().min(1900, "Ano inválido"),
-  version: z.string().optional(), // Versão FIPE selecionada
+  version: z.string().optional(),
   color: z.string().min(1, "Cor é obrigatória"),
   plate: z.string().min(7, "Placa inválida"),
   vehicleType: z.enum(["Carro", "Moto"]),
@@ -77,6 +78,7 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
   const { toast } = useToast();
   const { can } = usePermissions();
   const queryClient = useQueryClient();
+  const { t } = useI18n();
 
   const form = useForm<VehicleFormData>({
     resolver: zodResolver(vehicleFormSchema),
@@ -110,16 +112,13 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
   const watchedModel = form.watch("model");
   const watchedYear = form.watch("year");
 
-  // Limpar cache quando mudanças ocorrem
   useEffect(() => {
     setFipeVersions([]);
     setFipeMetadata(null);
     form.setValue("version", "");
   }, [watchedBrand, watchedModel, watchedYear, vehicleType]);
 
-  // Auto-load em background quando campos estiverem preenchidos
   useEffect(() => {
-    // Evita auto-load se já tem versões carregadas (evita duplicação)
     if (fipeVersions.length > 0) return;
     
     const brand = form.getValues("brand");
@@ -140,11 +139,9 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
         setFipeVersions(result.versions);
         setFipeMetadata({ brandId: result.brandId });
       } catch (e) {
-        // Silencioso em background
       }
     };
 
-    // Delay pequeno para evitar conflito com clique
     const timer = setTimeout(loadVersions, 300);
     return () => clearTimeout(timer);
   }, [watchedBrand, watchedModel, watchedYear]);
@@ -155,7 +152,7 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
     const year = form.getValues("year");
 
     if (!brand || !model || !year) {
-      toast({ title: "Campos incompletos", variant: "destructive" });
+      toast({ title: t("addVehicle.incompleteFields"), variant: "destructive" });
       return;
     }
 
@@ -170,28 +167,23 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
       setFipeVersions(result.versions);
       setFipeMetadata({ brandId: result.brandId });
     } catch (error: any) {
-      toast({ title: "Erro ao buscar versões", variant: "destructive" });
+      toast({ title: t("addVehicle.errorLoadingVersions"), variant: "destructive" });
     }
   };
 
-  // Quando usuário seleciona uma versão, buscar preço FIPE automaticamente
   const handleVersionChange = async (versionJson: string) => {
     if (!fipeMetadata) return;
 
     try {
-      // Parse da versão selecionada
       const version: FipeVersion = JSON.parse(versionJson);
-      // Salvar JSON completo no form (será parseado no submit)
       form.setValue("version", versionJson);
 
-      // Mapear tipo de veículo para FIPE
       const vehicleTypeMap: Record<string, string> = {
         "Carro": "carros",
         "Moto": "motos"
       };
       const fipeVehicleType = vehicleTypeMap[vehicleType] || "carros";
 
-      // Buscar preço com brandId + modelId + yearCode específicos
       const result = await priceMutation.mutateAsync({ 
         brandId: fipeMetadata.brandId, 
         modelId: String(version.modelId), 
@@ -199,13 +191,10 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
         vehicleType: fipeVehicleType
       });
       
-      // Log para debug
       console.log("Resposta FIPE:", result);
       
-      // Extrair valor de forma defensiva - FIPE pode retornar "Valor" ou "valor"
       const resultAny = result as any;
       
-      // Verificar se a API retornou um erro
       if (resultAny.error || resultAny.erro || resultAny.message) {
         const errorMsg = resultAny.error || resultAny.erro || resultAny.message;
         throw new Error(`API FIPE: ${errorMsg}`);
@@ -215,27 +204,25 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
       const priceValue = (valorField || '').toString().replace("R$", "").replace("R$ ", "").trim();
       
       if (!priceValue) {
-        // Mostrar mais detalhes do que a API retornou
         console.error("Resposta FIPE sem valor:", result);
-        throw new Error("API FIPE não retornou o preço. Tente novamente em alguns segundos.");
+        throw new Error(t("addVehicle.fipeNoPriceReturned"));
       }
       
       form.setValue("fipeReferencePrice", priceValue);
       
-      // Usar Marca/marca, Modelo/modelo com fallback
       const marca = result.Marca || resultAny.marca || 'Veículo';
       const modelo = result.Modelo || resultAny.modelo || '';
       const valor = result.Valor || resultAny.valor || valorField;
       
       toast({
-        title: "Preço FIPE atualizado!",
+        title: t("addVehicle.fipePriceUpdated"),
         description: `${marca} ${modelo}: ${valor}`,
       });
     } catch (error: any) {
       console.error("Erro ao buscar preço FIPE:", error);
       toast({
-        title: "Erro ao consultar preço",
-        description: error.message || "Não foi possível consultar o preço FIPE.",
+        title: t("addVehicle.errorConsultingPrice"),
+        description: error.message || t("addVehicle.couldNotConsultFipe"),
         variant: "destructive",
       });
     }
@@ -276,12 +263,12 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Erro ao cadastrar veículo");
+        throw new Error(errorData.error || t("addVehicle.errorRegistering"));
       }
 
       toast({
-        title: "Veículo adicionado!",
-        description: "O veículo foi cadastrado com sucesso.",
+        title: t("addVehicle.vehicleAdded"),
+        description: t("addVehicle.vehicleAddedDesc"),
       });
 
       await queryClient.invalidateQueries({ queryKey: ["/api/vehicles"] });
@@ -293,8 +280,8 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
       setOpen(false);
     } catch (error: any) {
       toast({
-        title: "Erro ao adicionar veículo",
-        description: error.message || "Ocorreu um erro ao cadastrar o veículo. Tente novamente.",
+        title: t("addVehicle.errorAdding"),
+        description: error.message || t("addVehicle.errorAddingDesc"),
         variant: "destructive",
       });
     }
@@ -305,15 +292,15 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
       <DialogTrigger asChild>
         <Button size="default" className="gap-2" data-testid="button-add-vehicle">
           <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Adicionar Veiculo</span>
-          <span className="sm:hidden">Novo</span>
+          <span className="hidden sm:inline">{t("vehicles.addVehicle")}</span>
+          <span className="sm:hidden">{t("common.add")}</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full sm:max-w-[700px] p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle>Adicionar Novo Veículo</DialogTitle>
+          <DialogTitle>{t("addVehicle.addNewVehicle")}</DialogTitle>
           <DialogDescription>
-            Preencha os dados do veículo e adicione fotos
+            {t("addVehicle.fillDataAndPhotos")}
           </DialogDescription>
         </DialogHeader>
 
@@ -325,10 +312,10 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
                 name="brand"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Marca</FormLabel>
+                    <FormLabel>{t("vehicles.brand")}</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Ex: Toyota"
+                        placeholder={t("addVehicle.brandPlaceholder")}
                         {...field}
                         data-testid="input-brand"
                       />
@@ -343,10 +330,10 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
                 name="model"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Modelo</FormLabel>
+                    <FormLabel>{t("vehicles.model")}</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Ex: Corolla"
+                        placeholder={t("addVehicle.modelPlaceholder")}
                         {...field}
                         data-testid="input-model"
                       />
@@ -361,10 +348,10 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
                 name="year"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Ano</FormLabel>
+                    <FormLabel>{t("vehicles.year")}</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Ex: 2020"
+                        placeholder={t("addVehicle.yearPlaceholder")}
                         {...field}
                         data-testid="input-year"
                       />
@@ -379,7 +366,7 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
                 name="version"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Versão</FormLabel>
+                    <FormLabel>{t("addVehicle.version")}</FormLabel>
                     <Select 
                       onValueChange={handleVersionChange}
                       value={field.value}
@@ -387,7 +374,7 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
                     >
                       <FormControl>
                         <SelectTrigger data-testid="select-version">
-                          <SelectValue placeholder={versionsMutation.isPending ? "Carregando versões..." : "Selecione a versão"} />
+                          <SelectValue placeholder={versionsMutation.isPending ? t("addVehicle.loadingVersions") : t("addVehicle.selectVersion")} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -399,13 +386,13 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
                           ))
                         ) : (
                           <SelectItem value="loading" disabled>
-                            {versionsMutation.isPending ? "Carregando..." : "Preencha marca, modelo e ano"}
+                            {versionsMutation.isPending ? t("common.loading") : t("addVehicle.fillBrandModelYear")}
                           </SelectItem>
                         )}
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">
-                      Preencha marca, modelo e ano para carregar as versões disponíveis
+                      {t("addVehicle.fillToLoadVersions")}
                     </p>
                     <FormMessage />
                   </FormItem>
@@ -417,10 +404,10 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
                 name="color"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Cor</FormLabel>
+                    <FormLabel>{t("vehicles.color")}</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Ex: Prata"
+                        placeholder={t("addVehicle.colorPlaceholder")}
                         {...field}
                         data-testid="input-color"
                       />
@@ -435,7 +422,7 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
                 name="plate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Placa</FormLabel>
+                    <FormLabel>{t("vehicles.plate")}</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="ABC-1234"
@@ -453,16 +440,16 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
                 name="vehicleType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tipo</FormLabel>
+                    <FormLabel>{t("common.type")}</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="select-vehicle-type">
-                          <SelectValue placeholder="Selecione o tipo" />
+                          <SelectValue placeholder={t("addVehicle.selectType")} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="Carro">🚗 Carro</SelectItem>
-                        <SelectItem value="Moto">🏍️ Moto</SelectItem>
+                        <SelectItem value="Carro">{t("addVehicle.typeCar")}</SelectItem>
+                        <SelectItem value="Moto">{t("addVehicle.typeMotorcycle")}</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -475,18 +462,18 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
                 name="status"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Status Inicial</FormLabel>
+                    <FormLabel>{t("addVehicle.initialStatus")}</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="select-status">
-                          <SelectValue placeholder="Selecione o status" />
+                          <SelectValue placeholder={t("addVehicle.selectStatus")} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="Entrada">Entrada</SelectItem>
-                        <SelectItem value="Em Reparos">Em Reparos</SelectItem>
-                        <SelectItem value="Em Higienização">Em Higienização</SelectItem>
-                        <SelectItem value="Pronto para Venda">Pronto para Venda</SelectItem>
+                        <SelectItem value="Entrada">{t("vehicles.status.intake")}</SelectItem>
+                        <SelectItem value="Em Reparos">{t("vehicles.status.repair")}</SelectItem>
+                        <SelectItem value="Em Higienização">{t("vehicles.status.cleaning")}</SelectItem>
+                        <SelectItem value="Pronto para Venda">{t("vehicles.status.ready")}</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -499,20 +486,20 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
                 name="fuelType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Combustível</FormLabel>
+                    <FormLabel>{t("addVehicle.fuel")}</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value ?? undefined}>
                       <FormControl>
                         <SelectTrigger data-testid="select-fuel">
-                          <SelectValue placeholder="Selecione" />
+                          <SelectValue placeholder={t("common.select")} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="Gasolina">Gasolina</SelectItem>
-                        <SelectItem value="Etanol">Etanol</SelectItem>
-                        <SelectItem value="Flex">Flex</SelectItem>
-                        <SelectItem value="Diesel">Diesel</SelectItem>
-                        <SelectItem value="Elétrico">Elétrico</SelectItem>
-                        <SelectItem value="Híbrido">Híbrido</SelectItem>
+                        <SelectItem value="Gasolina">{t("addVehicle.fuelGasoline")}</SelectItem>
+                        <SelectItem value="Etanol">{t("addVehicle.fuelEthanol")}</SelectItem>
+                        <SelectItem value="Flex">{t("addVehicle.fuelFlex")}</SelectItem>
+                        <SelectItem value="Diesel">{t("addVehicle.fuelDiesel")}</SelectItem>
+                        <SelectItem value="Elétrico">{t("addVehicle.fuelElectric")}</SelectItem>
+                        <SelectItem value="Híbrido">{t("addVehicle.fuelHybrid")}</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -525,10 +512,10 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
                 name="kmOdometer"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Quilometragem</FormLabel>
+                    <FormLabel>{t("vehicles.mileage")}</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Ex: 45000"
+                        placeholder={t("addVehicle.mileagePlaceholder")}
                         value={field.value ?? ""}
                         onChange={field.onChange}
                         onBlur={field.onBlur}
@@ -548,12 +535,12 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
                   name="purchasePrice"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Preço de Aquisição (R$)</FormLabel>
+                      <FormLabel>{t("addVehicle.purchasePrice")}</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
                           step="0.01"
-                          placeholder="Quanto a loja pagou"
+                          placeholder={t("addVehicle.purchasePricePlaceholder")}
                           value={field.value ?? ""}
                           onChange={field.onChange}
                           onBlur={field.onBlur}
@@ -563,7 +550,7 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
                         />
                       </FormControl>
                       <p className="text-xs text-muted-foreground">
-                        Valor que a loja pagou pelo veículo
+                        {t("addVehicle.purchasePriceDesc")}
                       </p>
                       <FormMessage />
                     </FormItem>
@@ -577,12 +564,12 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
                   name="salePrice"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Preço de Venda (R$)</FormLabel>
+                      <FormLabel>{t("addVehicle.salePrice")}</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
                           step="0.01"
-                          placeholder="Preço de venda desejado"
+                          placeholder={t("addVehicle.salePricePlaceholder")}
                           value={field.value ?? ""}
                           onChange={field.onChange}
                           onBlur={field.onBlur}
@@ -592,7 +579,7 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
                         />
                       </FormControl>
                       <p className="text-xs text-muted-foreground">
-                        Valor de venda que deseja anunciar
+                        {t("addVehicle.salePriceDesc")}
                       </p>
                       <FormMessage />
                     </FormItem>
@@ -609,40 +596,36 @@ export function AddVehicleDialog({ onAdd }: AddVehicleDialogProps) {
                   <FormItem>
                     <FormLabel className="flex items-center gap-2">
                       <TrendingUp className="h-4 w-4" />
-                      Preço de Referência FIPE
+                      {t("addVehicle.fipeReferencePrice")}
                     </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Será preenchido ao selecionar a versão"
+                        placeholder={t("addVehicle.fipePricePlaceholder")}
                         {...field}
                         readOnly
                         className="bg-muted"
                       />
                     </FormControl>
-                    <p className="text-xs text-muted-foreground">
-                      Selecione a versão acima para preencher automaticamente o preço FIPE
-                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
 
-            <div className="border-t border-border pt-6">
-              <ImageUpload onImagesChange={setImages} maxImages={8} />
+            <div className="border-t border-border pt-4">
+              <FormLabel className="mb-2 block">{t("addVehicle.photos")}</FormLabel>
+              <ImageUpload
+                onFilesSelected={setImages}
+                selectedFiles={images}
+              />
             </div>
 
-            <div className="flex justify-end gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-                data-testid="button-cancel"
-              >
-                Cancelar
+            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                {t("common.cancel")}
               </Button>
               <Button type="submit" data-testid="button-submit-vehicle">
-                Cadastrar Veículo
+                {t("addVehicle.register")}
               </Button>
             </div>
           </form>

@@ -4,9 +4,11 @@ import { AlertCircle, Camera, DollarSign, Clock } from "lucide-react";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { useCompanyTheme } from "./CompanyThemeProvider";
+import { useI18n } from "@/lib/i18n";
 
 export function DashboardAlerts() {
   const { changeIconColors, primaryColor, secondaryColor } = useCompanyTheme();
+  const { t } = useI18n();
   const { data: vehicles = [] } = useQuery<any[]>({
     queryKey: ["/api/vehicles"],
   });
@@ -27,7 +29,7 @@ export function DashboardAlerts() {
   const alerts = [
     {
       id: "no-price",
-      title: "Sem Preço Definido",
+      title: t("dashboard.alerts.noPrice"),
       count: vehiclesWithoutPrice.length,
       icon: DollarSign,
       color: "text-yellow-500",
@@ -37,7 +39,7 @@ export function DashboardAlerts() {
     },
     {
       id: "no-photos",
-      title: "Sem Fotos",
+      title: t("dashboard.alerts.noPhotos"),
       count: vehiclesWithoutPhotos.length,
       icon: Camera,
       color: "text-blue-500",
@@ -47,7 +49,7 @@ export function DashboardAlerts() {
     },
     {
       id: "stalled",
-      title: "Parados há 30+ Dias",
+      title: t("dashboard.alerts.stalled30Days"),
       count: stalledVehicles.length,
       icon: Clock,
       color: "text-orange-500",
@@ -57,7 +59,7 @@ export function DashboardAlerts() {
     },
     {
       id: "with-notes",
-      title: "Com Observações",
+      title: t("dashboard.alerts.withNotes"),
       count: vehiclesWithNotes.length,
       icon: AlertCircle,
       color: "text-red-500",
@@ -105,7 +107,7 @@ export function DashboardAlerts() {
               ))}
               {alert.vehicles.length > 2 && (
                 <div className="text-xs text-muted-foreground">
-                  + {alert.vehicles.length - 2} mais
+                  + {alert.vehicles.length - 2} {t("dashboard.alerts.more")}
                 </div>
               )}
             </div>

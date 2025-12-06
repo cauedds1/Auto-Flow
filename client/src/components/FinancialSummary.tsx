@@ -2,9 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, TrendingUp, Package, Wallet } from "lucide-react";
 import { useCompanyTheme } from "./CompanyThemeProvider";
+import { useI18n } from "@/lib/i18n";
 
 export function FinancialSummary() {
   const { changeIconColors, primaryColor, secondaryColor } = useCompanyTheme();
+  const { t } = useI18n();
   const { data: vehicles = [] } = useQuery<any[]>({
     queryKey: ["/api/vehicles"],
   });
@@ -33,27 +35,27 @@ export function FinancialSummary() {
 
   const stats = [
     {
-      label: "Valor do Estoque",
+      label: t("dashboard.inventoryValue"),
       value: formatCurrency(inventoryValue),
-      subtext: `${readyForSale.length} ${readyForSale.length === 1 ? 'veículo' : 'veículos'} disponíveis`,
+      subtext: `${readyForSale.length} ${readyForSale.length === 1 ? t("dashboard.vehicleAvailable") : t("dashboard.vehiclesAvailable")}`,
       icon: Package,
       gradient: "from-blue-500 to-cyan-600",
       bgGradient: "from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20",
       colorOverride: primaryColor,
     },
     {
-      label: "Receita Total",
+      label: t("dashboard.totalRevenue"),
       value: formatCurrency(totalRevenue),
-      subtext: `${sold.length} ${sold.length === 1 ? 'venda' : 'vendas'} realizadas`,
+      subtext: `${sold.length} ${sold.length === 1 ? t("dashboard.saleCompleted") : t("dashboard.salesCompleted")}`,
       icon: TrendingUp,
       gradient: "from-green-500 to-emerald-600",
       bgGradient: "from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20",
       colorOverride: secondaryColor,
     },
     {
-      label: "Custos Totais",
+      label: t("dashboard.totalCosts"),
       value: formatCurrency(totalCosts),
-      subtext: "Investimentos em veículos",
+      subtext: t("dashboard.vehicleInvestments"),
       icon: Wallet,
       gradient: "from-orange-500 to-amber-600",
       bgGradient: "from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20",
@@ -74,7 +76,7 @@ export function FinancialSummary() {
               style={{ color: changeIconColors ? "white" : undefined }}
             />
           </div>
-          <CardTitle className="text-xl font-bold">Resumo Financeiro</CardTitle>
+          <CardTitle className="text-xl font-bold">{t("dashboard.financialSummary")}</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="p-6">
