@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { 
   Users, Building2, CreditCard, DollarSign, TrendingUp, LogOut, Lock, Mail, User, Shield, KeyRound,
-  Plus, Eye, Edit, Check, X, Calendar, Wallet, BarChart3, Settings, Clock, AlertTriangle, CheckCircle, Bug, Download, UserPlus, ArrowLeft
+  Plus, Eye, Edit, Check, X, Calendar, Wallet, BarChart3, Settings, Clock, AlertTriangle, CheckCircle, Bug, Download, UserPlus, ArrowLeft, Paperclip, FileIcon
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -784,6 +784,10 @@ export default function AdminPanel() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [pagamentoFilter, setPagamentoFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedBugAttachments, setSelectedBugAttachments] = useState<{
+    attachments: Array<{ fileName: string; fileData: string; mimeType: string }>;
+    userName: string;
+  } | null>(null);
   const justLoggedInRef = useRef(false);
 
   useEffect(() => {
@@ -843,7 +847,7 @@ export default function AdminPanel() {
       const res = await fetch("/api/admin/dashboard", { credentials: "include" });
       if (res.status === 401) {
         handleSessionExpired();
-        throw new Error("Sessão expirada");
+        throw new Error(t("admin.sessionExpired"));
       }
       return res.json();
     },
@@ -857,7 +861,7 @@ export default function AdminPanel() {
       const res = await fetch("/api/admin/financeiro/stats", { credentials: "include" });
       if (res.status === 401) {
         handleSessionExpired();
-        throw new Error("Sessão expirada");
+        throw new Error(t("admin.sessionExpired"));
       }
       return res.json();
     },
@@ -873,7 +877,7 @@ export default function AdminPanel() {
       const res = await fetch(url, { credentials: "include" });
       if (res.status === 401) {
         handleSessionExpired();
-        throw new Error("Sessão expirada");
+        throw new Error(t("admin.sessionExpired"));
       }
       return res.json();
     },
@@ -890,7 +894,7 @@ export default function AdminPanel() {
       const res = await fetch(url, { credentials: "include" });
       if (res.status === 401) {
         handleSessionExpired();
-        throw new Error("Sessão expirada");
+        throw new Error(t("admin.sessionExpired"));
       }
       return res.json();
     },
@@ -904,7 +908,7 @@ export default function AdminPanel() {
       const res = await fetch("/api/admin/bug-reports", { credentials: "include" });
       if (res.status === 401) {
         handleSessionExpired();
-        throw new Error("Sessão expirada");
+        throw new Error(t("admin.sessionExpired"));
       }
       return res.json();
     },
@@ -1544,9 +1548,19 @@ export default function AdminPanel() {
                                 })}
                               </div>
                               {bug.attachments && bug.attachments.length > 0 && (
-                                <div className="text-xs bg-muted px-2 py-1 rounded">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-6 text-xs gap-1"
+                                  onClick={() => setSelectedBugAttachments({
+                                    attachments: bug.attachments!,
+                                    userName: bug.userName
+                                  })}
+                                  data-testid={`button-view-attachments-${bug.id}`}
+                                >
+                                  <Paperclip className="h-3 w-3" />
                                   {bug.attachments.length} {t("admin.attachments")}
-                                </div>
+                                </Button>
                               )}
                             </div>
                           </div>
@@ -1573,6 +1587,52 @@ export default function AdminPanel() {
                 )}
               </CardContent>
             </Card>
+
+            <Dialog open={!!selectedBugAttachments} onOpenChange={(open) => !open && setSelectedBugAttachments(null)}>
+              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Paperclip className="h-5 w-5" />
+                    {t("admin.viewAttachments")}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {t("admin.attachmentsFrom")} {selectedBugAttachments?.userName}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 mt-4">
+                  {selectedBugAttachments?.attachments.map((attachment, index) => (
+                    <div key={index} className="border rounded-lg p-3 space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <FileIcon className="h-4 w-4 text-muted-foreground" />
+                        {attachment.fileName}
+                      </div>
+                      {attachment.mimeType.startsWith("image/") ? (
+                        <div className="mt-2">
+                          <img
+                            src={`data:${attachment.mimeType};base64,${attachment.fileData}`}
+                            alt={attachment.fileName}
+                            className="max-w-full h-auto rounded-md border"
+                            style={{ maxHeight: "300px", objectFit: "contain" }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="mt-2 p-4 bg-muted rounded-md text-center text-sm text-muted-foreground">
+                          <FileIcon className="h-8 w-8 mx-auto mb-2" />
+                          <p>{t("admin.previewNotAvailable")}</p>
+                          <a
+                            href={`data:${attachment.mimeType};base64,${attachment.fileData}`}
+                            download={attachment.fileName}
+                            className="text-primary hover:underline mt-2 inline-block"
+                          >
+                            {t("admin.downloadFile")}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {admin.isMaster && (

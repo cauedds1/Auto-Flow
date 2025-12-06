@@ -832,6 +832,11 @@ const translations: Record<Language, Record<string, string>> = {
     "admin.lastLogin": "Último login",
     "admin.newToken": "Novo Token",
     "admin.deactivate": "Desativar",
+    "admin.sessionExpired": "Sessão expirada",
+    "admin.viewAttachments": "Visualizar Anexos",
+    "admin.attachmentsFrom": "Anexos de",
+    "admin.previewNotAvailable": "Visualização não disponível para este tipo de arquivo",
+    "admin.downloadFile": "Baixar arquivo",
 
     "alerts.vehicleStopped": "Veículo parado há {days} dias",
     "alerts.vehicleStoppedMessage": "{brand} {model} está no status \"{status}\" há {days} dias",
@@ -1672,6 +1677,11 @@ const translations: Record<Language, Record<string, string>> = {
     "admin.lastLogin": "Last login",
     "admin.newToken": "New Token",
     "admin.deactivate": "Deactivate",
+    "admin.sessionExpired": "Session expired",
+    "admin.viewAttachments": "View Attachments",
+    "admin.attachmentsFrom": "Attachments from",
+    "admin.previewNotAvailable": "Preview not available for this file type",
+    "admin.downloadFile": "Download file",
 
     "alerts.vehicleStopped": "Vehicle stopped for {days} days",
     "alerts.vehicleStoppedMessage": "{brand} {model} is in \"{status}\" status for {days} days",
