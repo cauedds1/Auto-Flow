@@ -3465,8 +3465,10 @@ Retorne APENAS um JSON válido no formato:
             id: `parado-${vehicle.id}`,
             type: "warning",
             severity: "medium",
-            title: `Veículo parado há ${days} dias`,
-            message: `${vehicle.brand} ${vehicle.model} está no status "${vehicle.status}" há ${days} dias`,
+            titleKey: "alerts.vehicleStopped",
+            messageKey: "alerts.vehicleStoppedMessage",
+            titleParams: { days },
+            messageParams: { brand: vehicle.brand, model: vehicle.model, status: vehicle.status, days },
             vehicleId: vehicle.id,
             vehicleName: `${vehicle.brand} ${vehicle.model} ${vehicle.year}`,
             actionUrl: `/veiculo/${vehicle.id}`,
@@ -3482,8 +3484,9 @@ Retorne APENAS um JSON válido no formato:
               id: `sem-foto-${vehicle.id}`,
               type: "error",
               severity: "high",
-              title: "Veículo pronto sem foto",
-              message: `${vehicle.brand} ${vehicle.model} está pronto para venda mas não tem fotos`,
+              titleKey: "alerts.vehicleNoPhoto",
+              messageKey: "alerts.vehicleNoPhotoMessage",
+              messageParams: { brand: vehicle.brand, model: vehicle.model },
               vehicleId: vehicle.id,
               vehicleName: `${vehicle.brand} ${vehicle.model} ${vehicle.year}`,
               actionUrl: `/veiculo/${vehicle.id}`,
@@ -3498,8 +3501,9 @@ Retorne APENAS um JSON válido no formato:
             id: `sem-preco-${vehicle.id}`,
             type: "error",
             severity: "high",
-            title: "Veículo pronto sem preço",
-            message: `${vehicle.brand} ${vehicle.model} está pronto para venda mas não tem preço definido`,
+            titleKey: "alerts.vehicleNoPrice",
+            messageKey: "alerts.vehicleNoPriceMessage",
+            messageParams: { brand: vehicle.brand, model: vehicle.model },
             vehicleId: vehicle.id,
             vehicleName: `${vehicle.brand} ${vehicle.model} ${vehicle.year}`,
             actionUrl: `/veiculo/${vehicle.id}`,
@@ -3522,14 +3526,16 @@ Retorne APENAS um JSON válido no formato:
 
         for (const conta of contasVencidas) {
           const diasVencidos = Math.floor((now.getTime() - new Date(conta.dataVencimento).getTime()) / (1000 * 60 * 60 * 24));
-          const tipoConta = conta.tipo === "a_pagar" ? "a pagar" : "a receber";
+          const billType = conta.tipo === "a_pagar" ? "payable" : "receivable";
           
           alerts.push({
             id: `conta-vencida-${conta.id}`,
             type: "error",
             severity: "high",
-            title: `Conta ${tipoConta} vencida`,
-            message: `${conta.descricao} - R$ ${conta.valor} venceu há ${diasVencidos} dias`,
+            titleKey: "alerts.billOverdue",
+            messageKey: "alerts.billOverdueMessage",
+            titleParams: { type: billType },
+            messageParams: { description: conta.descricao, value: conta.valor, days: diasVencidos },
             actionUrl: "/bills",
             createdAt: new Date().toISOString(),
           });

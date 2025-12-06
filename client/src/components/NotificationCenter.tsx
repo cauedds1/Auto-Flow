@@ -22,6 +22,31 @@ export function NotificationCenter() {
   const { data: alertsData } = useAlerts();
   const { t } = useI18n();
 
+  const getAlertTitle = (alert: any): string => {
+    if (alert.titleKey) {
+      const params = { ...alert.titleParams };
+      if (params.type) {
+        params.type = t(`alerts.bill${params.type === 'payable' ? 'Payable' : 'Receivable'}`);
+      }
+      if (params.status) {
+        params.status = t(`status.${params.status}`) || params.status;
+      }
+      return t(alert.titleKey, params);
+    }
+    return alert.title || "";
+  };
+
+  const getAlertMessage = (alert: any): string => {
+    if (alert.messageKey) {
+      const params = { ...alert.messageParams };
+      if (params.status) {
+        params.status = t(`status.${params.status}`) || params.status;
+      }
+      return t(alert.messageKey, params);
+    }
+    return alert.message || "";
+  };
+
   const { data: vehicles = [] } = useQuery<any[]>({
     queryKey: ["/api/vehicles"],
   });
@@ -242,9 +267,9 @@ export function NotificationCenter() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             {alert.severity === "high" && <AlertCircle className="h-3.5 w-3.5 text-red-600 animate-pulse-urgent flex-shrink-0" />}
-                            <span className="font-medium">{alert.title}</span>
+                            <span className="font-medium">{getAlertTitle(alert)}</span>
                           </div>
-                          <p className="text-xs text-muted-foreground mt-0.5">{alert.message}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{getAlertMessage(alert)}</p>
                         </div>
                         {alert.severity === "high" && (
                           <Badge variant="destructive" className="text-[10px] px-1.5 py-0 animate-pulse-urgent">
