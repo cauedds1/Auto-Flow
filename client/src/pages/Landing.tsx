@@ -245,10 +245,10 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4">
-              Funcionalidades Poderosas
+              {t("landing.features.title")}
             </h2>
             <p className="text-lg text-gray-600 dark:text-gray-400">
-              Tudo que você precisa para gerenciar sua revenda de veículos
+              {t("landing.features.subtitle")}
             </p>
           </div>
 
@@ -315,19 +315,19 @@ export default function Landing() {
             <div className="space-y-8 order-1 lg:order-2">
               <div>
                 <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4">
-                  Visualize Tudo em Tempo Real
+                  {t("landing.metrics.title")}
                 </h2>
                 <p className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
-                  Acompanhe métricas importantes do seu estoque com dashboards intuitivos e atualizados constantemente.
+                  {t("landing.metrics.subtitle")}
                 </p>
               </div>
 
               <div className="space-y-4">
                 {[
-                  "Prontos para venda, em preparação e em reparos",
-                  "Margem média e lucratividade por veículo",
-                  "Dias médios em estoque e rotatividade",
-                  "Resumo financeiro com receitas vs despesas"
+                  t("landing.metrics.item1"),
+                  t("landing.metrics.item2"),
+                  t("landing.metrics.item3"),
+                  t("landing.metrics.item4")
                 ].map((item, idx) => (
                   <div key={idx} className="flex items-start gap-3">
                     <CheckCircle2 className="w-6 h-6 text-green-500 flex-shrink-0 mt-1" />
@@ -360,14 +360,14 @@ export default function Landing() {
                 <div className="inline-block px-4 py-2 bg-purple-100 dark:bg-purple-900/30 rounded-full border border-purple-300 dark:border-purple-700 mb-4">
                   <span className="text-purple-700 dark:text-purple-300 text-sm font-semibold flex items-center gap-2">
                     <Brain className="w-4 h-4" />
-                    Powered by AI
+                    {t("landing.velobot.badge")}
                   </span>
                 </div>
                 <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4">
-                  VeloBot: Seu Assistente IA
+                  {t("landing.velobot.title")}
                 </h2>
                 <p className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
-                  Um assistente inteligente que funciona 24/7, ajudando você a resolver problemas, responder dúvidas e otimizar seu negócio em tempo real. O VeloBot é o diferencial que transforma sua revenda.
+                  {t("landing.velobot.subtitle")}
                 </p>
               </div>
 
@@ -392,7 +392,7 @@ export default function Landing() {
 
               <div className="bg-purple-100 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-700 rounded-lg p-6">
                 <p className="text-purple-900 dark:text-purple-100 font-semibold">
-                  "Com o VeloBot, você tem um gestor IA na sua revenda, disponível a todo momento para ajudar a maximizar lucros e otimizar operações."
+                  "{t("landing.velobot.quote")}"
                 </p>
               </div>
             </div>
@@ -405,10 +405,10 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4">
-              Tudo Automatizado
+              {t("landing.automation.title")}
             </h2>
             <p className="text-lg text-gray-600 dark:text-gray-400">
-              Deixe o sistema trabalhar enquanto você vende
+              {t("landing.automation.subtitle")}
             </p>
           </div>
 
@@ -440,19 +440,19 @@ export default function Landing() {
             <div className="space-y-8">
               <div>
                 <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4">
-                  Relatórios Completos
+                  {t("landing.reports.title")}
                 </h2>
                 <p className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
-                  Análises detalhadas sobre seu negócio com gráficos, estatísticas e comparações.
+                  {t("landing.reports.subtitle")}
                 </p>
               </div>
 
               <div className="space-y-4">
                 {[
-                  "Receitas, lucro liquido e margem de lucro",
-                  "Análise de custos por veículo e categoria",
-                  "Contas a pagar e receber com status atualizado",
-                  "Exportar relatórios em PDF para compartilhar"
+                  t("landing.reports.item1"),
+                  t("landing.reports.item2"),
+                  t("landing.reports.item3"),
+                  t("landing.reports.item4")
                 ].map((item, idx) => (
                   <div key={idx} className="flex items-start gap-3">
                     <CheckCircle2 className="w-6 h-6 text-blue-500 flex-shrink-0 mt-1" />
@@ -480,18 +480,18 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4">
-              Resultados Reais
+              {t("landing.results.title")}
             </h2>
             <p className="text-lg text-gray-600 dark:text-gray-400">
-              Veja como o VeloStock transforma revendas automotivas
+              {t("landing.results.subtitle")}
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
             {[
-              { metric: "↑ 45%", description: "Aumento na margem de lucro" },
-              { metric: "↓ 60%", description: "Redução no tempo de gestão" },
-              { metric: "↑ 3x", description: "Velocidade de vendas" }
+              { metric: "↑ 45%", description: t("landing.results.profit") },
+              { metric: "↓ 60%", description: t("landing.results.time") },
+              { metric: "↑ 3x", description: t("landing.results.sales") }
             ].map((item, idx) => (
               <div key={idx} className="text-center p-8 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:shadow-xl transition-all">
                 <div className="text-5xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent mb-2">
@@ -508,10 +508,10 @@ export default function Landing() {
       <section className="relative w-full py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-6">
-            Pronto para revolucionar sua revenda?
+            {t("landing.cta.title")}
           </h2>
           <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
-            Teste o VeloStock com VeloBot gratuitamente. Sem cartão de crédito. Sem compromisso.
+            {t("landing.cta.subtitle")}
           </p>
           <Button 
             size="lg"
@@ -519,7 +519,7 @@ export default function Landing() {
             data-testid="button-demo-final"
             className="bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 text-white text-lg px-8 py-6 rounded-xl font-semibold shadow-xl hover:shadow-2xl transition-all"
           >
-            Solicitar Demonstração <ChevronRight className="w-5 h-5 ml-2" />
+            {t("landing.cta.button")} <ChevronRight className="w-5 h-5 ml-2" />
           </Button>
         </div>
       </section>
