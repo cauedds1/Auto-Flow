@@ -14,50 +14,51 @@ import {
 } from "@/components/ui/sidebar";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useCompanyTheme } from "./CompanyThemeProvider";
+import { useI18n } from "@/lib/i18n";
 
 const menuItems = [
   {
-    title: "Dashboard",
+    titleKey: "sidebar.dashboard",
     url: "/",
     icon: LayoutDashboard,
   },
   {
-    title: "Veículos",
+    titleKey: "sidebar.vehicles",
     url: "/veiculos",
     icon: Car,
   },
   {
-    title: "Leads",
+    titleKey: "sidebar.leads",
     url: "/leads",
     icon: UserPlus,
   },
   {
-    title: "Contas",
+    titleKey: "sidebar.bills",
     url: "/contas",
     icon: DollarSign,
   },
   {
-    title: "Relatórios",
+    titleKey: "sidebar.reports",
     url: "/relatorios",
     icon: BarChart3,
   },
   {
-    title: "Observações Gerais",
+    titleKey: "sidebar.notes",
     url: "/anotacoes",
     icon: StickyNote,
   },
   {
-    title: "Checklists",
+    titleKey: "sidebar.checklists",
     url: "/checklists",
     icon: CheckSquare,
   },
   {
-    title: "Usuários",
+    titleKey: "sidebar.users",
     url: "/usuarios",
     icon: Users,
   },
   {
-    title: "Configurações",
+    titleKey: "sidebar.settings",
     url: "/configuracoes",
     icon: Settings,
   },
@@ -68,6 +69,7 @@ export function AppSidebar() {
   const { isMobile, setOpenMobile } = useSidebar();
   const { can } = usePermissions();
   const { changeIconColors, primaryColor } = useCompanyTheme();
+  const { t } = useI18n();
 
   const handleLinkClick = () => {
     if (isMobile) {
@@ -75,7 +77,6 @@ export function AppSidebar() {
     }
   };
 
-  // Filtra itens baseado em permissões
   const visibleMenuItems = menuItems.filter((item) => {
     if (item.url === "/configuracoes") return can.companySettings;
     if (item.url === "/usuarios") return can.manageUsers;
@@ -98,22 +99,22 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
+          <SidebarGroupLabel>{t("sidebar.mainMenu")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {visibleMenuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
+                <SidebarMenuItem key={item.titleKey}>
                   <SidebarMenuButton
                     asChild
                     isActive={location === item.url}
-                    data-testid={`link-${item.title.toLowerCase().replace(/\s/g, '-')}`}
+                    data-testid={`link-${item.titleKey.replace('sidebar.', '')}`}
                   >
                     <Link href={item.url} onClick={handleLinkClick}>
                       <item.icon 
                         className="h-5 w-5"
                         style={changeIconColors ? { color: primaryColor } : undefined}
                       />
-                      <span>{item.title}</span>
+                      <span>{t(item.titleKey)}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
